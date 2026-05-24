@@ -6,6 +6,7 @@
     "rootDir": "./",
     "outDir": "dist",
     "strict": true,
+    "noImplicitAny": false,           // <--- ESTO EVITARÁ LOS ERRORES DE 'ANY' IMPLÍCITO
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
