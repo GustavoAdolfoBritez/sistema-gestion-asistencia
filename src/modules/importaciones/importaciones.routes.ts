@@ -195,13 +195,14 @@ importacionesApi.get('/lotes/:loteId/registros', async (req, res, next) => {
 });
 
 importacionesApi.post('/lotes/:loteId/registros', async (req, res, next) => {
+    const loteId = Number(req.params.loteId);
     try {
         const usuarioId = req.usuario?.usuarioId;
         if (!usuarioId) {
             return res.status(401).json({ mensaje: 'No autenticado' });
         }
-        const loteId = Number(req.params.loteId);
-        if (!loteId) {
+
+        if (!loteId || Number.isNaN(loteId)) {
             return res.status(400).json({ mensaje: 'El identificador de lote no es válido' });
         }
 
@@ -221,7 +222,11 @@ importacionesApi.post('/lotes/:loteId/registros', async (req, res, next) => {
         const insertados = await agregarRegistrosLote(loteId, registros);
         res.status(201).json({ total: insertados.length, datos: insertados });
     } catch (error) {
-        await descartarLotePendienteSinRegistros(loteId);
+        // Intentamos limpiar el lote si falló la carga (solo si el ID es válido)
+        if (loteId) {
+            await descartarLotePendienteSinRegistros(loteId).catch(() => {});
+        }
+
         if (error instanceof Error) {
             return res.status(400).json({ mensaje: error.message });
         }
@@ -264,14 +269,15 @@ importacionesApi.delete('/lotes/:loteId', async (req, res, next) => {
 });
 
 importacionesApi.post('/lotes/:loteId/confirmar', async (req, res, next) => {
+    const loteId = Number(req.params.loteId);
     try {
         const contextoAuditoria = construirContextoAuditoria(req);
         const usuarioId = req.usuario?.usuarioId;
         if (!usuarioId) {
             return res.status(401).json({ mensaje: 'No autenticado' });
         }
-        const loteId = Number(req.params.loteId);
-        if (!loteId) {
+
+        if (!loteId || Number.isNaN(loteId)) {
             return res.status(400).json({ mensaje: 'El identificador de lote no es válido' });
         }
 
@@ -286,10 +292,9 @@ importacionesApi.post('/lotes/:loteId/confirmar', async (req, res, next) => {
             recursoTipo: 'lote_alumnos',
             recursoId: loteId,
             detalle: {
-                insertados: resultado.insertados,
-                saltados: resultado.saltados,
-                totalLote: resultado.totalLote,
-                encontrados: resultado.encontrados
+                procesados: resultado.procesados,
+                errores: resultado.errores,
+                estado: resultado.estado
             },
             contexto: contextoAuditoria
         });

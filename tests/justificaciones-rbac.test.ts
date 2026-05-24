@@ -17,7 +17,7 @@ describe('RBAC justificaciones (panel / asistencias)', () => {
 
   it('Coordinación de facultad puede aprobar (alcance en API)', () => {
     expect(puedeAprobarJustificaciones(['Coordinador de Facultad'])).toBe(true);
-    expect(puedeAprobarJustificaciones(['Coordinador de Facultad'])).toBe(true);
+    expect(puedeAprobarJustificaciones(['Coordinador/a de Facultad'])).toBe(true);
     expect(puedeAprobarJustificaciones(['Coordinadora de Facultad'])).toBe(true);
   });
 
@@ -38,7 +38,7 @@ describe('RBAC justificaciones (panel / asistencias)', () => {
   });
 
   it('normalizeRol elimina acentos y caracteres invisibles', () => {
-    expect(normalizeRol(' Administrador\u200B General ')).toBe('administrador general');
+    expect(normalizeRol(' Secretaría Académica\u200B ')).toBe('secretaria academica');
     expect(normalizeRol('Administrador General')).toBe('administrador general');
   });
 });

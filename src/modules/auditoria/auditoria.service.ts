@@ -266,8 +266,7 @@ async function construirDescripcionesRecursos(eventos: EventoAuditoria[]): Promi
             [sesionClaseIds]
         );
         for (const row of rows) {
-            const fechaTxt =
-                row.fecha instanceof Date ? row.fecha.toISOString().slice(0, 10) : String(row.fecha).slice(0, 10);
+            const fechaTxt = String(row.fecha).slice(0, 10);
             map.set(
                 buildRecursoKey('sesion_clase', String(row.id)),
                 `Sesión clase #${row.id}: ${row.materia} · curso ${row.curso_id} · ${fechaTxt}`
@@ -320,8 +319,7 @@ async function construirDescripcionesRecursos(eventos: EventoAuditoria[]): Promi
             [asistenciaIds]
         );
         for (const row of rows) {
-            const fechaTxt =
-                row.fecha instanceof Date ? row.fecha.toISOString().slice(0, 10) : String(row.fecha).slice(0, 10);
+            const fechaTxt = String(row.fecha).slice(0, 10);
             map.set(
                 buildRecursoKey('asistencia', row.id),
                 `Asistencia #${row.id}: sesión ${row.sesion_id} (${fechaTxt}), matrícula ${row.matricula_id}`

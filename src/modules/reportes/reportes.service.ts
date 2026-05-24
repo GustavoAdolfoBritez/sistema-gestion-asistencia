@@ -1134,7 +1134,7 @@ export async function generarPdfConsolidadoRiesgoInhabilitados(
 
     await generarConsolidadoRiesgoPdf(
         {
-            periodo: periodoLabel,
+            periodo: periodoLabelToMesAnio(periodoLabel),
             total: filas.length,
             totalInhabilitados: filas.length,
             filas: filas.map((f) => ({
@@ -1147,7 +1147,7 @@ export async function generarPdfConsolidadoRiesgoInhabilitados(
                 documento: f.numero_documento,
                 porcentajeAsistencia: Number(f.porcentaje_asistencia ?? 0),
                 faltasAcumuladas: Number(f.faltas_acumuladas ?? 0),
-                estadoConsolidado: f.estado_consolidado,
+                estadoConsolidado: 'INHABILITADO',
             })),
         },
         fileName
@@ -1308,9 +1308,9 @@ export async function generarPdfEstadisticasAusentismoFacultadCarrera(
 
     const resumen = filasAgregadas.reduce((acc, row) => {
         acc.totalCarreras += 1;
-        acc.totalCursos += Number(row.total_cursos ?? 0);
-        acc.totalSesiones += Number(row.total_sesiones ?? 0);
-        acc.totalFaltas += Number(row.total_faltas ?? 0);
+        acc.totalCursos += Number(row.totalCursos ?? 0);
+        acc.totalSesiones += Number(row.totalSesiones ?? 0);
+        acc.totalFaltas += Number(row.totalFaltas ?? 0);
         acc.sumAusentismo += row.promedioAusentismo;
         return acc;
     }, {
@@ -1429,7 +1429,7 @@ const { rows } = await pool.query<{
         alumno: row.alumno.trim(),
         documento: row.numero_documento ?? '-',
         porcentajeFinal: Number(row.porcentaje_final ?? 0),
-        estado: row.habilitado ? 'HABILITADO' : 'NO HABILITADO',
+        estado: (row.habilitado ? 'HABILITADO' : 'NO HABILITADO') as 'HABILITADO' | 'NO HABILITADO',
     }));
     const totalHabilitados = alumnos.filter((a) => a.estado === 'HABILITADO').length;
     const totalNoHabilitados = alumnos.length - totalHabilitados;
@@ -1441,17 +1441,18 @@ const { rows } = await pool.query<{
         materia: first.materia,
         periodo: periodoLabel,
     });
-const semestreCurso = Number(first.semestre) || 1;
-     await generarActaHabilitadosPdf(
-         {
-             periodo: periodoLabel,
-             cursoId,
-             materia: first.materia,
-             docente: first.docente,
-             carrera: first.carrera,
-             facultad: first.facultad,
-             semestre: semestreCurso,
-             alumnos,
+
+    const semestreCurso = Number(first.semestre) || 1;
+    await generarActaHabilitadosPdf(
+        {
+            periodo: periodoLabel,
+            cursoId,
+            materia: first.materia,
+            docente: first.docente,
+            carrera: first.carrera,
+            facultad: first.facultad,
+            semestre: semestreCurso,
+            alumnos,
             resumen: {
                 total: alumnos.length,
                 habilitados: totalHabilitados,

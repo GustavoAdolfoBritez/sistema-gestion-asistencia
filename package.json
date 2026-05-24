@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "tsc",
+    "build": "tsc --extendedDiagnostics --pretty",
     "start": "node dist/server.js",
     "smoke:academico": "ts-node scripts/academico_smoke.ts",
     "smoke:academico:maintenance": "ts-node scripts/academico_maintenance_smoke.ts",

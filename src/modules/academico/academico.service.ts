@@ -672,7 +672,7 @@ function normalizeLimit(valor?: number, max = 200, defecto = 50) {
 
 export async function listarModulos(filtro: ModuloFiltro = {}) {
     const condiciones: string[] = [];
-    const valores: Array<string | number> = [];
+    const valores: Array<string | number | number[]> = [];
 
     if (typeof filtro.anio === 'number') {
         valores.push(filtro.anio);

@@ -229,7 +229,7 @@ export async function eliminarCarrera(carreraId: number) {
 }
 
 export async function listarPlanes(options: PlanListOptions = {}) {
-  const values: Array<number> = [];
+  const values: Array<number | number[]> = [];
   const conditions: string[] = [];
 
   if (options.carreraId) {
@@ -489,7 +489,7 @@ export async function eliminarPlan(planId: number) {
 }
 
 export async function listarMaterias(options: MateriaListOptions = {}) {
-  const values: Array<number> = [];
+  const values: Array<number | number[]> = [];
   const conditions: string[] = [];
 
   if (options.planId) {
