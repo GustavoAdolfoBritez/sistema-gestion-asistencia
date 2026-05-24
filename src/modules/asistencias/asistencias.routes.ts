@@ -2,6 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import {
     listarPlanillasAsignadas,
     obtenerPlanillaConPermisos,
@@ -36,12 +37,20 @@ import { ForbiddenScopeError } from '../../utils/alumnos-scope';
 
 const router = Router();
 
-// --- Multer: subida de justificativos PDF ---
-const JUSTIFICATIVOS_DIR = path.resolve(process.cwd(), 'generated', 'justificativos');
-fs.mkdirSync(JUSTIFICATIVOS_DIR, { recursive: true });
+// Usamos el directorio temporal de la función (/tmp)
+const JUSTIFICATIVOS_DIR = path.join(os.tmpdir(), 'justificativos');
+
+// IMPORTANTE: Removemos el mkdirSync global. 
+// Lo ejecutaremos solo bajo demanda dentro de la configuración del storage.
 
 const storage = multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, JUSTIFICATIVOS_DIR),
+    destination: (_req, _file, cb) => {
+        // Creamos la carpeta solo cuando realmente se va a subir un archivo
+        if (!fs.existsSync(JUSTIFICATIVOS_DIR)) {
+            fs.mkdirSync(JUSTIFICATIVOS_DIR, { recursive: true });
+        }
+        cb(null, JUSTIFICATIVOS_DIR);
+    },
     filename: (_req, file, cb) => {
         const ts = Date.now();
         const safe = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
