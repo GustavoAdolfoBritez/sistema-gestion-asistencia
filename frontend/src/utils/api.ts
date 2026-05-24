@@ -76,11 +76,16 @@ export function buildAuthenticatedPdfUrl(path: string): string {
 }
 
 /** Abre un PDF de la API en pestaña nueva con nombre legible al guardar. */
-export function openPdfEnPestana(path: string): void {
+export function openPdfEnPestana(path: string, ventana?: Window | null): void {
   try {
     const url = buildAuthenticatedPdfUrl(path);
+    if (ventana && !ventana.closed) {
+      ventana.location.href = url;
+      return;
+    }
     window.open(url, '_blank', 'noopener,noreferrer');
   } catch (error) {
+    ventana?.close();
     if (isSessionExpiredError(error)) {
       notifySessionExpired();
       showSessionExpiredToast('Tu sesión expiró. Iniciá sesión de nuevo.');
@@ -88,6 +93,25 @@ export function openPdfEnPestana(path: string): void {
     }
     throw error;
   }
+}
+
+/** Reserva una pestaña en el mismo tick del clic (antes de awaits) para ver PDF inline. */
+function reservarPestanaPdf(): Window | null {
+  const ventana = window.open('', '_blank', 'noopener,noreferrer');
+  if (!ventana) {
+    toast.error('Permití ventanas emergentes para ver el PDF.');
+  }
+  return ventana;
+}
+
+function verPdfBlobEnPestana(blob: Blob, ventana?: Window | null): void {
+  const objectUrl = URL.createObjectURL(blob);
+  if (ventana && !ventana.closed) {
+    ventana.location.href = objectUrl;
+  } else {
+    window.open(objectUrl, '_blank', 'noopener,noreferrer');
+  }
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
 }
 
 async function manejarErrorPdfResponse(response: Response): Promise<never> {
@@ -132,12 +156,13 @@ export async function downloadPdfFromApi(
   return { blob, fileName: normalizarNombrePdf(parsePdfFileName(response.headers.get('Content-Disposition'))) };
 }
 
-/** Genera un PDF (POST) y lo abre con nombre legible vía URL directa de regeneración. */
+/** Genera un PDF (POST) y lo abre en vista previa con nombre legible vía URL de regeneración. */
 export async function generarYAbrirPdf(
   path: string,
   options: RequestInit = {},
   abrir = true
 ): Promise<void> {
+  const ventana = abrir ? reservarPestanaPdf() : null;
   const url = path.startsWith('/') ? `${API_BASE_URL}${path}` : `${API_BASE_URL}/${path}`;
   const headers = new Headers(options.headers ?? {});
 
@@ -146,43 +171,37 @@ export async function generarYAbrirPdf(
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  const response = await fetch(url, { ...options, headers });
+  try {
+    const response = await fetch(url, { ...options, headers });
 
-  if (!response.ok) {
-    return manejarErrorPdfResponse(response);
-  }
-
-  const actaId = response.headers.get('X-Acta-Id')?.trim();
-  if (actaId && /^\d+$/.test(actaId)) {
-    await response.arrayBuffer();
-    if (abrir) {
-      openPdfEnPestana(`/reportes/actas/${actaId}/pdf`);
+    if (!response.ok) {
+      ventana?.close();
+      return manejarErrorPdfResponse(response);
     }
-    return;
-  }
 
-  const blob = await response.blob();
-  if (abrir) {
-    descargarPdfBlob(blob, normalizarNombrePdf(parsePdfFileName(response.headers.get('Content-Disposition'))));
+    const actaId = response.headers.get('X-Acta-Id')?.trim();
+    if (actaId && /^\d+$/.test(actaId)) {
+      await response.arrayBuffer();
+      if (abrir) {
+        openPdfEnPestana(`/reportes/actas/${actaId}/pdf`, ventana);
+      }
+      return;
+    }
+
+    const blob = await response.blob();
+    if (abrir) {
+      verPdfBlobEnPestana(blob, ventana);
+    }
+  } catch (error) {
+    ventana?.close();
+    throw error;
   }
 }
 
-function descargarPdfBlob(blob: Blob, fileName: string): void {
-  const safeName = normalizarNombrePdf(fileName);
-  const objectUrl = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = objectUrl;
-  anchor.download = safeName;
-  anchor.rel = 'noopener';
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
-}
-
-/** @deprecated Usar generarYAbrirPdf o openPdfEnPestana para conservar el nombre del archivo. */
+/** Abre un PDF en pestaña nueva (vista previa, no descarga forzada). */
 export function openPdfBlob(blob: Blob, fileName = 'documento.pdf'): void {
-  descargarPdfBlob(blob, fileName);
+  void fileName;
+  verPdfBlobEnPestana(blob);
 }
 
 /** Abre un documento: URL pública, legacy o acta regenerable vía API autenticada. */
