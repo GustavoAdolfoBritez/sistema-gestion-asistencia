@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { Pool } from 'pg';
 import jwt from 'jsonwebtoken';
-import { app } from '../src/app';
+import  app  from '../src/app';
 import { env } from '../src/config/env';
 
 const pool = new Pool({
