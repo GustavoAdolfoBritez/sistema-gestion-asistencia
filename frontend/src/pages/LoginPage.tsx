@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 
 import type { SessionUser } from '../utils/rbac';
-import { API_BASE_URL, API_ORIGIN, resetSessionExpiredState } from '../utils/api';
+import { API_BASE_URL, resetSessionExpiredState } from '../utils/api';
 
 interface LoginPageProps {
   onLoginSuccess?: (usuario?: SessionUser | null) => void;
@@ -15,7 +15,7 @@ interface LoginResponse {
   usuario?: SessionUser;
 }
 
-const LOGIN_LOGO_URL = `${API_ORIGIN}/assets/ung-logo.jpg`;
+const LOGIN_LOGO_URL = '/ung-logo.jpg';
 
 export function LoginPage({ onLoginSuccess, onOpenLegalPage }: LoginPageProps) {
   const [rememberMe, setRememberMe] = useState(false);

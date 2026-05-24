@@ -3,6 +3,7 @@ import { autenticarUsuario, refrescarSesion, cerrarSesion } from './auth.service
 import { autenticar } from '../../middlewares/auth.middleware';
 import { construirContextoAuditoria } from '../auditoria/auditoria.service';
 import { sendJsonError } from '../../utils/http-errors';
+import { logger } from '../../utils/logger';
 
 const router = Router();
 
@@ -19,14 +20,18 @@ router.post('/auth/login', async (req, res, next) => {
 
         const resultado = await autenticarUsuario(String(credential), String(password), construirContextoAuditoria(req));
         res.json(resultado);
-    } catch (error) {
+    } catch (error: unknown) {
+        logger.warn({ err: error }, 'Login rechazado o fallido');
         if (error instanceof Error) {
             return sendJsonError(res, 401, {
                 mensaje: error.message,
                 codigo: 'auth_login_rechazado'
             });
         }
-        next(error);
+        return sendJsonError(res, 500, {
+            mensaje: 'Error interno',
+            codigo: 'auth_login_error'
+        });
     }
 });
 

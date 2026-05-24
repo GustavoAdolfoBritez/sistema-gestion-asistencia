@@ -7,9 +7,9 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { readStoredUser } from './utils/session-user';
 import { appPath } from './navigation/app-paths';
 import { RequireAuth } from './navigation/RequireAuth';
-import { API_ORIGIN, clearLocalSession, logoutOnServer, resetSessionExpiredState, UNAUTHORIZED_EVENT } from './utils/api';
+import { clearLocalSession, logoutOnServer, resetSessionExpiredState, UNAUTHORIZED_EVENT } from './utils/api';
 
-const INSTITUTION_LOGO_URL = `${API_ORIGIN}/assets/ung-logo.jpg`;
+const INSTITUTION_LOGO_URL = '/ung-logo.jpg';
 
 const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })));
 const PanelPage = lazy(() => import('./pages/PanelPage').then((m) => ({ default: m.PanelPage })));
