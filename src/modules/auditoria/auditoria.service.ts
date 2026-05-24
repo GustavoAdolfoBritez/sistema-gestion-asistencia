@@ -4,6 +4,7 @@ import { logger } from '../../utils/logger';
 import { formatGeneradoParaguay } from '../../utils/pdf-kit-brand';
 import { generarAuditoriaEventosPdf } from './auditoria.pdf';
 import { generarNombrePdfConTimestamp } from '../reportes/reportes.utils';
+import { subirActaPdf } from '../../services/actas-storage.service';
 
 export type ResultadoAuditoria = 'ok' | 'error';
 export type SeveridadAuditoria = 'baja' | 'media' | 'alta';
@@ -725,7 +726,7 @@ export async function exportarEventosAuditoriaPdf(
         return `${item.recurso_tipo ?? '-'} ${recursoId}`.trim();
     };
 
-    await generarAuditoriaEventosPdf(
+    const buffer = await generarAuditoriaEventosPdf(
         {
             titulo: 'REPORTE DE AUDITORÍA DEL SISTEMA',
             filtros: filtrosResumen,
@@ -742,9 +743,9 @@ export async function exportarEventosAuditoriaPdf(
                 recurso: describirRecurso(item),
                 resultado: item.resultado,
             })),
-        },
-        fileName
+        }
     );
+    const urlDocumento = await subirActaPdf(buffer, fileName);
 
-    return { url_documento: `/actas/${fileName}`, total };
+    return { url_documento: urlDocumento, total };
 }

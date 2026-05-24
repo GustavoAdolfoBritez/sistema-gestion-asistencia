@@ -10,6 +10,7 @@ import {
 } from '../../utils/role-names';
 import { formatGeneradoParaguay } from '../../utils/pdf-kit-brand';
 import { generarListadoUsuariosPdf } from './usuarios.pdf';
+import { subirActaPdf } from '../../services/actas-storage.service';
 import { generarNombrePdfConTimestamp } from '../reportes/reportes.utils';
 
 export type EstadoUsuario = 'activo' | 'inactivo' | 'suspendido';
@@ -714,7 +715,7 @@ export async function exportarUsuariosPdf(
     const fileName = generarNombrePdfConTimestamp({
         titulo: 'Listado de Usuarios del Sistema',
     });
-    await generarListadoUsuariosPdf(
+    const buffer = await generarListadoUsuariosPdf(
         {
             titulo: 'LISTADO DE USUARIOS DEL SISTEMA',
             filtros: filtrosResumen,
@@ -730,9 +731,9 @@ export async function exportarUsuariosPdf(
                 estado: u.estado,
                 roles: u.roles.length ? u.roles.join(', ') : '—',
             })),
-        },
-        fileName
+        }
     );
+    const urlDocumento = await subirActaPdf(buffer, fileName);
 
-    return { url_documento: `/actas/${fileName}`, total };
+    return { url_documento: urlDocumento, total };
 }

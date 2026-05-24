@@ -20,6 +20,7 @@ const database_1 = require("../../config/database");
 const role_names_1 = require("../../utils/role-names");
 const pdf_kit_brand_1 = require("../../utils/pdf-kit-brand");
 const usuarios_pdf_1 = require("./usuarios.pdf");
+const actas_storage_service_1 = require("../../services/actas-storage.service");
 const reportes_utils_1 = require("../reportes/reportes.utils");
 const CAMPOS_SELECT = `
     u.id,
@@ -498,7 +499,7 @@ async function exportarUsuariosPdf(filtro = {}, meta) {
     const fileName = (0, reportes_utils_1.generarNombrePdfConTimestamp)({
         titulo: 'Listado de Usuarios del Sistema',
     });
-    await (0, usuarios_pdf_1.generarListadoUsuariosPdf)({
+    const buffer = await (0, usuarios_pdf_1.generarListadoUsuariosPdf)({
         titulo: 'LISTADO DE USUARIOS DEL SISTEMA',
         filtros: filtrosResumen,
         generadoEn: (0, pdf_kit_brand_1.formatGeneradoParaguay)(new Date()),
@@ -513,6 +514,7 @@ async function exportarUsuariosPdf(filtro = {}, meta) {
             estado: u.estado,
             roles: u.roles.length ? u.roles.join(', ') : '—',
         })),
-    }, fileName);
-    return { url_documento: `/actas/${fileName}`, total };
+    });
+    const urlDocumento = await (0, actas_storage_service_1.subirActaPdf)(buffer, fileName);
+    return { url_documento: urlDocumento, total };
 }

@@ -1,7 +1,4 @@
-import fs from 'fs';
-import path from 'path';
-import PDFDocument from 'pdfkit';
-import { ACTAS_OUTPUT_DIR } from '../../utils/pdf-assets';
+import { renderPdfDocumentToBuffer } from '../../utils/pdf-buffer';
 import {
     drawInstitutionalHeaderPlanillaLegal,
     PDF_INSTITUTIONAL_HEADER_TOP_REPORTS,
@@ -61,10 +58,7 @@ function humanizarFiltrosUsuarios(filtros: string): string {
         .join('\n');
 }
 
-export async function generarListadoUsuariosPdf(data: ExportUsuariosPdfData, fileName: string): Promise<string> {
-    fs.mkdirSync(ACTAS_OUTPUT_DIR, { recursive: true });
-    const filePath = path.join(ACTAS_OUTPUT_DIR, fileName);
-
+export async function generarListadoUsuariosPdf(data: ExportUsuariosPdfData): Promise<Buffer> {
     const columns: ModernTableColumn[] = [
         { key: 'nombres', label: 'Nombres', width: 90, align: 'left' },
         { key: 'apellidos', label: 'Apellidos', width: 95, align: 'left' },
@@ -75,8 +69,62 @@ export async function generarListadoUsuariosPdf(data: ExportUsuariosPdfData, fil
         { key: 'roles', label: 'Roles', width: 201, align: 'left' },
     ];
 
-    await new Promise<void>((resolve, reject) => {
-        const doc = new PDFDocument({
+    return renderPdfDocumentToBuffer(
+        (doc) => {
+            const margin = PDF_BRAND_MARGIN;
+            const pageW = doc.page.width;
+            const pageH = doc.page.height;
+            const contentW = pageW - margin * 2;
+            const bottomLimit = pageH - margin - PDF_FOOTER_RESERVED;
+
+            const inst = drawInstitutionalHeaderPlanillaLegal(doc, pageW, PDF_INSTITUTIONAL_HEADER_TOP_REPORTS);
+            let y = drawOperativoPdfCoverHeader(doc, margin, contentW, inst.rowFacultadY + 4, {
+                titulo: data.titulo,
+                generadoEn: data.generadoEn,
+            });
+
+            const filtrosTxt = humanizarFiltrosUsuarios(data.filtros);
+            y = drawStackedMetaBlack(doc, margin, y, contentW, 'Filtros aplicados', filtrosTxt);
+            y = drawSectionTitle(doc, margin, y, contentW, 'Usuarios');
+
+            const drawTableHeaderAt = (yy: number) =>
+                drawModernTableHeader(doc, margin, yy, columns, ROW_HEIGHT, 'print');
+
+            y = drawTableHeaderAt(y);
+
+            let idx = 0;
+            for (const item of data.usuarios) {
+                if (y + ROW_HEIGHT > bottomLimit) {
+                    doc.addPage();
+                    y = margin;
+                    y = drawTableHeaderAt(y);
+                }
+                const row = {
+                    nombres: item.nombres,
+                    apellidos: item.apellidos,
+                    email: item.email,
+                    usuario: item.usuario,
+                    telefono: item.telefono,
+                    estado: item.estado,
+                    roles: item.roles,
+                };
+                drawModernTableRow(doc, margin, y, columns, row, ROW_HEIGHT, idx % 2 === 1);
+                y += ROW_HEIGHT;
+                idx += 1;
+            }
+
+            const range = doc.bufferedPageRange();
+            for (let i = 0; i < range.count; i++) {
+                doc.switchToPage(range.start + i);
+                drawFooter(doc, margin, pageH - margin - 8, contentW, {
+                    pageIndex: i,
+                    pageTotal: range.count,
+                    exportedBy: data.exportedBy,
+                    requestId: data.requestId,
+                });
+            }
+        },
+        {
             size: 'A4',
             layout: 'landscape',
             margin: 0,
@@ -85,68 +133,6 @@ export async function generarListadoUsuariosPdf(data: ExportUsuariosPdfData, fil
                 Title: data.titulo,
                 Author: 'Sistema de control de asistencia',
             },
-        });
-        const stream = fs.createWriteStream(filePath);
-        stream.on('finish', resolve);
-        stream.on('error', reject);
-        doc.on('error', reject);
-        doc.pipe(stream);
-
-        const margin = PDF_BRAND_MARGIN;
-        const pageW = doc.page.width;
-        const pageH = doc.page.height;
-        const contentW = pageW - margin * 2;
-        const bottomLimit = pageH - margin - PDF_FOOTER_RESERVED;
-
-        const inst = drawInstitutionalHeaderPlanillaLegal(doc, pageW, PDF_INSTITUTIONAL_HEADER_TOP_REPORTS);
-        let y = drawOperativoPdfCoverHeader(doc, margin, contentW, inst.rowFacultadY + 4, {
-            titulo: data.titulo,
-            generadoEn: data.generadoEn,
-        });
-
-        const filtrosTxt = humanizarFiltrosUsuarios(data.filtros);
-        y = drawStackedMetaBlack(doc, margin, y, contentW, 'Filtros aplicados', filtrosTxt);
-        y = drawSectionTitle(doc, margin, y, contentW, 'Usuarios');
-
-        const drawTableHeaderAt = (yy: number) =>
-            drawModernTableHeader(doc, margin, yy, columns, ROW_HEIGHT, 'print');
-
-        y = drawTableHeaderAt(y);
-
-        let idx = 0;
-        for (const item of data.usuarios) {
-            if (y + ROW_HEIGHT > bottomLimit) {
-                doc.addPage();
-                y = margin;
-                y = drawTableHeaderAt(y);
-            }
-            const row = {
-                nombres: item.nombres,
-                apellidos: item.apellidos,
-                email: item.email,
-                usuario: item.usuario,
-                telefono: item.telefono,
-                estado: item.estado,
-                roles: item.roles,
-            };
-            drawModernTableRow(doc, margin, y, columns, row, ROW_HEIGHT, idx % 2 === 1);
-            y += ROW_HEIGHT;
-            idx += 1;
         }
-
-        const range = doc.bufferedPageRange();
-        for (let i = 0; i < range.count; i++) {
-            doc.switchToPage(range.start + i);
-            drawFooter(doc, margin, pageH - margin - 8, contentW, {
-                pageIndex: i,
-                pageTotal: range.count,
-                exportedBy: data.exportedBy,
-                requestId: data.requestId,
-            });
-        }
-
-        doc.end();
-    });
-
-    return filePath;
+    );
 }

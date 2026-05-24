@@ -1,11 +1,8 @@
-import fs from 'fs';
-import path from 'path';
-import PDFDocument from 'pdfkit';
-import { ACTAS_OUTPUT_DIR } from '../../utils/pdf-assets';
 import {
   drawInstitutionalHeaderPlanillaLegal,
   PDF_INSTITUTIONAL_HEADER_TOP_REPORTS,
 } from '../../utils/pdf-institutional-header-planilla';
+import { renderPdfDocumentToBuffer } from '../../utils/pdf-buffer';
 import {
   PDF_BRAND_MARGIN,
   PDF_FOOTER_RESERVED,
@@ -106,12 +103,77 @@ function eventoToRecord(item: EventoAuditoriaPdf): Record<string, string> {
   };
 }
 
-export async function generarAuditoriaEventosPdf(data: ExportAuditoriaPdfData, fileName: string) {
-  fs.mkdirSync(ACTAS_OUTPUT_DIR, { recursive: true });
-  const filePath = path.join(ACTAS_OUTPUT_DIR, fileName);
+export async function generarAuditoriaEventosPdf(data: ExportAuditoriaPdfData): Promise<Buffer> {
+  return renderPdfDocumentToBuffer(
+    (doc) => {
+      const margin = PDF_BRAND_MARGIN;
+      const pageW = doc.page.width;
+      const pageH = doc.page.height;
+      const contentW = pageW - margin * 2;
+      const bottomLimit = pageH - margin - PDF_FOOTER_RESERVED;
 
-  await new Promise<void>((resolve, reject) => {
-    const doc = new PDFDocument({
+      const inst = drawInstitutionalHeaderPlanillaLegal(doc, pageW, PDF_INSTITUTIONAL_HEADER_TOP_REPORTS);
+      let y = drawOperativoPdfCoverHeader(doc, margin, contentW, inst.rowFacultadY + 4, {
+        titulo: data.titulo,
+        generadoEn: data.generadoEn,
+      });
+
+      const filasEnPdf = data.eventos.length;
+      const alcanceExporte =
+        filasEnPdf === data.total
+          ? `${data.total} eventos; todos incluidos en este PDF (máx. ${data.capExportacion} filas por archivo).`
+          : `${data.total} eventos que coinciden con el filtro; en este PDF se listan ${filasEnPdf} (máx. ${data.capExportacion} filas por archivo).`;
+
+      const filtrosTxt = humanizarFiltrosAuditoria(data.filtros);
+      y = drawTwoColumnMetaBlack(
+        doc,
+        margin,
+        y,
+        contentW,
+        { label: 'Filtros aplicados', value: filtrosTxt },
+        { label: 'Alcance del exporte', value: alcanceExporte }
+      );
+
+      const tableRows = data.eventos.map(eventoToRecord);
+      const columns: ModernTableColumn[] = buildContentFitTableColumns(
+        doc,
+        CONTENT_FIT_DEFS,
+        tableRows,
+        contentW
+      );
+      const wrappedOpts = { ellipsisColumnKeys: ELLIPSIS_COLUMN_KEYS };
+
+      const drawTableHeaderAt = (yy: number) =>
+        drawModernTableHeader(doc, margin, yy, columns, TABLE_HEADER_ROW_HEIGHT, 'print');
+
+      y += 4;
+      y = drawTableHeaderAt(y);
+
+      let idx = 0;
+      for (const row of tableRows) {
+        const rowH = measureModernTableRowWrappedHeight(doc, columns, row, TABLE_ROW_MIN_HEIGHT, wrappedOpts);
+        if (y + rowH > bottomLimit) {
+          doc.addPage();
+          y = margin;
+          y = drawTableHeaderAt(y);
+        }
+        drawModernTableRowWrapped(doc, margin, y, columns, row, rowH, idx % 2 === 1, undefined, wrappedOpts);
+        y += rowH;
+        idx += 1;
+      }
+
+      const range = doc.bufferedPageRange();
+      for (let i = 0; i < range.count; i++) {
+        doc.switchToPage(range.start + i);
+        drawFooter(doc, margin, pageH - margin - 8, contentW, {
+          pageIndex: i,
+          pageTotal: range.count,
+          exportedBy: data.exportedBy,
+          requestId: data.requestId,
+        });
+      }
+    },
+    {
       size: 'A4',
       layout: 'landscape',
       margin: 0,
@@ -120,82 +182,6 @@ export async function generarAuditoriaEventosPdf(data: ExportAuditoriaPdfData, f
         Title: data.titulo,
         Author: 'Sistema de control de asistencia',
       },
-    });
-    const stream = fs.createWriteStream(filePath);
-    stream.on('finish', resolve);
-    stream.on('error', reject);
-    doc.on('error', reject);
-    doc.pipe(stream);
-
-    const margin = PDF_BRAND_MARGIN;
-    const pageW = doc.page.width;
-    const pageH = doc.page.height;
-    const contentW = pageW - margin * 2;
-    const bottomLimit = pageH - margin - PDF_FOOTER_RESERVED;
-
-    const inst = drawInstitutionalHeaderPlanillaLegal(doc, pageW, PDF_INSTITUTIONAL_HEADER_TOP_REPORTS);
-    let y = drawOperativoPdfCoverHeader(doc, margin, contentW, inst.rowFacultadY + 4, {
-      titulo: data.titulo,
-      generadoEn: data.generadoEn,
-    });
-
-    const filasEnPdf = data.eventos.length;
-    const alcanceExporte =
-      filasEnPdf === data.total
-        ? `${data.total} eventos; todos incluidos en este PDF (máx. ${data.capExportacion} filas por archivo).`
-        : `${data.total} eventos que coinciden con el filtro; en este PDF se listan ${filasEnPdf} (máx. ${data.capExportacion} filas por archivo).`;
-
-    const filtrosTxt = humanizarFiltrosAuditoria(data.filtros);
-    y = drawTwoColumnMetaBlack(
-      doc,
-      margin,
-      y,
-      contentW,
-      { label: 'Filtros aplicados', value: filtrosTxt },
-      { label: 'Alcance del exporte', value: alcanceExporte }
-    );
-
-    const tableRows = data.eventos.map(eventoToRecord);
-    const columns: ModernTableColumn[] = buildContentFitTableColumns(
-      doc,
-      CONTENT_FIT_DEFS,
-      tableRows,
-      contentW
-    );
-    const wrappedOpts = { ellipsisColumnKeys: ELLIPSIS_COLUMN_KEYS };
-
-    const drawTableHeaderAt = (yy: number) =>
-      drawModernTableHeader(doc, margin, yy, columns, TABLE_HEADER_ROW_HEIGHT, 'print');
-
-    y += 4;
-    y = drawTableHeaderAt(y);
-
-    let idx = 0;
-    for (const row of tableRows) {
-      const rowH = measureModernTableRowWrappedHeight(doc, columns, row, TABLE_ROW_MIN_HEIGHT, wrappedOpts);
-      if (y + rowH > bottomLimit) {
-        doc.addPage();
-        y = margin;
-        y = drawTableHeaderAt(y);
-      }
-      drawModernTableRowWrapped(doc, margin, y, columns, row, rowH, idx % 2 === 1, undefined, wrappedOpts);
-      y += rowH;
-      idx += 1;
     }
-
-    const range = doc.bufferedPageRange();
-    for (let i = 0; i < range.count; i++) {
-      doc.switchToPage(range.start + i);
-      drawFooter(doc, margin, pageH - margin - 8, contentW, {
-        pageIndex: i,
-        pageTotal: range.count,
-        exportedBy: data.exportedBy,
-        requestId: data.requestId,
-      });
-    }
-
-    doc.end();
-  });
-
-  return filePath;
+  );
 }

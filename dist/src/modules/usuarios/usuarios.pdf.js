@@ -1,13 +1,7 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generarListadoUsuariosPdf = generarListadoUsuariosPdf;
-const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
-const pdfkit_1 = __importDefault(require("pdfkit"));
-const pdf_assets_1 = require("../../utils/pdf-assets");
+const pdf_buffer_1 = require("../../utils/pdf-buffer");
 const pdf_institutional_header_planilla_1 = require("../../utils/pdf-institutional-header-planilla");
 const pdf_kit_brand_1 = require("../../utils/pdf-kit-brand");
 const pdf_report_cover_1 = require("../../utils/pdf-report-cover");
@@ -33,9 +27,7 @@ function humanizarFiltrosUsuarios(filtros) {
     })
         .join('\n');
 }
-async function generarListadoUsuariosPdf(data, fileName) {
-    fs_1.default.mkdirSync(pdf_assets_1.ACTAS_OUTPUT_DIR, { recursive: true });
-    const filePath = path_1.default.join(pdf_assets_1.ACTAS_OUTPUT_DIR, fileName);
+async function generarListadoUsuariosPdf(data) {
     const columns = [
         { key: 'nombres', label: 'Nombres', width: 90, align: 'left' },
         { key: 'apellidos', label: 'Apellidos', width: 95, align: 'left' },
@@ -45,22 +37,7 @@ async function generarListadoUsuariosPdf(data, fileName) {
         { key: 'estado', label: 'Estado', width: 58, align: 'center' },
         { key: 'roles', label: 'Roles', width: 201, align: 'left' },
     ];
-    await new Promise((resolve, reject) => {
-        const doc = new pdfkit_1.default({
-            size: 'A4',
-            layout: 'landscape',
-            margin: 0,
-            bufferPages: true,
-            info: {
-                Title: data.titulo,
-                Author: 'Sistema de control de asistencia',
-            },
-        });
-        const stream = fs_1.default.createWriteStream(filePath);
-        stream.on('finish', resolve);
-        stream.on('error', reject);
-        doc.on('error', reject);
-        doc.pipe(stream);
+    return (0, pdf_buffer_1.renderPdfDocumentToBuffer)((doc) => {
         const margin = pdf_kit_brand_1.PDF_BRAND_MARGIN;
         const pageW = doc.page.width;
         const pageH = doc.page.height;
@@ -106,7 +83,14 @@ async function generarListadoUsuariosPdf(data, fileName) {
                 requestId: data.requestId,
             });
         }
-        doc.end();
+    }, {
+        size: 'A4',
+        layout: 'landscape',
+        margin: 0,
+        bufferPages: true,
+        info: {
+            Title: data.titulo,
+            Author: 'Sistema de control de asistencia',
+        },
     });
-    return filePath;
 }

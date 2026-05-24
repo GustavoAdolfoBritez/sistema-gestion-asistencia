@@ -11,6 +11,7 @@ const logger_1 = require("../../utils/logger");
 const pdf_kit_brand_1 = require("../../utils/pdf-kit-brand");
 const auditoria_pdf_1 = require("./auditoria.pdf");
 const reportes_utils_1 = require("../reportes/reportes.utils");
+const actas_storage_service_1 = require("../../services/actas-storage.service");
 function buildRecursoKey(tipo, id) {
     return `${tipo}:${id}`;
 }
@@ -532,7 +533,7 @@ async function exportarEventosAuditoriaPdf(filtro = {}, meta) {
             return item.recurso_tipo ?? '-';
         return `${item.recurso_tipo ?? '-'} ${recursoId}`.trim();
     };
-    await (0, auditoria_pdf_1.generarAuditoriaEventosPdf)({
+    const buffer = await (0, auditoria_pdf_1.generarAuditoriaEventosPdf)({
         titulo: 'REPORTE DE AUDITORÍA DEL SISTEMA',
         filtros: filtrosResumen,
         total,
@@ -548,6 +549,7 @@ async function exportarEventosAuditoriaPdf(filtro = {}, meta) {
             recurso: describirRecurso(item),
             resultado: item.resultado,
         })),
-    }, fileName);
-    return { url_documento: `/actas/${fileName}`, total };
+    });
+    const urlDocumento = await (0, actas_storage_service_1.subirActaPdf)(buffer, fileName);
+    return { url_documento: urlDocumento, total };
 }
