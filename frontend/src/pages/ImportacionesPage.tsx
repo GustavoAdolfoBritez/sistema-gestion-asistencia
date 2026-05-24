@@ -650,7 +650,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
         const uploadSpan = 0.62;
         let currentProgress = uploadBase;
 
-        const startSmoothProgress = (from: number) => {
+        const startSmoothProgress = () => {
           cancelAnimationFrame(smoothRafId);
           const target = uploadBase + uploadSpan;
           const step = () => {
@@ -690,7 +690,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
             };
           });
 
-          startSmoothProgress(currentProgress);
+          startSmoothProgress();
           await apiFetch(`/importaciones/lotes/${loteId}/registros`, {
             method: 'POST',
             body: JSON.stringify({ registros }),

@@ -1,7 +1,7 @@
 /** Campos que identifican una misma carga de justificación (un PDF para varias fechas de clase). */
 export function claveGrupoJustificacionCarga(j: {
   motivo: string | null;
-  documento_url: string | null;
+  documento_url?: string | null;
   estado_revision: string | null;
   matricula_id?: number | null;
   curso_id?: number | null;
