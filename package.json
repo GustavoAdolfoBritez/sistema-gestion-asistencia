@@ -2,7 +2,7 @@
   "name": "sistema-de-control-de-asistencia",
   "version": "1.0.0",
   "description": "Sistema de gestión para Nihon Gakko",
-  "main": "dist/server.js",
+  "main": "dist/src/app.js",
   "engines": {
     "node": "24.16.0"
   },
