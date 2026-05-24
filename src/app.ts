@@ -8,7 +8,7 @@ import { env } from './config/env';
 import { logger } from './utils/logger';
 import { adjuntarRequestContext } from './middlewares/request-context.middleware';
 
-export const app = express();
+const app = express();
 
 const corsOptions: cors.CorsOptions =
     env.corsOrigins.length > 0
@@ -32,17 +32,17 @@ app.use(cors(corsOptions));
 app.use(adjuntarRequestContext);
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan('dev'));
-app.use('/actas', express.static(path.resolve(process.cwd(), 'generated', 'actas')));
-app.use('/justificativos', express.static(path.resolve(process.cwd(), 'generated', 'justificativos')));
-app.use(
-    '/assets',
-    express.static(path.resolve(process.cwd(), 'generated', 'assets'), {
-        setHeaders: (res) => {
-            res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-            res.setHeader('Access-Control-Allow-Origin', '*');
-        },
-    })
-);
+//app.use('/actas', express.static(path.resolve(process.cwd(), 'generated', 'actas')));
+//app.use('/justificativos', express.static(path.resolve(process.cwd(), 'generated', 'justificativos')));
+//app.use(
+//    '/assets',
+//    express.static(path.resolve(process.cwd(), 'generated', 'assets'), {
+//        setHeaders: (res) => {
+//            res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+//            res.setHeader('Access-Control-Allow-Origin', '*');
+//        },
+//    })
+//);
 
 app.use('/api', routes);
 
@@ -61,3 +61,5 @@ app.use((err: unknown, _req: express.Request, res: express.Response, _next: expr
     }
     res.status(500).json({ mensaje: 'Error interno' });
 });
+
+export default app;
