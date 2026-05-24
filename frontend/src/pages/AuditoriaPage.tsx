@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { AppSidebar } from '../components/AppSidebar';
 import { AppSelect } from '../components/ui/app-select';
-import { apiFetch } from '../utils/api';
+import { API_ORIGIN, apiFetch } from '../utils/api';
 import { etiquetasRoles } from '../utils/role-labels';
 
 interface Props {
@@ -384,7 +384,7 @@ export function AuditoriaPage({ onLogout }: Props) {
   function getDocumentoUrl(url: string) {
     if (!url) return '#';
     if (/^https?:\/\//i.test(url)) return url;
-    const apiBase = (import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api').replace(/\/api\/?$/, '');
+    const apiBase = API_ORIGIN;
     return `${apiBase}${url.startsWith('/') ? url : `/${url}`}`;
   }
 

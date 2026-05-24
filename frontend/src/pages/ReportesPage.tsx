@@ -7,7 +7,7 @@ import { calcularContextoSelectorListo, deriveAlcanceVisual } from '../hooks/use
 import { AppSelect, appSelectDarkSurfaceClass } from '../components/ui/app-select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { useMisAlcances } from '../hooks/useMisAlcances';
-import { apiFetch, toastApiError } from '../utils/api';
+import { API_ORIGIN, apiFetch, toastApiError } from '../utils/api';
 import { formatDateTime24 } from '../utils/datetime';
 import { puedeEjecutarCierreMensual } from '../utils/rbac';
 import { readStoredUser } from '../utils/session-user';
@@ -320,7 +320,7 @@ export function ReportesPage({ onLogout }: Props) {
   function getDocumentoUrl(url: string) {
     if (!url) return '#';
     if (/^https?:\/\//i.test(url)) return url;
-    const apiBase = (import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api').replace(/\/api\/?$/, '');
+    const apiBase = API_ORIGIN;
     return `${apiBase}${url.startsWith('/') ? url : `/${url}`}`;
   }
 

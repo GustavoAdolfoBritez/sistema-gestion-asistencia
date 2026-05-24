@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { toast } from 'sonner';
 import { AppSidebar } from '../components/AppSidebar';
 import { AppSelect } from '../components/ui/app-select';
-import { apiFetch, notifySessionExpired } from '../utils/api';
+import { API_BASE_URL, API_ORIGIN, apiFetch, notifySessionExpired } from '../utils/api';
 import {
   contarFaltasDesdeSesiones,
   descripcionEstadoAsistencia,
@@ -646,7 +646,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
         throw new Error('No se pudo determinar el archivo generado.');
       }
 
-      const apiBase = (import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api').replace(/\/api\/?$/, '');
+      const apiBase = API_ORIGIN;
       const downloadUrl = `${apiBase}${urlDocumento.startsWith('/') ? urlDocumento : `/${urlDocumento}`}`;
       window.open(downloadUrl, '_blank', 'noopener,noreferrer');
       toast.success('Planilla legal generada correctamente.');
@@ -784,7 +784,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
       const token = localStorage.getItem('token') ?? sessionStorage.getItem('token') ?? '';
       const formData = new FormData();
       formData.append('archivo', justifArchivo);
-      const uploadResp = await fetch(`${import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api'}/asistencias/justificaciones/upload`, {
+      const uploadResp = await fetch(`${API_BASE_URL}/asistencias/justificaciones/upload`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -1927,7 +1927,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                                 <p className="line-clamp-2">{j.motivo}</p>
                                 {j.documento_url ? (
                                   <a
-                                    href={`http://localhost:4000${j.documento_url}`}
+                                    href={`${API_ORIGIN}${j.documento_url}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 mt-1"

@@ -10,6 +10,10 @@ import { adjuntarRequestContext } from './middlewares/request-context.middleware
 
 const app = express();
 
+if (env.isProduction) {
+    app.set('trust proxy', 1);
+}
+
 const corsOptions: cors.CorsOptions =
     env.corsOrigins.length > 0
         ? {
@@ -34,15 +38,15 @@ app.use(express.json({ limit: '1mb' }));
 app.use(morgan('dev'));
 //app.use('/actas', express.static(path.resolve(process.cwd(), 'generated', 'actas')));
 //app.use('/justificativos', express.static(path.resolve(process.cwd(), 'generated', 'justificativos')));
-//app.use(
-//    '/assets',
-//    express.static(path.resolve(process.cwd(), 'generated', 'assets'), {
-//        setHeaders: (res) => {
-//            res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-//            res.setHeader('Access-Control-Allow-Origin', '*');
-//        },
-//    })
-//);
+app.use(
+    '/assets',
+    express.static(path.resolve(process.cwd(), 'generated', 'assets'), {
+        setHeaders: (res) => {
+            res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+            res.setHeader('Access-Control-Allow-Origin', '*');
+        },
+    })
+);
 
 app.use('/api', routes);
 

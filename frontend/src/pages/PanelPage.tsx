@@ -13,7 +13,7 @@ import { AppSelect, appSelectDarkSurfaceClass } from '../components/ui/app-selec
 import { useMisAlcances } from '../hooks/useMisAlcances';
 import { useScopeForm } from '../hooks/useScopeForm';
 import { useTheme } from '../contexts/ThemeContext';
-import { apiFetch, toastApiError } from '../utils/api';
+import { API_ORIGIN, apiFetch, toastApiError } from '../utils/api';
 import type { AppView } from '../utils/rbac';
 import { puedeAprobarJustificaciones } from '../utils/rbac';
 import {
@@ -144,8 +144,6 @@ interface CarreraOpt {
 }
 
 type AlcanceVisualPanel = 'institucional' | 'facultad' | 'carrera';
-
-const API_ORIGIN = (import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api').replace(/\/api\/?$/, '');
 
 function getGreeting(): string {
   const h = new Date().getHours();

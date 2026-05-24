@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 
 import type { SessionUser } from '../utils/rbac';
-import { resetSessionExpiredState } from '../utils/api';
+import { API_BASE_URL, API_ORIGIN, resetSessionExpiredState } from '../utils/api';
 
 interface LoginPageProps {
   onLoginSuccess?: (usuario?: SessionUser | null) => void;
@@ -15,8 +15,6 @@ interface LoginResponse {
   usuario?: SessionUser;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api';
-const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, '');
 const LOGIN_LOGO_URL = `${API_ORIGIN}/assets/ung-logo.jpg`;
 
 export function LoginPage({ onLoginSuccess, onOpenLegalPage }: LoginPageProps) {

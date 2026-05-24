@@ -7,7 +7,7 @@ import { UserAvatar } from '../components/ui/user-avatar';
 import { SkeletonRow } from '../components/ui/skeleton';
 import { AppSelect } from '../components/ui/app-select';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
-import { apiFetch } from '../utils/api';
+import { API_ORIGIN, apiFetch } from '../utils/api';
 import { formatDateOnly } from '../utils/datetime';
 import { appPath } from '../navigation/app-paths';
 import { readStoredUser } from '../utils/session-user';
@@ -61,7 +61,7 @@ function roleFilterToExportBody(
 function getDocumentoUrlForPdf(url: string) {
   if (!url) return '#';
   if (/^https?:\/\//i.test(url)) return url;
-  const apiBase = (import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api').replace(/\/api\/?$/, '');
+  const apiBase = API_ORIGIN;
   return `${apiBase}${url.startsWith('/') ? url : `/${url}`}`;
 }
 

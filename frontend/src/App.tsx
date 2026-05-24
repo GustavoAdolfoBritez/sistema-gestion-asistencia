@@ -7,10 +7,8 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { readStoredUser } from './utils/session-user';
 import { appPath } from './navigation/app-paths';
 import { RequireAuth } from './navigation/RequireAuth';
-import { clearLocalSession, logoutOnServer, resetSessionExpiredState, UNAUTHORIZED_EVENT } from './utils/api';
+import { API_ORIGIN, clearLocalSession, logoutOnServer, resetSessionExpiredState, UNAUTHORIZED_EVENT } from './utils/api';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api';
-const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, '');
 const INSTITUTION_LOGO_URL = `${API_ORIGIN}/assets/ung-logo.jpg`;
 
 const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })));

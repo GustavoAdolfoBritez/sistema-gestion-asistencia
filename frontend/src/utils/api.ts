@@ -1,6 +1,21 @@
 import { toast } from 'sonner';
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api';
+/** API en Heroku; usada en build de producción si no hay VITE_API_URL (p. ej. en Vercel). */
+const PRODUCTION_API_BASE_URL = 'https://gestion-asistencias-ung-623e820b6ba1.herokuapp.com/api';
+
+function resolveApiBaseUrl(): string {
+  const fromEnv = import.meta.env.VITE_API_URL?.trim();
+  if (fromEnv) {
+    return fromEnv.replace(/\/$/, '');
+  }
+  if (import.meta.env.PROD) {
+    return PRODUCTION_API_BASE_URL;
+  }
+  return 'http://localhost:4000/api';
+}
+
+export const API_BASE_URL = resolveApiBaseUrl();
+export const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, '');
 const TOKEN_KEYS = ['accessToken', 'token', 'authToken'];
 const USER_STORAGE_KEY = 'currentUser';
 
