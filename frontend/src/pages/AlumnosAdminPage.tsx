@@ -382,10 +382,10 @@ export function AlumnosAdminPage({ onLogout }: Props) {
     }
     setGenerandoInforme(true);
     try {
-      const { blob } = await downloadPdfFromApi(`/reportes/alumnos/${selectedAlumnoId}/informe-pdf`, {
+      const { blob, fileName } = await downloadPdfFromApi(`/reportes/alumnos/${selectedAlumnoId}/informe-pdf`, {
         method: 'POST',
       });
-      openPdfBlob(blob);
+      openPdfBlob(blob, fileName);
       toast.success('Informe individual generado correctamente.');
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'No se pudo generar el informe individual';

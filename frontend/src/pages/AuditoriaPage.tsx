@@ -379,7 +379,7 @@ export function AuditoriaPage({ onLogout }: Props) {
   const exportarPdf = useCallback(async () => {
     setExportandoPdf(true);
     try {
-      const { blob } = await downloadPdfFromApi('/auditoria/eventos/pdf', {
+      const { blob, fileName } = await downloadPdfFromApi('/auditoria/eventos/pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -391,7 +391,7 @@ export function AuditoriaPage({ onLogout }: Props) {
           q: q.trim() || undefined,
         }),
       });
-      openPdfBlob(blob);
+      openPdfBlob(blob, fileName);
       toast.success('PDF de auditoría generado.');
     } catch (error) {
       const mensaje = error instanceof Error ? error.message : 'No se pudo exportar PDF de auditoría';

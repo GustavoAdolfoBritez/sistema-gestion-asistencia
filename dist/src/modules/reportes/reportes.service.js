@@ -735,7 +735,7 @@ async function buildInformeAlumnoBuffer(alumnoId, alcance) {
         ? `${ap}, ${nom}`
         : ap || nom || historial.alumno.nombre_apellido?.trim() || `CI ${historial.alumno.numero_documento}`;
     const generatedAt = new Date().toISOString();
-    const fileName = (0, reportes_utils_1.generarNombrePdfConTimestamp)({
+    const fileName = (0, reportes_utils_1.generarNombrePdfElegante)({
         titulo: 'Informe Individual de Alumno',
         facultad: historial.alumno.facultad_referencia_nombre,
         carrera: historial.alumno.carrera_referencia_nombre,
@@ -785,7 +785,7 @@ async function buildConsolidadoInhabilitadosBuffer(filtro, alcance) {
     if (!filas.length) {
         throw new Error(`No hay alumnos inhabilitados para el periodo ${periodoLabel}`);
     }
-    const fileName = (0, reportes_utils_1.generarNombrePdfConTimestamp)({
+    const fileName = (0, reportes_utils_1.generarNombrePdfElegante)({
         titulo: 'Consolidado de Inhabilitados',
         periodo: periodoLabel,
     });
@@ -948,7 +948,7 @@ async function buildEstadisticasAusentismoBuffer(filtro, alcance) {
     const promedioAusentismo = resumen.totalCarreras > 0 ? Number((resumen.sumAusentismo / resumen.totalCarreras).toFixed(2)) : 0;
     const promedioAsistencia = Number((100 - promedioAusentismo).toFixed(2));
     const alcanceTxt = await describirAlcanceAusentismoPdf(filtro, alcance);
-    const fileName = (0, reportes_utils_1.generarNombrePdfConTimestamp)({
+    const fileName = (0, reportes_utils_1.generarNombrePdfElegante)({
         titulo: 'Estadísticas de Ausentismo',
         periodo: periodoLabel,
     });
@@ -1041,7 +1041,7 @@ async function buildPdfHabilitadosBuffer(cursoId, periodo) {
     }));
     const totalHabilitados = alumnos.filter((a) => a.estado === 'HABILITADO').length;
     const totalNoHabilitados = alumnos.length - totalHabilitados;
-    const fileName = (0, reportes_utils_1.generarNombrePdfConTimestamp)({
+    const fileName = (0, reportes_utils_1.generarNombrePdfElegante)({
         titulo: 'Acta de Habilitados',
         facultad: first.facultad,
         carrera: first.carrera,
@@ -1137,7 +1137,7 @@ async function buildPdfLegalBuffer(cursoId, periodo) {
     const semestre = first.mes <= 6 ? '1er Semestre' : '2do Semestre';
     const seccion = first.curso_aula?.trim() || `Curso ${cursoId}`;
     const cursoLabel = first.curso_notas?.trim() || `${first.anio}`;
-    const fileName = (0, reportes_utils_1.generarNombrePdfConTimestamp)({
+    const fileName = (0, reportes_utils_1.generarNombrePdfElegante)({
         titulo: 'Planilla Legal de Asistencias',
         facultad: first.facultad,
         carrera: first.carrera,

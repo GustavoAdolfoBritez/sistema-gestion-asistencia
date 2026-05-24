@@ -3,7 +3,7 @@ import { pool } from '../../config/database';
 import { logger } from '../../utils/logger';
 import { formatGeneradoParaguay } from '../../utils/pdf-kit-brand';
 import { generarAuditoriaEventosPdf } from './auditoria.pdf';
-import { generarNombrePdfConTimestamp } from '../reportes/reportes.utils';
+import { generarNombrePdfElegante } from '../reportes/reportes.utils';
 import { registrarActaGenerada, type ActaGeneradaRow } from '../../services/actas-generadas.service';
 
 export interface ExportAuditoriaPdfResult {
@@ -705,7 +705,7 @@ export async function construirExportAuditoriaPdfBuffer(
         filtro.q ? `q=${filtro.q}` : null,
     ].filter(Boolean).join(' | ') || 'sin filtros';
 
-    const fileName = generarNombrePdfConTimestamp({
+    const fileName = generarNombrePdfElegante({
         titulo: 'Reporte de Auditoría del Sistema',
     });
 

@@ -502,7 +502,7 @@ async function construirExportAuditoriaPdfBuffer(filtro = {}, meta) {
         filtro.resultado ? `resultado=${filtro.resultado}` : null,
         filtro.q ? `q=${filtro.q}` : null,
     ].filter(Boolean).join(' | ') || 'sin filtros';
-    const fileName = (0, reportes_utils_1.generarNombrePdfConTimestamp)({
+    const fileName = (0, reportes_utils_1.generarNombrePdfElegante)({
         titulo: 'Reporte de Auditoría del Sistema',
     });
     const describirActor = (item) => {

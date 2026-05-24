@@ -27,9 +27,10 @@ const corsOptions: cors.CorsOptions =
                       return;
                   }
                   callback(new Error(`Origen no permitido por CORS: ${origin}`));
-              }
+              },
+              exposedHeaders: ['Content-Disposition'],
           }
-        : { origin: true };
+        : { origin: true, exposedHeaders: ['Content-Disposition'] };
 
 app.use(helmet());
 app.use(cors(corsOptions));

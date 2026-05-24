@@ -7,7 +7,7 @@ import { generarInformeAlumnoPdf } from './reportes.alumno.pdf';
 import { generarConsolidadoRiesgoPdf } from './reportes.pdf.consolidado';
 import { generarPdfAusentismoFacultadCarrera } from './reportes.pdf.ausentismo';
 import { SQL_ALUMNO_APELLIDOS_COMA_NOMBRES } from '../../utils/alumno-nombre-sql';
-import { generarNombrePdfConTimestamp } from './reportes.utils';
+import { generarNombrePdfElegante } from './reportes.utils';
 import {
     obtenerActaGeneradaPorId,
     registrarActaGenerada,
@@ -1094,7 +1094,7 @@ async function buildInformeAlumnoBuffer(
             ? `${ap}, ${nom}`
             : ap || nom || historial.alumno.nombre_apellido?.trim() || `CI ${historial.alumno.numero_documento}`;
     const generatedAt = new Date().toISOString();
-    const fileName = generarNombrePdfConTimestamp({
+    const fileName = generarNombrePdfElegante({
         titulo: 'Informe Individual de Alumno',
         facultad: historial.alumno.facultad_referencia_nombre,
         carrera: historial.alumno.carrera_referencia_nombre,
@@ -1160,7 +1160,7 @@ async function buildConsolidadoInhabilitadosBuffer(
         throw new Error(`No hay alumnos inhabilitados para el periodo ${periodoLabel}`);
     }
 
-    const fileName = generarNombrePdfConTimestamp({
+    const fileName = generarNombrePdfElegante({
         titulo: 'Consolidado de Inhabilitados',
         periodo: periodoLabel,
     });
@@ -1371,7 +1371,7 @@ async function buildEstadisticasAusentismoBuffer(
     const promedioAusentismo = resumen.totalCarreras > 0 ? Number((resumen.sumAusentismo / resumen.totalCarreras).toFixed(2)) : 0;
     const promedioAsistencia = Number((100 - promedioAusentismo).toFixed(2));
     const alcanceTxt = await describirAlcanceAusentismoPdf(filtro, alcance);
-    const fileName = generarNombrePdfConTimestamp({
+    const fileName = generarNombrePdfElegante({
         titulo: 'Estadísticas de Ausentismo',
         periodo: periodoLabel,
     });
@@ -1495,7 +1495,7 @@ const { rows } = await pool.query<{
     const totalHabilitados = alumnos.filter((a) => a.estado === 'HABILITADO').length;
     const totalNoHabilitados = alumnos.length - totalHabilitados;
 
-    const fileName = generarNombrePdfConTimestamp({
+    const fileName = generarNombrePdfElegante({
         titulo: 'Acta de Habilitados',
         facultad: first.facultad,
         carrera: first.carrera,
@@ -1622,7 +1622,7 @@ async function buildPdfLegalBuffer(cursoId: number, periodo?: string): Promise<P
     const seccion = first.curso_aula?.trim() || `Curso ${cursoId}`;
     const cursoLabel = first.curso_notas?.trim() || `${first.anio}`;
 
-    const fileName = generarNombrePdfConTimestamp({
+    const fileName = generarNombrePdfElegante({
         titulo: 'Planilla Legal de Asistencias',
         facultad: first.facultad,
         carrera: first.carrera,

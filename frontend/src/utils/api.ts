@@ -31,9 +31,32 @@ export function esUrlActaRegenerable(url: string | null | undefined): boolean {
 
 function parsePdfFileName(contentDisposition: string | null): string {
   if (!contentDisposition) return 'documento.pdf';
-  const match = /filename\*=UTF-8''([^;]+)|filename="([^"]+)"/i.exec(contentDisposition);
-  const raw = match?.[1] ?? match?.[2];
-  return raw ? decodeURIComponent(raw) : 'documento.pdf';
+  const utf8 = /filename\*=UTF-8''([^;\n]+)/i.exec(contentDisposition);
+  if (utf8?.[1]) {
+    try {
+      return decodeURIComponent(utf8[1].trim());
+    } catch {
+      /* fallback abajo */
+    }
+  }
+  const quoted = /filename="([^"]+)"/i.exec(contentDisposition);
+  if (quoted?.[1]) {
+    try {
+      return decodeURIComponent(quoted[1]);
+    } catch {
+      return quoted[1];
+    }
+  }
+  const plain = /filename=([^;\n]+)/i.exec(contentDisposition);
+  if (plain?.[1]) {
+    return plain[1].trim().replace(/^["']|["']$/g, '');
+  }
+  return 'documento.pdf';
+}
+
+function normalizarNombrePdf(fileName: string): string {
+  const trimmed = fileName.trim() || 'documento';
+  return trimmed.toLowerCase().endsWith('.pdf') ? trimmed : `${trimmed}.pdf`;
 }
 
 /** Descarga un PDF desde la API (GET o POST) con autenticación. */
@@ -72,11 +95,14 @@ export async function downloadPdfFromApi(
   }
 
   const blob = await response.blob();
-  return { blob, fileName: parsePdfFileName(response.headers.get('Content-Disposition')) };
+  return { blob, fileName: normalizarNombrePdf(parsePdfFileName(response.headers.get('Content-Disposition'))) };
 }
 
-export function openPdfBlob(blob: Blob): void {
-  const objectUrl = URL.createObjectURL(blob);
+/** Abre un PDF en pestaña nueva conservando el nombre legible al guardar. */
+export function openPdfBlob(blob: Blob, fileName = 'documento.pdf'): void {
+  const safeName = normalizarNombrePdf(fileName);
+  const file = new File([blob], safeName, { type: blob.type || 'application/pdf' });
+  const objectUrl = URL.createObjectURL(file);
   window.open(objectUrl, '_blank', 'noopener,noreferrer');
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
 }
@@ -90,8 +116,8 @@ export async function abrirDocumento(url: string | null | undefined): Promise<vo
     return;
   }
   if (esUrlActaRegenerable(trimmed)) {
-    const { blob } = await downloadPdfFromApi(trimmed);
-    openPdfBlob(blob);
+    const { blob, fileName } = await downloadPdfFromApi(trimmed);
+    openPdfBlob(blob, fileName);
     return;
   }
   window.open(getDocumentoUrl(trimmed), '_blank', 'noopener,noreferrer');

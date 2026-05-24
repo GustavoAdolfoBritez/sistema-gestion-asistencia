@@ -624,12 +624,12 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
       if (statusFilter !== 'all') body.estado = statusFilter;
       Object.assign(body, roleFilterToExportBody(roleFilter));
 
-      const { blob } = await downloadPdfFromApi('/usuarios/export/pdf', {
+      const { blob, fileName } = await downloadPdfFromApi('/usuarios/export/pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      openPdfBlob(blob);
+      openPdfBlob(blob, fileName);
       toast.success('PDF de usuarios generado.');
     } catch (err) {
       const mensaje = err instanceof Error ? err.message : 'No se pudo exportar el listado';

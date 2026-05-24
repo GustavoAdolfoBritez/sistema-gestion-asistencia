@@ -473,7 +473,7 @@ export function ReportesPage({ onLogout }: Props) {
       return;
     }
     try {
-      const { blob } = await downloadPdfFromApi('/reportes/actas', {
+      const { blob, fileName } = await downloadPdfFromApi('/reportes/actas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cursoId: cursoNum, tipoActa, periodo }),
@@ -481,7 +481,7 @@ export function ReportesPage({ onLogout }: Props) {
       toast.success(`Acta ${tipoActa} generada correctamente`);
       await Promise.all([cargarActas(), cargarChecklist()]);
       if (tipoActa === 'pdf_legal' || tipoActa === 'habilitados_no_habilitados') {
-        openPdfBlob(blob);
+        openPdfBlob(blob, fileName);
       }
     } catch (error) {
       toastApiError(error, 'No se pudo generar el acta');
@@ -558,7 +558,7 @@ export function ReportesPage({ onLogout }: Props) {
     }
     setConsolidadoPdfLoading(true);
     try {
-      const { blob } = await downloadPdfFromApi('/reportes/consolidado-riesgo/pdf', {
+      const { blob, fileName } = await downloadPdfFromApi('/reportes/consolidado-riesgo/pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -575,7 +575,7 @@ export function ReportesPage({ onLogout }: Props) {
           orderBy: consolidadoSort,
         }),
       });
-      openPdfBlob(blob);
+      openPdfBlob(blob, fileName);
       toast.success('PDF consolidado generado correctamente.');
     } catch (error) {
       toastApiError(error, 'No se pudo generar el PDF consolidado');
@@ -644,7 +644,7 @@ export function ReportesPage({ onLogout }: Props) {
     }
     setAusentismoPdfLoading(true);
     try {
-      const { blob } = await downloadPdfFromApi('/reportes/estadisticas/ausentismo/pdf', {
+      const { blob, fileName } = await downloadPdfFromApi('/reportes/estadisticas/ausentismo/pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -662,7 +662,7 @@ export function ReportesPage({ onLogout }: Props) {
               : undefined,
         }),
       });
-      openPdfBlob(blob);
+      openPdfBlob(blob, fileName);
       toast.success('PDF de ausentismo generado correctamente.');
       void cargarAusentismoAgregado();
     } catch (error) {

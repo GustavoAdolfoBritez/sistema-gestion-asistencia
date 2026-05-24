@@ -632,7 +632,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
 
     setGenerandoPdfLegal(true);
     try {
-      const { blob } = await downloadPdfFromApi('/reportes/actas', {
+      const { blob, fileName } = await downloadPdfFromApi('/reportes/actas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -641,7 +641,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
           periodo: mesAnio,
         }),
       });
-      openPdfBlob(blob);
+      openPdfBlob(blob, fileName);
       toast.success('Planilla legal generada correctamente.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'No se pudo generar la planilla legal');

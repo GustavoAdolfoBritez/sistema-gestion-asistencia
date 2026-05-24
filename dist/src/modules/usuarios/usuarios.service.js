@@ -497,7 +497,7 @@ async function construirExportUsuariosPdfBuffer(filtro = {}, meta) {
     ]
         .filter(Boolean)
         .join(' | ') || 'sin filtros';
-    const fileName = (0, reportes_utils_1.generarNombrePdfConTimestamp)({
+    const fileName = (0, reportes_utils_1.generarNombrePdfElegante)({
         titulo: 'Listado de Usuarios del Sistema',
     });
     const buffer = await (0, usuarios_pdf_1.generarListadoUsuariosPdf)({

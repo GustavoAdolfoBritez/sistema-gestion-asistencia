@@ -10,7 +10,7 @@ import {
 } from '../../utils/role-names';
 import { formatGeneradoParaguay } from '../../utils/pdf-kit-brand';
 import { generarListadoUsuariosPdf } from './usuarios.pdf';
-import { generarNombrePdfConTimestamp } from '../reportes/reportes.utils';
+import { generarNombrePdfElegante } from '../reportes/reportes.utils';
 import { registrarActaGenerada, type ActaGeneradaRow } from '../../services/actas-generadas.service';
 
 export interface ExportUsuariosPdfResult {
@@ -719,7 +719,7 @@ export async function construirExportUsuariosPdfBuffer(
         .filter(Boolean)
         .join(' | ') || 'sin filtros';
 
-    const fileName = generarNombrePdfConTimestamp({
+    const fileName = generarNombrePdfElegante({
         titulo: 'Listado de Usuarios del Sistema',
     });
     const buffer = await generarListadoUsuariosPdf({
