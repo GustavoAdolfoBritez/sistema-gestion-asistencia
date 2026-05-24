@@ -1,0 +1,18 @@
+# Dependencias
+node_modules/
+dist/
+
+# Variables de entorno (¡MUY IMPORTANTE NO SUBIR ESTO!)
+.env
+*.env
+
+# Logs y archivos del sistema
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db
+
+# Archivos de prueba temporales
+test_js.js
+test_db.ts

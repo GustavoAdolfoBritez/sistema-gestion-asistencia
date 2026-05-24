@@ -1,0 +1,874 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
+import { AcademicoSubnav } from '../components/AcademicoSubnav';
+import { AppSidebar } from '../components/AppSidebar';
+import { ScopeSelector, ScopeSelectorSkeleton, useAutoAssignScopeId } from '../components/ScopeSelector';
+import { useMisAlcances } from '../hooks/useMisAlcances';
+import { useScopeForm } from '../hooks/useScopeForm';
+import { AppSelect } from '../components/ui/app-select';
+import { ConfirmDialog } from '../components/ui/confirm-dialog';
+import { apiFetch } from '../utils/api';
+import { esGestionUnicaCarreraAlumnosListado } from '../utils/rbac';
+import { readStoredUser } from '../utils/session-user';
+
+interface Props {
+  onLogout?: () => void;
+}
+
+interface FacultadItem {
+  id: number;
+  nombre: string;
+}
+
+interface CarreraItem {
+  id: number;
+  nombre: string;
+  facultad_id: number;
+}
+
+interface AlumnoSemestreRow {
+  id: string;
+  numero_documento: string;
+  nombre_completo: string;
+  semestre_curricular: number;
+  /** Año de cohorte de ingreso; ausente o null en alumnos cargados antes de registrar cohorte. */
+  cohorte_anio?: number | null;
+}
+
+type CohorteGrupoKey = number | 'sin';
+
+/** Excluir alumno o grupo de la promoción (legible en claro y oscuro). */
+const btnEliminarPromocionClass =
+  'inline-flex items-center justify-center gap-1 font-medium ' +
+  'border border-rose-200 bg-rose-50 text-rose-700 shadow-sm hover:bg-rose-100 hover:border-rose-300 ' +
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/40 ' +
+  'dark:border-rose-400/55 dark:bg-[rgb(101,36,36)] dark:text-rose-50 dark:shadow-[0_1px_4px_rgba(0,0,0,0.35)] ' +
+  'dark:hover:bg-[rgb(122,46,46)] dark:hover:border-rose-300/70 dark:focus-visible:ring-rose-400/45';
+
+const btnEliminarAlumnoClass = `${btnEliminarPromocionClass} shrink-0 text-xs px-2.5 py-1 rounded-lg`;
+const btnEliminarGrupoClass = `${btnEliminarPromocionClass} text-[11px] px-2 py-0.5 rounded-lg`;
+
+function etiquetaSemestreOrdinal(n: number): string {
+  return `${n}º Semestre`;
+}
+
+function claveCohorte(row: AlumnoSemestreRow): CohorteGrupoKey {
+  const c = row.cohorte_anio;
+  if (c == null || !Number.isFinite(Number(c))) return 'sin';
+  return Math.trunc(Number(c));
+}
+
+interface PreviewMasivaFila {
+  carreraId: number;
+  carreraNombre: string;
+  cantidadAlumnos: number;
+}
+
+export function PromocionSemestrePage({ onLogout }: Props) {
+  const ocultarFacultad = esGestionUnicaCarreraAlumnosListado(readStoredUser()?.roles);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { alcance: alcanceUsuario, listo: alcanceListo } = useMisAlcances();
+  const [catalogoListo, setCatalogoListo] = useState(false);
+  const [facultades, setFacultades] = useState<FacultadItem[]>([]);
+  const [carreras, setCarreras] = useState<CarreraItem[]>([]);
+  const [facultadId, setFacultadId] = useState('');
+  const [carreraId, setCarreraId] = useState('');
+  const [semestre, setSemestre] = useState('1');
+  const [anioIngresoCarrera, setAnioIngresoCarrera] = useState('');
+  const [lista, setLista] = useState<AlumnoSemestreRow[]>([]);
+  /** Alumnos que participarán en la promoción (se puede quitar antes de confirmar). */
+  const [idsIncluidos, setIdsIncluidos] = useState<Set<string>>(new Set());
+  const [loadingLista, setLoadingLista] = useState(false);
+  const [loadingPromo, setLoadingPromo] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  /** Promoción masiva: todas las carreras de la facultad (en tu alcance) con alumnos en el semestre elegido. */
+  const [facultadMasivaId, setFacultadMasivaId] = useState('');
+  const [semestreMasivo, setSemestreMasivo] = useState('1');
+  const [cohorteAnioMasivo, setCohorteAnioMasivo] = useState('');
+  const [previewMasiva, setPreviewMasiva] = useState<PreviewMasivaFila[] | null>(null);
+  const [excluirCarrerasMasiva, setExcluirCarrerasMasiva] = useState<Set<number>>(new Set());
+  const [loadingPreviewMasiva, setLoadingPreviewMasiva] = useState(false);
+  const [loadingEjecutarMasiva, setLoadingEjecutarMasiva] = useState(false);
+  const [confirmMasivaOpen, setConfirmMasivaOpen] = useState(false);
+  const listaAlumnosRef = useRef<HTMLDivElement>(null);
+  const scrollListaTrasCargaRef = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const [facResp, carResp] = await Promise.all([
+          apiFetch<{ datos: FacultadItem[] }>('/academico/facultades?limit=500'),
+          apiFetch<{ datos: CarreraItem[] }>('/academico/carreras?limit=500'),
+        ]);
+        if (!cancelled) {
+          setFacultades(facResp?.datos ?? []);
+          setCarreras(carResp?.datos ?? []);
+        }
+      } catch {
+        if (!cancelled) {
+          setFacultades([]);
+          setCarreras([]);
+        }
+      } finally {
+        if (!cancelled) setCatalogoListo(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const facultadesFallback = useMemo(
+    () => facultades.map((f) => ({ id: f.id, nombre: f.nombre })),
+    [facultades]
+  );
+
+  const carrerasCatalogo = useMemo(
+    () => carreras.map((c) => ({ id: c.id, nombre: c.nombre, facultad_id: c.facultad_id })),
+    [carreras]
+  );
+
+  const {
+    facultadesDisponibles,
+    carrerasDisponibles,
+    requiereElegirFacultad,
+    contextoSelectorListo,
+  } = useScopeForm({
+    alcance: alcanceUsuario,
+    carrerasCatalogo,
+    ocultarFacultad,
+    facultadId,
+    setFacultadId,
+    carreraId,
+    setCarreraId,
+    facultadesFallback,
+    alcanceListo,
+    datosListos: catalogoListo,
+  });
+
+  useAutoAssignScopeId(facultadesDisponibles, facultadMasivaId, setFacultadMasivaId);
+
+  const cargarLista = useCallback(async () => {
+    const cid = Number(carreraId);
+    const sem = Number(semestre);
+    if (!cid || !Number.isFinite(sem)) {
+      toast.error('Elegí carrera y semestre.');
+      return;
+    }
+    setLoadingLista(true);
+    try {
+      const params = new URLSearchParams({ semestre: String(sem) });
+      const anio = anioIngresoCarrera !== '' ? Number(anioIngresoCarrera) : null;
+      if (anio != null && Number.isFinite(anio)) {
+        params.set('cohorteAnio', String(anio));
+      }
+      const data = await apiFetch<{ total: number; datos: AlumnoSemestreRow[] }>(
+        `/academico/carreras/${cid}/alumnos-semestre-curricular?${params.toString()}`
+      );
+      const rowsRaw = data?.datos ?? [];
+      const rows: AlumnoSemestreRow[] = rowsRaw.map((r) => ({
+        ...r,
+        cohorte_anio: r.cohorte_anio ?? null,
+      }));
+      setLista(rows);
+      setIdsIncluidos(new Set(rows.map((r) => r.id)));
+      if (rows.length) {
+        toast.success(`${rows.length} alumno(s) en semestre ${sem}.`);
+      } else {
+        scrollListaTrasCargaRef.current = false;
+        toast.error('Sin registros para ese semestre y año de ingreso.');
+      }
+    } catch (e) {
+      scrollListaTrasCargaRef.current = false;
+      const msg = e instanceof Error ? e.message : 'No se pudo cargar la lista';
+      toast.error(msg);
+      setLista([]);
+      setIdsIncluidos(new Set());
+    } finally {
+      setLoadingLista(false);
+    }
+  }, [carreraId, semestre, anioIngresoCarrera]);
+
+  useEffect(() => {
+    if (!scrollListaTrasCargaRef.current || lista.length === 0) return;
+    scrollListaTrasCargaRef.current = false;
+    const id = requestAnimationFrame(() => {
+      listaAlumnosRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [lista]);
+
+  const handleCargarLista = () => {
+    scrollListaTrasCargaRef.current = true;
+    void cargarLista();
+  };
+
+  const quitarDePromocion = (alumnoId: string) => {
+    setIdsIncluidos((prev) => {
+      const next = new Set(prev);
+      next.delete(alumnoId);
+      return next;
+    });
+  };
+
+  const restaurarTodos = () => {
+    setIdsIncluidos(new Set(lista.map((r) => r.id)));
+  };
+
+  const ejecutarPromocion = async () => {
+    const cid = Number(carreraId);
+    const sem = Number(semestre);
+    const ids = lista.filter((r) => idsIncluidos.has(r.id)).map((r) => r.id);
+    if (!cid || !ids.length) {
+      toast.error('No hay alumnos seleccionados para promocionar.');
+      setConfirmOpen(false);
+      return;
+    }
+    if (sem >= 10) {
+      toast.error('No se puede ascender desde el semestre 10.');
+      setConfirmOpen(false);
+      return;
+    }
+    setLoadingPromo(true);
+    try {
+      const res = await apiFetch<{ actualizados: number }>(`/academico/carreras/${cid}/promocion-semestre-curricular`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ semestreOrigen: sem, alumnoIds: ids }),
+      });
+      toast.success(`Promoción aplicada: ${res.actualizados} alumno(s) pasados a semestre ${sem + 1}.`);
+      setConfirmOpen(false);
+      await cargarLista();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'No se pudo promocionar';
+      toast.error(msg);
+    } finally {
+      setLoadingPromo(false);
+    }
+  };
+
+  const semNum = Number(semestre);
+  const puedePromocionar = Number.isFinite(semNum) && semNum >= 1 && semNum < 10 && lista.length > 0;
+  const cantIncluidos = lista.filter((r) => idsIncluidos.has(r.id)).length;
+
+  const maxCohorteEnLista = useMemo(() => {
+    const nums = lista.map(claveCohorte).filter((k): k is number => k !== 'sin');
+    return nums.length ? Math.max(...nums) : null;
+  }, [lista]);
+
+  const listaPorCohorte = useMemo(() => {
+    const m = new Map<CohorteGrupoKey, AlumnoSemestreRow[]>();
+    for (const row of lista) {
+      const k = claveCohorte(row);
+      const g = m.get(k);
+      if (g) g.push(row);
+      else m.set(k, [row]);
+    }
+    const keys = [...m.keys()].sort((a, b) => {
+      if (a === 'sin') return 1;
+      if (b === 'sin') return -1;
+      return b - a;
+    });
+    return keys.map((cohorte) => ({ cohorte, filas: m.get(cohorte) ?? [] }));
+  }, [lista]);
+
+  const totalMasivaEfectivo = useMemo(() => {
+    if (!previewMasiva?.length) return 0;
+    return previewMasiva
+      .filter((f) => !excluirCarrerasMasiva.has(f.carreraId))
+      .reduce((acc, f) => acc + f.cantidadAlumnos, 0);
+  }, [previewMasiva, excluirCarrerasMasiva]);
+
+  const semMasivoNum = Number(semestreMasivo);
+  const cohorteAnioMasivoNum = cohorteAnioMasivo !== '' ? Number(cohorteAnioMasivo) : null;
+  const puedeEjecutarMasiva =
+    Boolean(facultadMasivaId) &&
+    Number.isFinite(semMasivoNum) &&
+    semMasivoNum >= 1 &&
+    semMasivoNum < 10 &&
+    cohorteAnioMasivoNum != null &&
+    Number.isFinite(cohorteAnioMasivoNum) &&
+    totalMasivaEfectivo > 0;
+
+  const vistaPreviaMasiva = useCallback(async () => {
+    const fid = Number(facultadMasivaId);
+    const sem = Number(semestreMasivo);
+    const cohorte = cohorteAnioMasivo !== '' ? Number(cohorteAnioMasivo) : null;
+    if (!fid || !Number.isFinite(sem)) {
+      toast.error('Elegí facultad y semestre de origen.');
+      return;
+    }
+    if (cohorte == null || !Number.isFinite(cohorte)) {
+      toast.error('Elegí el año de ingreso para filtrar la promoción.');
+      return;
+    }
+    setLoadingPreviewMasiva(true);
+    try {
+      const data = await apiFetch<{ filas: PreviewMasivaFila[]; totalAlumnos: number }>(
+        '/academico/promocion-semestre-curricular/preview-facultad',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ facultadId: fid, semestreOrigen: sem, cohorteAnio: cohorte }),
+        }
+      );
+      setPreviewMasiva(data.filas ?? []);
+      setExcluirCarrerasMasiva(new Set());
+      const tot = data.totalAlumnos ?? 0;
+      if (tot) {
+        toast.success(`Vista previa: ${tot} alumno(s) en semestre ${sem}.`);
+      } else {
+        toast.error('Sin registros para ese semestre y año de ingreso.');
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'No se pudo generar la vista previa';
+      toast.error(msg);
+      setPreviewMasiva(null);
+      setExcluirCarrerasMasiva(new Set());
+    } finally {
+      setLoadingPreviewMasiva(false);
+    }
+  }, [facultadMasivaId, semestreMasivo, cohorteAnioMasivo]);
+
+  const ejecutarMasiva = async () => {
+    const fid = Number(facultadMasivaId);
+    const sem = Number(semestreMasivo);
+    const cohorte = cohorteAnioMasivo !== '' ? Number(cohorteAnioMasivo) : null;
+    if (!puedeEjecutarMasiva || !fid || cohorte == null) {
+      setConfirmMasivaOpen(false);
+      return;
+    }
+    setLoadingEjecutarMasiva(true);
+    try {
+      const res = await apiFetch<{ actualizados: number }>('/academico/promocion-semestre-curricular/ejecutar-facultad', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          facultadId: fid,
+          semestreOrigen: sem,
+          excluirCarreraIds: [...excluirCarrerasMasiva],
+          cohorteAnio: cohorte,
+        }),
+      });
+      toast.success(
+        `Promoción masiva: ${res.actualizados} alumno(s) pasados de semestre ${sem} a ${sem + 1}.`
+      );
+      setConfirmMasivaOpen(false);
+      await vistaPreviaMasiva();
+      if (carreraId) void cargarLista();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'No se pudo ejecutar la promoción masiva';
+      toast.error(msg);
+    } finally {
+      setLoadingEjecutarMasiva(false);
+    }
+  };
+
+  const toggleExcluirCarreraMasiva = (carreraIdNum: number) => {
+    setExcluirCarrerasMasiva((prev) => {
+      const next = new Set(prev);
+      if (next.has(carreraIdNum)) next.delete(carreraIdNum);
+      else next.add(carreraIdNum);
+      return next;
+    });
+  };
+
+  return (
+    <div className="system-bg text-slate-800 dark:text-[#e7eef9] min-h-screen h-screen overflow-hidden">
+      <div className="flex h-full w-full overflow-hidden">
+        {sidebarOpen ? (
+          <div className="fixed inset-0 bg-black/70 z-20 lg:hidden" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
+        ) : null}
+        <AppSidebar sidebarOpen={sidebarOpen} onLogout={onLogout} onClose={() => setSidebarOpen(false)} />
+        <main className="flex-1 flex flex-col h-full overflow-hidden">
+          <header className="flex-shrink-0 flex flex-col gap-2 py-2.5 px-6 bg-white/95 backdrop-blur-md border-b border-slate-200 z-10 dark:bg-[#132a52]/90 dark:border-slate-800">
+            <div className="flex items-center justify-between gap-3 min-h-10">
+              <div className="flex items-center gap-3 min-w-0">
+                <button
+                  type="button"
+                  className="lg:hidden text-slate-400 shrink-0"
+                  onClick={() => setSidebarOpen(true)}
+                  aria-label="Abrir menú"
+                >
+                  <span className="material-symbols-outlined">menu</span>
+                </button>
+                <span className="material-symbols-outlined text-[#6b8bc3] shrink-0">upgrade</span>
+                <div className="min-w-0">
+                  <p className="text-xs uppercase text-slate-400">Académico</p>
+                  <h1 className="text-xl font-semibold truncate">Promoción de semestre curricular</h1>
+                </div>
+              </div>
+            </div>
+            <AcademicoSubnav />
+          </header>
+
+          <section className="flex-1 overflow-auto p-6 space-y-6">
+            {!ocultarFacultad ? (
+              <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4 text-black shadow-sm dark:border-slate-800 dark:bg-[#132a52] dark:text-[#e7eef9] dark:shadow-none">
+                <h2 className="text-lg font-semibold text-black dark:text-[#e7eef9]">Promoción por facultad</h2>
+                <p className="text-sm text-slate-600 dark:text-slate-300">
+                  Permite avanzar el semestre curricular de todos los alumnos de una facultad en un único paso.
+                  Seleccioná la <strong className="text-black dark:text-[#e7eef9]">facultad</strong>, el{' '}
+                  <strong className="text-black dark:text-[#e7eef9]">semestre de origen</strong> y el{' '}
+                  <strong className="text-black dark:text-[#e7eef9]">año de ingreso</strong> para acotar la operación a un grupo
+                  específico y evitar que distintas promociones sean afectadas simultáneamente.
+                  En la vista previa podés <strong className="text-black dark:text-[#e7eef9]">excluir carreras</strong> antes de confirmar.
+                </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                {!contextoSelectorListo ? (
+                  <ScopeSelectorSkeleton className="lg:col-span-2" gridClassName="grid-cols-1" />
+                ) : (
+                <ScopeSelector
+                  className="lg:col-span-2"
+                  label="Facultad"
+                  options={facultadesDisponibles}
+                  value={facultadMasivaId}
+                  placeholder="Seleccioná facultad"
+                  onChange={(id) => {
+                    setFacultadMasivaId(id);
+                    setCohorteAnioMasivo('');
+                    setPreviewMasiva(null);
+                    setExcluirCarrerasMasiva(new Set());
+                  }}
+                />
+                )}
+                <div className="space-y-2">
+                  <label className="text-xs uppercase text-slate-500 dark:text-slate-400">Semestre de origen</label>
+                  <AppSelect
+                    aria-label="Semestre masivo"
+                    value={semestreMasivo}
+                    disabled={!facultadMasivaId}
+                    onChange={(v) => {
+                      setSemestreMasivo(v);
+                      setPreviewMasiva(null);
+                      setExcluirCarrerasMasiva(new Set());
+                    }}
+                    options={Array.from({ length: 9 }, (_, i) => i + 1).map((n) => ({
+                      value: String(n),
+                      label: `Semestre ${n}`,
+                    }))}
+                    triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 focus:border-primary focus:outline-none text-sm text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9] disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs uppercase text-slate-500 dark:text-slate-400">
+                    Año de ingreso <span className="text-rose-500 dark:text-rose-400 normal-case">*</span>
+                  </label>
+                  <AppSelect
+                    aria-label="Año de ingreso masiva"
+                    value={cohorteAnioMasivo}
+                    disabled={!facultadMasivaId}
+                    onChange={(v) => {
+                      setCohorteAnioMasivo(v);
+                      setPreviewMasiva(null);
+                      setExcluirCarrerasMasiva(new Set());
+                    }}
+                    placeholder="Año de ingreso"
+                    options={Array.from({ length: new Date().getFullYear() - 2014 }, (_, i) => new Date().getFullYear() - i).map(
+                      (y) => ({ value: String(y), label: String(y) })
+                    )}
+                    triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 focus:border-primary focus:outline-none text-sm text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9] disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <button
+                    type="button"
+                    disabled={!facultadMasivaId || !cohorteAnioMasivo || loadingPreviewMasiva}
+                    onClick={() => void vistaPreviaMasiva()}
+                    className="w-full md:w-auto px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-medium disabled:opacity-50"
+                  >
+                    {loadingPreviewMasiva ? 'Calculando…' : 'Vista previa'}
+                  </button>
+                </div>
+              </div>
+
+              {previewMasiva && previewMasiva.length > 0 ? (
+                <div className="space-y-3 border border-slate-200 rounded-lg p-3 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/25">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                    <span className="text-slate-600 dark:text-slate-300">
+                      Total a promocionar:{' '}
+                      <strong className="text-black dark:text-[#e7eef9]">{totalMasivaEfectivo}</strong> alumno(s) del año de ingreso{' '}
+                      <strong className="text-black dark:text-[#e7eef9]">{cohorteAnioMasivo}</strong> → semestre{' '}
+                      {Number(semestreMasivo) + 1}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={!puedeEjecutarMasiva}
+                      onClick={() => setConfirmMasivaOpen(true)}
+                      className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-medium disabled:opacity-50"
+                    >
+                      Promocionar todo (facultad)
+                    </button>
+                  </div>
+                  <div className="max-h-[min(280px,40vh)] overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-md">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-100 dark:bg-slate-950/50 text-left text-xs uppercase text-slate-500 dark:text-slate-400">
+                        <tr>
+                          <th className="px-3 py-2 w-10">Excl.</th>
+                          <th className="px-3 py-2">Carrera</th>
+                          <th className="px-3 py-2 text-right">Alumnos</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {previewMasiva.map((fila) => {
+                          const excl = excluirCarrerasMasiva.has(fila.carreraId);
+                          return (
+                            <tr
+                              key={fila.carreraId}
+                              className={excl ? 'opacity-45 border-t border-slate-800' : 'border-t border-slate-800'}
+                            >
+                              <td className="px-3 py-2">
+                                <input
+                                  type="checkbox"
+                                  checked={excl}
+                                  onChange={() => toggleExcluirCarreraMasiva(fila.carreraId)}
+                                  aria-label={`Excluir ${fila.carreraNombre}`}
+                                />
+                              </td>
+                              <td className="px-3 py-2 text-black dark:text-[#e7eef9]">{fila.carreraNombre}</td>
+                               <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">{fila.cantidadAlumnos}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            ) : null}
+
+            <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4 text-black shadow-sm dark:border-slate-800 dark:bg-[#132a52] dark:text-[#e7eef9] dark:shadow-none">
+              <h2 className="text-lg font-semibold text-black dark:text-[#e7eef9]">Promoción por carrera</h2>
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                Permite revisar y ajustar individualmente los alumnos que serán promovidos al siguiente semestre.
+                Seleccioná la <strong className="text-black dark:text-[#e7eef9]">carrera</strong>, el{' '}
+                <strong className="text-black dark:text-[#e7eef9]">semestre de origen</strong> y el{' '}
+                <strong className="text-black dark:text-[#e7eef9]">año de ingreso</strong> para visualizar el padrón correspondiente.
+                Podés excluir alumnos de forma individual antes de confirmar la promoción.
+              </p>
+
+              {/* Fila 1: Facultad + Carrera (alcance del backend; cascada facultad → carrera) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {!contextoSelectorListo ? (
+                  <ScopeSelectorSkeleton
+                    soloCarrera={ocultarFacultad}
+                    gridClassName={ocultarFacultad ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}
+                    className="lg:col-span-4"
+                  />
+                ) : (
+                  <>
+                    {!ocultarFacultad ? (
+                      <ScopeSelector
+                        className="lg:col-span-2"
+                        label="Facultad"
+                        options={facultadesDisponibles}
+                        value={facultadId}
+                        placeholder="Seleccioná facultad"
+                        onChange={(id) => {
+                          setFacultadId(id);
+                          setCarreraId('');
+                          setLista([]);
+                          setIdsIncluidos(new Set());
+                        }}
+                      />
+                    ) : null}
+                    <ScopeSelector
+                      className={ocultarFacultad || facultadesDisponibles.length === 1 ? 'lg:col-span-4' : 'lg:col-span-2'}
+                      label="Carrera"
+                      options={carrerasDisponibles}
+                      value={carreraId}
+                      placeholder="Seleccioná carrera"
+                      emptyOptionsHint={
+                        requiereElegirFacultad ? 'Seleccioná facultad primero' : 'Sin carreras disponibles'
+                      }
+                      disabled={requiereElegirFacultad}
+                      onChange={(id) => {
+                        setCarreraId(id);
+                        setLista([]);
+                        setIdsIncluidos(new Set());
+                      }}
+                    />
+                  </>
+                )}
+              </div>
+              {/* Fila 2: Semestre + Año de ingreso + Botón */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs uppercase text-slate-500 dark:text-slate-400">Semestre de origen</label>
+                  <AppSelect
+                    aria-label="Semestre"
+                    value={semestre}
+                    disabled={!carreraId}
+                    onChange={(v) => {
+                      setSemestre(v);
+                      setLista([]);
+                      setIdsIncluidos(new Set());
+                    }}
+                    options={Array.from({ length: 9 }, (_, i) => i + 1).map((n) => ({
+                      value: String(n),
+                      label: `Semestre ${n}`,
+                    }))}
+                    triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 focus:border-primary focus:outline-none text-sm text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9] disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs uppercase text-slate-500 dark:text-slate-400">
+                    Año de ingreso <span className="text-rose-500 dark:text-rose-400 normal-case">*</span>
+                  </label>
+                  <AppSelect
+                    aria-label="Año de ingreso carrera"
+                    value={anioIngresoCarrera}
+                    disabled={!carreraId}
+                    onChange={(v) => {
+                      setAnioIngresoCarrera(v);
+                      setLista([]);
+                      setIdsIncluidos(new Set());
+                    }}
+                    placeholder="Año de ingreso"
+                    options={Array.from({ length: new Date().getFullYear() - 2014 }, (_, i) => new Date().getFullYear() - i).map(
+                      (y) => ({ value: String(y), label: String(y) })
+                    )}
+                    triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 focus:border-primary focus:outline-none text-sm text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9] disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
+                <div className="flex items-end md:col-span-2">
+                  <button
+                    type="button"
+                    disabled={!carreraId || !anioIngresoCarrera || loadingLista}
+                    onClick={handleCargarLista}
+                    className="w-full md:w-auto px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loadingLista ? 'Cargando…' : 'Cargar lista'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {lista.length > 0 ? (
+              <div
+                ref={listaAlumnosRef}
+                className="rounded-xl border border-slate-200 bg-white p-5 space-y-3 text-black shadow-sm dark:border-slate-800 dark:bg-[#132a52] dark:text-[#e7eef9] dark:shadow-none scroll-mt-4"
+              >
+                <div className="rounded-lg border border-slate-200 bg-gradient-to-br from-slate-50 to-white px-4 py-3.5 dark:border-slate-700 dark:from-[#0b2147]/55 dark:to-[#132a52]">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0 space-y-2">
+                      <p className="text-xs font-semibold tracking-wide text-slate-600 dark:text-[#8fb4e8]">
+                        Alumnos a promocionar
+                      </p>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                        <span className="text-sm text-slate-600 dark:text-slate-300">De</span>
+                        <span className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-base font-bold tabular-nums text-slate-900 shadow-sm dark:border-slate-600 dark:bg-[#0b2147] dark:text-[#e7eef9] dark:shadow-none">
+                          <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-[#8fb4e8]" aria-hidden>
+                            school
+                          </span>
+                          {etiquetaSemestreOrdinal(Number(semestre))}
+                        </span>
+                        <span className="material-symbols-outlined text-[20px] text-slate-400 dark:text-slate-500" aria-hidden>
+                          arrow_forward
+                        </span>
+                        <span className="text-sm text-slate-600 dark:text-slate-300">a</span>
+                        <span className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-base font-bold tabular-nums text-emerald-800 shadow-sm dark:border-emerald-500/40 dark:bg-emerald-950/50 dark:text-emerald-100">
+                          <span className="material-symbols-outlined text-[18px] text-emerald-600 dark:text-emerald-300" aria-hidden>
+                            trending_up
+                          </span>
+                          {etiquetaSemestreOrdinal(Number(semestre) + 1)}
+                        </span>
+                      </div>
+                      <p className="flex flex-wrap items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-0.5 font-medium tabular-nums text-slate-800 dark:border-slate-600 dark:bg-[#0b2147] dark:text-[#e7eef9]">
+                          <span className="material-symbols-outlined text-[16px] text-primary dark:text-[#8fb4e8]" aria-hidden>
+                            groups
+                          </span>
+                          {cantIncluidos} de {lista.length} alumnos incluidos
+                        </span>
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={restaurarTodos}
+                        className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 shadow-sm hover:bg-slate-50 hover:border-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 dark:border-slate-600 dark:bg-[#0b2147] dark:text-[#e7eef9] dark:shadow-none dark:hover:bg-[#091c3d] dark:hover:border-slate-500 dark:focus-visible:ring-[#4a6fa5]/40"
+                      >
+                        <span className="material-symbols-outlined text-[18px]" aria-hidden>
+                          group_add
+                        </span>
+                        Incluir todos
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!puedePromocionar || cantIncluidos === 0}
+                        onClick={() => setConfirmOpen(true)}
+                        className="inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-2 rounded-lg bg-emerald-600 text-white shadow-sm hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-emerald-700 dark:hover:bg-emerald-600 dark:shadow-[0_1px_3px_rgba(0,0,0,0.25)]"
+                      >
+                        <span className="material-symbols-outlined text-[18px]" aria-hidden>
+                          upgrade
+                        </span>
+                        Promocionar al {etiquetaSemestreOrdinal(Number(semestre) + 1)}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="border border-slate-800 rounded-lg overflow-hidden max-h-[min(420px,50vh)] overflow-y-auto">
+                  {listaPorCohorte.map(({ cohorte, filas }) => {
+                    const variasCohortes = listaPorCohorte.length > 1;
+                    const badgeReciente =
+                      variasCohortes &&
+                      cohorte !== 'sin' &&
+                      maxCohorteEnLista != null &&
+                      cohorte === maxCohorteEnLista;
+                    const badgePrevia =
+                      variasCohortes &&
+                      cohorte !== 'sin' &&
+                      maxCohorteEnLista != null &&
+                      cohorte < maxCohorteEnLista;
+                    const inclEnGrupo = filas.filter((r) => idsIncluidos.has(r.id)).length;
+                    const idsGrupo = filas.map((r) => r.id);
+                    return (
+                      <div key={String(cohorte)} className="border-b border-slate-200 dark:border-slate-800 last:border-b-0">
+                        <div className="sticky top-0 z-[1] px-3 py-2 bg-slate-50/95 dark:bg-slate-950/95 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center gap-2 gap-y-1">
+                          <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                            {cohorte === 'sin'
+                              ? 'Sin año de ingreso registrado'
+                              : `Año de ingreso ${cohorte}`}
+                          </span>
+                          {badgeReciente ? (
+                            <span className="text-[10px] sm:text-xs rounded px-2 py-0.5 bg-emerald-900/50 text-emerald-200 border border-emerald-800/60">
+                              Año de ingreso más reciente
+                            </span>
+                          ) : null}
+                          {badgePrevia ? (
+                            <span className="text-[10px] sm:text-xs rounded px-2 py-0.5 bg-slate-800 text-slate-300 border border-slate-600">
+                              Año de ingreso anterior
+                            </span>
+                          ) : null}
+                          <span className="text-xs text-slate-500 tabular-nums">
+                            {inclEnGrupo}/{filas.length} incluidos
+                          </span>
+                          {variasCohortes ? (
+                            <div className="ml-auto flex gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                className="text-[11px] px-2 py-0.5 rounded border border-emerald-700/70 text-emerald-300 hover:bg-emerald-900/40"
+                                title="Deseleccionar todos los otros grupos y quedarse solo con este"
+                                onClick={() =>
+                                  setIdsIncluidos(
+                                    new Set(idsGrupo)
+                                  )
+                                }
+                              >
+                                Solo este grupo
+                              </button>
+                              {inclEnGrupo > 0 ? (
+                                <button
+                                  type="button"
+                                  className={btnEliminarGrupoClass}
+                                  title="Eliminar todos los alumnos de este grupo de la promoción"
+                                  onClick={() =>
+                                    setIdsIncluidos((prev) => {
+                                      const next = new Set(prev);
+                                      idsGrupo.forEach((id) => next.delete(id));
+                                      return next;
+                                    })
+                                  }
+                                >
+                                  <span className="material-symbols-outlined text-[14px]" aria-hidden>
+                                    group_remove
+                                  </span>
+                                  Eliminar grupo
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="text-[11px] px-2 py-0.5 rounded border border-slate-600 text-slate-300 hover:bg-slate-800"
+                                  title="Volver a incluir todos los alumnos de este grupo"
+                                  onClick={() =>
+                                    setIdsIncluidos((prev) => {
+                                      const next = new Set(prev);
+                                      idsGrupo.forEach((id) => next.add(id));
+                                      return next;
+                                    })
+                                  }
+                                >
+                                  Incluir grupo
+                                </button>
+                              )}
+                            </div>
+                          ) : null}
+                        </div>
+                        <ul className="divide-y divide-slate-200 dark:divide-slate-800">
+                          {filas.map((row) => {
+                            const incl = idsIncluidos.has(row.id);
+                            return (
+                              <li
+                                key={row.id}
+                                className={`flex items-center justify-between gap-3 px-3 py-2.5 text-sm ${incl ? 'bg-white dark:bg-slate-900/30' : 'bg-slate-50 dark:bg-slate-950/40 opacity-60'}`}
+                              >
+                                <div className="min-w-0">
+                                  <p className="font-medium truncate">{row.nombre_completo || '—'}</p>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400">CI {row.numero_documento}</p>
+                                </div>
+                                {incl ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => quitarDePromocion(row.id)}
+                                    className={btnEliminarAlumnoClass}
+                                    title="Eliminar de la promoción"
+                                  >
+                                    <span className="material-symbols-outlined text-[16px]" aria-hidden>
+                                      person_remove
+                                    </span>
+                                    Eliminar
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => setIdsIncluidos((prev) => new Set(prev).add(row.id))}
+                                    className="shrink-0 inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg border border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800/50 dark:text-slate-200 dark:hover:bg-slate-800"
+                                  >
+                                    <span className="material-symbols-outlined text-[16px]" aria-hidden>
+                                      person_add
+                                    </span>
+                                    Incluir
+                                  </button>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </section>
+        </main>
+      </div>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={() => void ejecutarPromocion()}
+        title="Confirmar promoción de semestre"
+        description={`Se actualizará el semestre curricular de ${cantIncluidos} alumno(s) de ${semestre} a ${Number(semestre) + 1}. Esta acción no crea ni modifica matrículas en cursos.`}
+        confirmLabel="Promocionar"
+        variant="warning"
+        loading={loadingPromo}
+      />
+
+      <ConfirmDialog
+        open={confirmMasivaOpen}
+        onCancel={() => setConfirmMasivaOpen(false)}
+        onConfirm={() => void ejecutarMasiva()}
+        title="Confirmar promoción masiva"
+        description={`Se actualizará el semestre curricular de ${totalMasivaEfectivo} alumno(s) del año de ingreso ${cohorteAnioMasivo} de semestre ${semestreMasivo} a ${Number(semestreMasivo) + 1} en todas las carreras incluidas. No modifica matrículas en cursos.`}
+        confirmLabel="Promocionar todo"
+        variant="warning"
+        loading={loadingEjecutarMasiva}
+      />
+    </div>
+  );
+}

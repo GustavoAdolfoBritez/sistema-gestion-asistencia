@@ -1,0 +1,2653 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
+import { AcademicoSubnav } from '../components/AcademicoSubnav';
+import { AppSidebar } from '../components/AppSidebar';
+import { ScopeSelector, ScopeSelectorSkeleton, useAutoAssignScopeId } from '../components/ScopeSelector';
+import { calcularContextoSelectorListo, deriveAlcanceVisual } from '../hooks/useAlcanceVisual';
+import { useMisAlcances } from '../hooks/useMisAlcances';
+import { AppSelect, appSelectDarkSurfaceClass } from '../components/ui/app-select';
+import { Skeleton } from '../components/ui/skeleton';
+import { ConfirmDialog } from '../components/ui/confirm-dialog';
+import { EditItemDialog } from '../components/ui/edit-item-dialog';
+import type { EditFormField } from '../components/ui/edit-item-dialog';
+import { apiFetch } from '../utils/api';
+
+type Modulo = {
+  id: number;
+  materia_id: number;
+  anio: number;
+  mes: number;
+  fecha_inicio: string;
+  fecha_fin: string;
+  estado: string;
+  materia?: string;
+};
+
+type Curso = {
+  id: number;
+  modulo_id: number;
+  docente_id: string;
+  docente?: string;
+  estado_modulo?: string;
+  materia?: string;
+  inscriptos?: number;
+  carrera_id?: number;
+  anio?: number;
+  mes?: number;
+  aula?: string | null;
+  horario_inicio?: string | null;
+  horario_fin?: string | null;
+  cupo?: number | null;
+  notas?: string | null;
+};
+
+type Matricula = {
+  id: number;
+  alumno_id: string;
+  numero_documento: string;
+  nombre_completo: string;
+  estado_academico: string;
+  porcentaje_asistencia: number;
+  faltas_acumuladas: number;
+  fecha_inscripcion: string;
+};
+
+type AlumnoBusqueda = {
+  id: string;
+  numero_documento: string;
+  nombre_apellido?: string;
+  nombres?: string;
+  apellidos?: string;
+};
+
+type LoteAlumnos = {
+  id: number;
+  descripcion: string | null;
+  total_registros: number | null;
+  procesados: number | null;
+  estado: string;
+  ejecutado_en: string;
+  destino_carrera: string | null;
+  destino_carrera_id: number | null;
+  /** Alumnos de la carrera del lote con semestre_curricular = semestre parseado de `descripcion` (0 = vacío). */
+  alumnos_en_etiqueta_semestre?: number | null;
+};
+
+type DocenteOption = {
+  id: string;
+  nombres: string;
+  apellidos: string;
+  email: string;
+  username?: string | null;
+  persona?: {
+    tipo: 'docente';
+    id: string;
+    legajo?: string | null;
+  } | null;
+};
+
+type Facultad = {
+  id: number;
+  nombre: string;
+  estado: boolean;
+};
+
+type Carrera = {
+  id: number;
+  facultad_id: number;
+  facultad?: string;
+  nombre: string;
+  codigo?: string | null;
+};
+
+type Plan = {
+  id: number;
+  carrera_id: number;
+  carrera?: string;
+  nombre: string;
+  resolucion?: string | null;
+  anio_vigencia?: number | null;
+};
+
+/** Respuesta de POST /academico/planes cuando se creó o reutilizó carrera/facultad a partir de sugerencias UI. */
+type PlanCreadoResponse = Plan & { carreraResuelta?: Carrera; facultadResuelta?: Facultad };
+
+type Materia = {
+  id: number;
+  plan_id: number;
+  plan?: string;
+  nombre: string;
+  codigo: string;
+  /** Orden curricular dentro del plan (1 = primer semestre). */
+  semestre?: number;
+};
+
+/** Partes numéricas de códigos tipo 1.1, 1.2, 2.10; null si no encaja en ese patrón. */
+function parseCodigoCurricularPartesNumericas(codigo: string | undefined | null): number[] | null {
+  if (codigo == null || !String(codigo).trim()) return null;
+  const partes = String(codigo)
+    .trim()
+    .split(/[.\-]/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (partes.length === 0) return null;
+  const nums: number[] = [];
+  for (const p of partes) {
+    if (!/^\d+$/.test(p)) return null;
+    nums.push(Number(p));
+  }
+  return nums;
+}
+
+/** Orden ascendente por código curricular (1.1 antes que 1.2 y que 1.10). Si ambos son N.N… numérico; si no, por código y nombre. */
+function compareMateriasCurriculares(a: Materia, b: Materia): number {
+  const pa = parseCodigoCurricularPartesNumericas(a.codigo);
+  const pb = parseCodigoCurricularPartesNumericas(b.codigo);
+  if (pa !== null && pb !== null) {
+    const len = Math.max(pa.length, pb.length);
+    for (let i = 0; i < len; i++) {
+      const da = pa[i] ?? 0;
+      const db = pb[i] ?? 0;
+      if (da !== db) return da - db;
+    }
+    return 0;
+  }
+  const byCodigo = (a.codigo ?? '').localeCompare(b.codigo ?? '', 'es', { numeric: true, sensitivity: 'base' });
+  if (byCodigo !== 0) return byCodigo;
+  return a.nombre.localeCompare(b.nombre, 'es');
+}
+
+const FACULTADES_PREDEFINIDAS = [
+  'Facultad de Ciencias Empresariales',
+  'Facultad de Humanidades y Ciencias de la Educación',
+  'Facultad de Derecho y Ciencias Sociales',
+  'Facultad de Ciencias y Tecnología',
+] as const;
+
+const FACULTADES_CANONICAS = new Map(
+  FACULTADES_PREDEFINIDAS.map((nombre) => [normalizarTexto(nombre), nombre] as const)
+);
+
+const CARRERAS_CANONICAS = new Map<string, string>([
+  [normalizarTexto('ing. en informatica'), 'Ingeniería Informática'],
+  [normalizarTexto('ing en informatica'), 'Ingeniería Informática'],
+  [normalizarTexto('ingenieria informatica'), 'Ingeniería Informática'],
+  [normalizarTexto('Ingenieria Informática'), 'Ingeniería Informática'],
+  [normalizarTexto('Ingeniería Informática'), 'Ingeniería Informática'],
+  [normalizarTexto('Ingenieria Electromecánica'), 'Ingeniería Electromecánica'],
+  [normalizarTexto('Ingenieria Agronómica'), 'Ingeniería Agronómica'],
+  [normalizarTexto('Ciencias de la Educación'), 'Licenciatura en Ciencias de la Educación'],
+  [normalizarTexto('Psicología'), 'Licenciatura en Psicología Clínica'],
+  [normalizarTexto('Psicologia'), 'Licenciatura en Psicología Clínica'],
+  [normalizarTexto('Ciencias del Deporte'), 'Licenciatura en Ciencias del Deporte'],
+  [normalizarTexto('Educación Inicial'), 'Licenciatura en Educación Inicial'],
+  [normalizarTexto('Educación Escolar Básica'), 'Licenciatura en Educación Escolar Básica'],
+  [normalizarTexto('Diseño Gráfico'), 'Licenciatura en Diseño Gráfico'],
+]);
+
+const CARRERAS_PREDEFINIDAS: Readonly<Record<string, readonly string[]>> = {
+  'Facultad de Ciencias Empresariales': [
+    'Ciencias Contables',
+    'Administración de Empresas',
+    'Ingeniería Comercial',
+  ],
+  'Facultad de Humanidades y Ciencias de la Educación': [
+    'Licenciatura en Ciencias de la Educación',
+    'Licenciatura en Psicología Clínica',
+    'Licenciatura en Ciencias del Deporte',
+    'Licenciatura en Educación Inicial',
+    'Licenciatura en Educación Escolar Básica',
+  ],
+  'Facultad de Derecho y Ciencias Sociales': [
+    'Derecho',
+    'Notariado',
+  ],
+  'Facultad de Ciencias y Tecnología': [
+    'Ingeniería Informática',
+    'Licenciatura en Diseño Gráfico',
+    'Ingeniería Electromecánica',
+    'Ingeniería Agronómica',
+  ],
+};
+
+const MESES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+];
+
+interface Props {
+  onLogout?: () => void;
+}
+
+interface ApiList<T> {
+  total: number;
+  datos: T[];
+}
+
+function formatDocenteLabel(docente: DocenteOption) {
+  const label = `${docente.apellidos ?? ''}, ${docente.nombres ?? ''}`.replace(/^,\s*/, '').trim().replace(/,\s*$/, '').trim();
+  return label || docente.username || docente.email || `Usuario ${docente.id}`;
+}
+
+function formatHorarioCurso(valor?: string | null): string | null {
+  if (!valor) return null;
+  const s = String(valor).trim();
+  const match = s.match(/^(\d{1,2}:\d{2})/);
+  return match ? match[1] : s;
+}
+
+/** Aula y horario en una línea secundaria; null si no hay datos. */
+function formatCursoUbicacionHorario(curso: Pick<Curso, 'aula' | 'horario_inicio' | 'horario_fin'>): string | null {
+  const partes: string[] = [];
+  const aula = curso.aula?.trim();
+  if (aula) partes.push(`Aula ${aula}`);
+  const inicio = formatHorarioCurso(curso.horario_inicio);
+  const fin = formatHorarioCurso(curso.horario_fin);
+  if (inicio && fin) partes.push(`${inicio} – ${fin}`);
+  else if (inicio) partes.push(`desde ${inicio}`);
+  else if (fin) partes.push(`hasta ${fin}`);
+  return partes.length ? partes.join(' · ') : null;
+}
+
+function normalizarTexto(valor: string) {
+  return valor
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function textoCoincideBusqueda(haystack: string, query: string): boolean {
+  const q = normalizarTexto(query);
+  if (!q) return true;
+  return normalizarTexto(haystack).includes(q);
+}
+
+function extraerNumeroSemestre(descripcion?: string | null) {
+  if (!descripcion) return null;
+
+  const matchDirecto = descripcion.match(/semestre\s*(\d{1,2})/i);
+  if (matchDirecto) return Number(matchDirecto[1]);
+
+  const matchInvertido = descripcion.match(/(\d{1,2})\s*°?\s*semestre/i);
+  if (matchInvertido) return Number(matchInvertido[1]);
+
+  return null;
+}
+
+function formatearSemestre(numero: number) {
+  return `${numero}° Semestre`;
+}
+
+/** Semestre del plan (`materias.semestre`) asociado al módulo del curso. */
+function obtenerSemestrePlanCurso(curso: Curso, modulos: Modulo[], materias: Materia[]): number | null {
+  const modulo = modulos.find((m) => m.id === curso.modulo_id);
+  if (!modulo) return null;
+  const materia = materias.find((m) => m.id === modulo.materia_id);
+  const sem = materia?.semestre;
+  if (sem == null || !Number.isFinite(Number(sem)) || Number(sem) < 1) return null;
+  return Number(sem);
+}
+
+const MAX_SEMESTRE_PLAN = 10;
+
+/** Año del módulo: relativo al año calendario actual (un año atrás + planificación a futuro). */
+const ANIO_MODULO_ATRAS = 1;
+const ANIO_MODULO_ADELANTE = 10;
+
+function limitesAnioModulo() {
+  const y = new Date().getFullYear();
+  return { min: y - ANIO_MODULO_ATRAS, max: y + ANIO_MODULO_ADELANTE };
+}
+
+/** Primer y último día del mes calendario del módulo (mes 1–12). */
+function rangoFechasMesModulo(anio: string | number, mes: string | number): { min: string; max: string } | null {
+  const a = Number(anio);
+  const m = Number(mes);
+  if (!Number.isInteger(a) || !Number.isInteger(m) || m < 1 || m > 12) return null;
+  const ultimoDia = new Date(a, m, 0).getDate();
+  const mm = String(m).padStart(2, '0');
+  return {
+    min: `${a}-${mm}-01`,
+    max: `${a}-${mm}-${String(ultimoDia).padStart(2, '0')}`,
+  };
+}
+
+/** Listas académicas: lo más reciente primero (id), luego período. */
+function compareModuloRecientePrimero(a: Modulo, b: Modulo) {
+  return b.id - a.id || b.anio - a.anio || b.mes - a.mes;
+}
+
+function compareCursoRecientePrimero(a: Curso, b: Curso) {
+  return b.id - a.id || (b.anio ?? 0) - (a.anio ?? 0) || (b.mes ?? 0) - (a.mes ?? 0);
+}
+
+function mensajeErrorFechasModuloEnMes(
+  anio: number,
+  mes: number,
+  fechaInicio: string,
+  fechaFin: string
+): string | null {
+  const rango = rangoFechasMesModulo(anio, mes);
+  if (!rango) return 'Año y mes no válidos.';
+  const mesNombre = MESES[mes - 1] ?? `mes ${mes}`;
+  if (fechaInicio < rango.min || fechaInicio > rango.max) {
+    return `La fecha de inicio debe estar dentro de ${mesNombre} ${anio}.`;
+  }
+  if (fechaFin < rango.min || fechaFin > rango.max) {
+    return `La fecha de fin debe estar dentro de ${mesNombre} ${anio}.`;
+  }
+  if (fechaFin < fechaInicio) {
+    return 'La fecha de fin no puede ser anterior a la de inicio.';
+  }
+  return null;
+}
+
+/** Mismo aspecto que filtros del Panel (`ScopeSelector` + `shadow-sm` en claro). */
+const inpListaFiltro =
+  'w-full pl-7 pr-2 py-1.5 rounded-md border border-slate-300 text-xs text-black placeholder:text-slate-400 ' +
+  'focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/25 ' +
+  'dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9] dark:placeholder:text-slate-500';
+
+const inpScope =
+  'w-full py-1.5 text-sm rounded-lg border border-slate-300 bg-white text-black shadow-sm pl-3 pr-12 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 ' +
+  appSelectDarkSurfaceClass;
+
+export function AcademicoAdminPage({ onLogout }: Props) {
+  const { alcance, listo: alcanceListo } = useMisAlcances();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [modulos, setModulos] = useState<Modulo[]>([]);
+  const [cursos, setCursos] = useState<Curso[]>([]);
+  const [facultades, setFacultades] = useState<Facultad[]>([]);
+  const [carreras, setCarreras] = useState<Carrera[]>([]);
+  const [planes, setPlanes] = useState<Plan[]>([]);
+  const [materias, setMaterias] = useState<Materia[]>([]);
+  const [docentes, setDocentes] = useState<DocenteOption[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  type PendingDelete = { title: string; description: string; onConfirm: () => Promise<void> } | null;
+  type PendingEdit = { title: string; fields: EditFormField[]; onSave: (v: Record<string, string>) => Promise<void> } | null;
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete>(null);
+  const [pendingEdit, setPendingEdit] = useState<PendingEdit>(null);
+  const [dialogLoading, setDialogLoading] = useState(false);
+
+  const [moduloForm, setModuloForm] = useState({ materiaId: '', anio: String(new Date().getFullYear()), mes: '', fechaInicio: '', fechaFin: '' });
+  /** Filtro de semestre para el formulario "Abrir período académico" (solo materias de ese semestre). */
+  const [moduloFiltroSemestre, setModuloFiltroSemestre] = useState('');
+  const [cursoForm, setCursoForm] = useState({ moduloId: '', docenteId: '' });
+  const [cursoFiltroSemestre, setCursoFiltroSemestre] = useState('');
+  const [docenteSearch, setDocenteSearch] = useState('');
+  const [docenteSearchOpen, setDocenteSearchOpen] = useState(false);
+  const [facultadSeleccionadaId, setFacultadSeleccionadaId] = useState('');
+  const [carreraSeleccionadaId, setCarreraSeleccionadaId] = useState('');
+  const [planForm, setPlanForm] = useState({ nombre: '', resolucion: '', anioVigencia: '' });
+  const [materiaForm, setMateriaForm] = useState({ nombre: '', codigo: '' });
+
+  // Planilla de alumnos por curso
+  const [selectedCursoId, setSelectedCursoId] = useState<number | null>(null);
+  const [planillaMap, setPlanillaMap] = useState<Map<number, Matricula[]>>(new Map());
+  const [planillaLoading, setPlanillaLoading] = useState(false);
+  const [alumnoSearch, setAlumnoSearch] = useState('');
+  const [alumnoResultados, setAlumnoResultados] = useState<AlumnoBusqueda[]>([]);
+  const [alumnoSearchLoading, setAlumnoSearchLoading] = useState(false);
+  const [alumnoSearchOpen, setAlumnoSearchOpen] = useState(false);
+  const alumnoSearchWrapRef = useRef<HTMLDivElement>(null);
+  const planillaPanelRef = useRef<HTMLDivElement>(null);
+  const [copiarDesdeCursoId, setCopiarDesdeCursoId] = useState('');
+  const [lotesAlumnos, setLotesAlumnos] = useState<LoteAlumnos[]>([]);
+  const [semestreLotePorCurso, setSemestreLotePorCurso] = useState<Record<number, string>>({});
+  const [loteImportLoading, setLoteImportLoading] = useState(false);
+  const [expandedPlanId, setExpandedPlanId] = useState<number | null>(null);
+  const [showAddPlanForm, setShowAddPlanForm] = useState(false);
+  const [addMateriaForPlanId, setAddMateriaForPlanId] = useState<number | null>(null);
+  /** Semestre elegido por plan (`undefined` = aún no eligió; no se puede agregar materia). */
+  const [semestrePorPlan, setSemestrePorPlan] = useState<Partial<Record<number, number>>>({});
+  const [moduloListaBusqueda, setModuloListaBusqueda] = useState('');
+  const [moduloListaAnio, setModuloListaAnio] = useState('');
+  const [cursoListaBusqueda, setCursoListaBusqueda] = useState('');
+  const [cursoListaAnio, setCursoListaAnio] = useState('');
+
+  const alcanceVisualAcademico = useMemo(
+    () => deriveAlcanceVisual(alcance),
+    [alcance.carreras.length, alcance.facultades.length]
+  );
+
+  const rangoFechasModuloForm = useMemo(
+    () => rangoFechasMesModulo(moduloForm.anio, moduloForm.mes),
+    [moduloForm.anio, moduloForm.mes]
+  );
+
+  const sortedModulos = useMemo(() => {
+    if (!carreraSeleccionadaId) return [];
+    const carreraId = Number(carreraSeleccionadaId);
+    const planIds = new Set(planes.filter((p) => p.carrera_id === carreraId).map((p) => p.id));
+    const materiaIds = new Set(materias.filter((m) => planIds.has(m.plan_id)).map((m) => m.id));
+    return [...modulos]
+      .filter((m) => materiaIds.has(m.materia_id))
+      .sort(compareModuloRecientePrimero);
+  }, [modulos, materias, planes, carreraSeleccionadaId]);
+
+  /** Semestres disponibles en los módulos de la carrera seleccionada (para el formulario "Nuevo curso"). */
+  const semestresCursoDisponibles = useMemo(() => {
+    const carreraId = Number(carreraSeleccionadaId);
+    const planIds = new Set(planes.filter((p) => p.carrera_id === carreraId).map((p) => p.id));
+    const materiasCarrera = materias.filter((m) => planIds.has(m.plan_id));
+    const materiasBySem = new Map<number, Set<number>>();
+    for (const mat of materiasCarrera) {
+      const sem = mat.semestre ?? 0;
+      if (!materiasBySem.has(sem)) materiasBySem.set(sem, new Set());
+      materiasBySem.get(sem)!.add(mat.id);
+    }
+    const sems: number[] = [];
+    for (const [sem, matIds] of materiasBySem) {
+      if (modulos.some((mod) => matIds.has(mod.materia_id))) sems.push(sem);
+    }
+    return sems.sort((a, b) => a - b);
+  }, [modulos, materias, planes, carreraSeleccionadaId]);
+
+  /** Módulos de la carrera seleccionada filtrados por el semestre del formulario "Nuevo curso". */
+  const sortedModulosCurso = useMemo(() => {
+    if (!cursoFiltroSemestre) return [];
+    const sem = Number(cursoFiltroSemestre);
+    const carreraId = Number(carreraSeleccionadaId);
+    const planIds = new Set(planes.filter((p) => p.carrera_id === carreraId).map((p) => p.id));
+    const materiaIds = new Set(
+      materias.filter((m) => planIds.has(m.plan_id) && (m.semestre ?? 0) === sem).map((m) => m.id)
+    );
+    return [...modulos]
+      .filter((m) => materiaIds.has(m.materia_id))
+      .sort(compareModuloRecientePrimero);
+  }, [modulos, materias, planes, carreraSeleccionadaId, cursoFiltroSemestre]);
+
+  const docentesOrdenados = useMemo(
+    () => [...docentes].sort((a, b) => `${a.apellidos} ${a.nombres}`.localeCompare(`${b.apellidos} ${b.nombres}`, 'es')),
+    [docentes]
+  );
+
+  const docentesFiltrados = useMemo(() => {
+    const term = docenteSearch.trim().toLowerCase();
+    const base = term
+      ? docentesOrdenados.filter((item) => {
+          const text = `${item.nombres ?? ''} ${item.apellidos ?? ''} ${item.email ?? ''} ${item.username ?? ''} ${item.persona?.legajo ?? ''}`.toLowerCase();
+          return text.includes(term);
+        })
+      : docentesOrdenados;
+
+    return base.slice(0, 8);
+  }, [docenteSearch, docentesOrdenados]);
+
+  const facultadesOpciones = useMemo(() => {
+    const lista = [...facultades];
+    const facultadesUnicas = new Map<string, Facultad>();
+
+    for (const facultad of lista) {
+      const key = normalizarTexto(facultad.nombre);
+      const canonicalNombre = FACULTADES_CANONICAS.get(key) ?? facultad.nombre;
+      const existente = facultadesUnicas.get(key);
+
+      // Preferimos IDs reales positivos cuando hay duplicados.
+      if (!existente || (existente.id < 0 && facultad.id > 0)) {
+        facultadesUnicas.set(key, { ...facultad, nombre: canonicalNombre });
+      }
+    }
+
+    const listaFinal = [...facultadesUnicas.values()];
+    let syntheticId = -1;
+
+    if (alcanceVisualAcademico === 'institucional') {
+      for (const nombre of FACULTADES_PREDEFINIDAS) {
+        const existe = listaFinal.some((item) => normalizarTexto(item.nombre) === normalizarTexto(nombre));
+        if (existe) continue;
+        listaFinal.push({ id: syntheticId, nombre, estado: true });
+        syntheticId -= 1;
+      }
+    }
+
+    return listaFinal.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+  }, [facultades, alcanceVisualAcademico]);
+
+  const carrerasOpciones = useMemo(() => {
+    const carrerasUnicas = new Map<string, Carrera>();
+    for (const carrera of carreras) {
+      const canonicalNombre = CARRERAS_CANONICAS.get(normalizarTexto(carrera.nombre)) ?? carrera.nombre;
+      const key = `${carrera.facultad_id}:${normalizarTexto(canonicalNombre)}`;
+      const existente = carrerasUnicas.get(key);
+      if (!existente || (existente.id < 0 && carrera.id > 0)) {
+        carrerasUnicas.set(key, { ...carrera, nombre: canonicalNombre });
+      }
+    }
+
+    const lista = [...carrerasUnicas.values()];
+    let syntheticCarreraId = -1;
+
+    if (alcanceVisualAcademico === 'institucional') {
+      const facultadesPorNombre = new Map<string, Facultad>();
+      facultadesOpciones.forEach((facultad) => {
+        facultadesPorNombre.set(normalizarTexto(facultad.nombre), facultad);
+      });
+
+      const carreraKeys = new Set(lista.map((carrera) => `${carrera.facultad_id}:${normalizarTexto(carrera.nombre)}`));
+
+      for (const [facultadNombre, carrerasPredefinidas] of Object.entries(CARRERAS_PREDEFINIDAS)) {
+        const facultad = facultadesPorNombre.get(normalizarTexto(facultadNombre));
+        if (!facultad) continue;
+
+        for (const nombreCarrera of carrerasPredefinidas) {
+          const key = `${facultad.id}:${normalizarTexto(nombreCarrera)}`;
+          if (carreraKeys.has(key)) continue;
+
+          lista.push({
+            id: syntheticCarreraId,
+            facultad_id: facultad.id,
+            nombre: nombreCarrera,
+            codigo: null,
+          });
+          syntheticCarreraId -= 1;
+          carreraKeys.add(key);
+        }
+      }
+    }
+
+    return lista.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+  }, [carreras, facultadesOpciones, alcanceVisualAcademico]);
+
+  const facultadesDisponibles = useMemo(() => {
+    if (alcance.facultades.length > 0) {
+      return alcance.facultades.map((f) => ({ id: f.id, nombre: f.nombre }));
+    }
+    return facultadesOpciones
+      .filter((f) => f.id > 0)
+      .map((f) => ({ id: f.id, nombre: f.nombre }));
+  }, [alcance.facultades, facultadesOpciones]);
+
+  const carrerasEnAlcance = useMemo(() => {
+    const base = carrerasOpciones.filter((c) => Number(c.id) > 0);
+    if (alcance.carreras.length === 0) return base;
+    const ids = new Set(alcance.carreras.map((c) => c.id));
+    return base.filter((c) => ids.has(c.id));
+  }, [alcance.carreras, carrerasOpciones]);
+
+  const carrerasFiltradas = useMemo(() => {
+    if (alcanceVisualAcademico === 'carrera') {
+      return carrerasEnAlcance;
+    }
+    const facultadId = Number(facultadSeleccionadaId);
+    if (!facultadId) return [];
+    return carrerasEnAlcance.filter((carrera) => carrera.facultad_id === facultadId);
+  }, [facultadSeleccionadaId, carrerasEnAlcance, alcanceVisualAcademico]);
+
+  const carrerasOpcionesSelector = useMemo(
+    () => carrerasFiltradas.map((c) => ({ id: c.id, nombre: c.nombre })),
+    [carrerasFiltradas]
+  );
+
+  useAutoAssignScopeId(
+    alcanceVisualAcademico === 'carrera' ? [] : facultadesDisponibles,
+    facultadSeleccionadaId,
+    setFacultadSeleccionadaId
+  );
+  useAutoAssignScopeId(carrerasOpcionesSelector, carreraSeleccionadaId, setCarreraSeleccionadaId);
+
+  /** Jefe de carrera: la carrera se autoasigna pero la facultad no; se deriva del catálogo. */
+  useEffect(() => {
+    if (!carreraSeleccionadaId) return;
+    const carrera =
+      carrerasFiltradas.find((c) => String(c.id) === carreraSeleccionadaId) ??
+      carrerasEnAlcance.find((c) => String(c.id) === carreraSeleccionadaId);
+    if (carrera?.facultad_id) {
+      const facId = String(carrera.facultad_id);
+      if (facultadSeleccionadaId !== facId) setFacultadSeleccionadaId(facId);
+    }
+  }, [carreraSeleccionadaId, carrerasFiltradas, carrerasEnAlcance, facultadSeleccionadaId]);
+
+  const facultadSeleccionada = useMemo(() => {
+    const id = Number(facultadSeleccionadaId);
+    return facultadesOpciones.find((facultad) => facultad.id === id) ?? null;
+  }, [facultadSeleccionadaId, facultadesOpciones]);
+
+  const carreraSeleccionada = useMemo(() => {
+    const id = Number(carreraSeleccionadaId);
+    return carrerasFiltradas.find((carrera) => carrera.id === id) ?? null;
+  }, [carreraSeleccionadaId, carrerasFiltradas]);
+
+  /** Con carrera seleccionada se habilitan período, curso y planilla (facultad se deriva de la carrera). */
+  const contextoAcademicoListo = Boolean(carreraSeleccionadaId);
+
+  const contextoSelectorListo = calcularContextoSelectorListo({
+    alcanceListo,
+    datosListos: !loading,
+    alcanceVisual: alcanceVisualAcademico,
+    carrerasOpciones: carrerasOpcionesSelector,
+    carreraId: carreraSeleccionadaId,
+  });
+
+  const docenteSeleccionado = useMemo(
+    () => docentes.find((item) => (item.persona?.id ?? item.id) === cursoForm.docenteId) ?? null,
+    [cursoForm.docenteId, docentes]
+  );
+
+  const planesDeCarrera = useMemo(() => {
+    if (!carreraSeleccionadaId) return [];
+    return planes.filter((p) => p.carrera_id === Number(carreraSeleccionadaId));
+  }, [planes, carreraSeleccionadaId]);
+
+  const materiasPorPlan = useMemo(() => {
+    const map = new Map<number, Materia[]>();
+    for (const m of materias) {
+      if (!map.has(m.plan_id)) map.set(m.plan_id, []);
+      map.get(m.plan_id)!.push(m);
+    }
+    return map;
+  }, [materias]);
+
+  const materiasDeCarrera = useMemo(() => {
+    if (!carreraSeleccionadaId) return materias;
+    const planIds = new Set(planesDeCarrera.map((p) => p.id));
+    return materias.filter((m) => planIds.has(m.plan_id));
+  }, [materias, planesDeCarrera, carreraSeleccionadaId]);
+
+  const materiasBaseModulo = useMemo(
+    () => (carreraSeleccionadaId ? materiasDeCarrera : materias),
+    [carreraSeleccionadaId, materiasDeCarrera, materias]
+  );
+
+  const materiasParaModuloPeriodo = useMemo(() => {
+    if (moduloFiltroSemestre === '') return [];
+    const sem = Number(moduloFiltroSemestre);
+    return materiasBaseModulo
+      .filter((m) => (m.semestre ?? 1) === sem)
+      .sort(compareMateriasCurriculares);
+  }, [materiasBaseModulo, moduloFiltroSemestre]);
+
+  // Cursos filtrados: solo los de la carrera seleccionada
+  const cursosFiltradosPorCarrera = useMemo(() => {
+    if (!carreraSeleccionadaId) return [];
+    return cursos
+      .filter((c) => c.carrera_id === Number(carreraSeleccionadaId))
+      .sort(compareCursoRecientePrimero);
+  }, [cursos, carreraSeleccionadaId]);
+
+  const aniosDisponiblesModulos = useMemo(() => {
+    const set = new Set<number>();
+    for (const m of sortedModulos) {
+      if (m.anio != null && Number.isFinite(m.anio)) set.add(m.anio);
+    }
+    return [...set].sort((a, b) => b - a);
+  }, [sortedModulos]);
+
+  const modulosListaVisibles = useMemo(() => {
+    const anioFiltro = moduloListaAnio ? Number(moduloListaAnio) : null;
+    return sortedModulos.filter((mod) => {
+      if (anioFiltro != null && mod.anio !== anioFiltro) return false;
+      const periodo = `${MESES[(mod.mes ?? 1) - 1]} ${mod.anio ?? ''}`;
+      const texto = [mod.materia ?? '', periodo, mod.estado ?? ''].join(' ');
+      return textoCoincideBusqueda(texto, moduloListaBusqueda);
+    });
+  }, [sortedModulos, moduloListaAnio, moduloListaBusqueda]);
+
+  const aniosDisponiblesCursos = useMemo(() => {
+    const set = new Set<number>();
+    for (const c of cursosFiltradosPorCarrera) {
+      if (c.anio != null && Number.isFinite(c.anio)) set.add(c.anio);
+    }
+    return [...set].sort((a, b) => b - a);
+  }, [cursosFiltradosPorCarrera]);
+
+  const cursosListaVisibles = useMemo(() => {
+    const anioFiltro = cursoListaAnio ? Number(cursoListaAnio) : null;
+    return cursosFiltradosPorCarrera.filter((curso) => {
+      if (anioFiltro != null && curso.anio !== anioFiltro) return false;
+      const periodo = curso.anio != null ? `${MESES[(curso.mes ?? 1) - 1]} ${curso.anio}` : '';
+      const texto = [
+        curso.materia ?? '',
+        curso.docente ?? '',
+        periodo,
+        formatCursoUbicacionHorario(curso) ?? '',
+      ].join(' ');
+      return textoCoincideBusqueda(texto, cursoListaBusqueda);
+    });
+  }, [cursosFiltradosPorCarrera, cursoListaAnio, cursoListaBusqueda]);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [modResp, cursoResp, facResp, carResp, planResp, matResp] = await Promise.all([
+        apiFetch<ApiList<Modulo>>('/academico/modulos'),
+        apiFetch<ApiList<Curso>>('/academico/cursos'),
+        apiFetch<ApiList<Facultad>>('/academico/facultades'),
+        apiFetch<ApiList<Carrera>>('/academico/carreras'),
+        apiFetch<ApiList<Plan>>('/academico/planes'),
+        apiFetch<ApiList<Materia>>('/academico/materias'),
+      ]);
+
+      let docentesResp: ApiList<DocenteOption> = { total: 0, datos: [] };
+      try {
+        docentesResp = await apiFetch<ApiList<DocenteOption>>('/usuarios?rol=Docente&limit=200');
+      } catch {
+        /* Roles sin acceso a /usuarios (p. ej. coordinación de facultad): el resto del módulo académico puede usarse igual. */
+      }
+
+      setModulos(modResp?.datos ?? []);
+      setCursos(cursoResp?.datos ?? []);
+      setFacultades(facResp?.datos ?? []);
+      setCarreras(carResp?.datos ?? []);
+      setPlanes(planResp?.datos ?? []);
+      setMaterias(matResp?.datos ?? []);
+      setDocentes(docentesResp?.datos ?? []);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'No se pudo cargar la información académica';
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchData();
+  }, [fetchData]);
+
+  useEffect(() => {
+    setModuloFiltroSemestre('');
+    setModuloForm((f) => ({ ...f, materiaId: '' }));
+    setCursoForm({ moduloId: '', docenteId: '' });
+    setCursoFiltroSemestre('');
+    setDocenteSearch('');
+    setDocenteSearchOpen(false);
+    setModuloListaBusqueda('');
+    setModuloListaAnio('');
+    setCursoListaBusqueda('');
+    setCursoListaAnio('');
+    setAlumnoSearch('');
+    setAlumnoResultados([]);
+    setAlumnoSearchOpen(false);
+    setSelectedCursoId(null);
+    setCopiarDesdeCursoId('');
+  }, [carreraSeleccionadaId, facultadSeleccionadaId]);
+
+  // Lotes de alumnos filtrados por carrera y semestre del curso expandido (o del formulario «Nuevo curso»).
+  useEffect(() => {
+    if (!carreraSeleccionadaId) {
+      setLotesAlumnos([]);
+      return;
+    }
+    const cursoExpandido =
+      selectedCursoId != null ? cursos.find((c) => c.id === selectedCursoId) ?? null : null;
+    const semestreCurso = cursoExpandido
+      ? obtenerSemestrePlanCurso(cursoExpandido, modulos, materias)
+      : null;
+    const semestreForm =
+      cursoFiltroSemestre && Number.isFinite(Number(cursoFiltroSemestre))
+        ? Number(cursoFiltroSemestre)
+        : null;
+    const semestreQuery = semestreCurso ?? semestreForm;
+
+    const qs = new URLSearchParams({ carreraId: carreraSeleccionadaId });
+    if (semestreQuery != null) qs.set('semestre', String(semestreQuery));
+
+    apiFetch<{ total: number; datos: LoteAlumnos[] }>(`/academico/lotes-alumnos?${qs.toString()}`)
+      .then((resp) => setLotesAlumnos(resp?.datos ?? []))
+      .catch(() => setLotesAlumnos([]));
+  }, [carreraSeleccionadaId, selectedCursoId, cursoFiltroSemestre, cursos, modulos, materias]);
+
+  // Sincronizar selector de lote con el semestre del curso (y con el formulario izquierdo si coincide).
+  useEffect(() => {
+    if (selectedCursoId == null) return;
+    const curso = cursos.find((c) => c.id === selectedCursoId);
+    if (!curso) return;
+    const semCurso = obtenerSemestrePlanCurso(curso, modulos, materias);
+    if (semCurso == null) return;
+    const semForm =
+      cursoFiltroSemestre && Number.isFinite(Number(cursoFiltroSemestre))
+        ? Number(cursoFiltroSemestre)
+        : null;
+    const semObjetivo = semForm === semCurso ? semForm : semCurso;
+    setSemestreLotePorCurso((prev) => {
+      if (prev[curso.id] === String(semObjetivo)) return prev;
+      return { ...prev, [curso.id]: String(semObjetivo) };
+    });
+  }, [selectedCursoId, cursoFiltroSemestre, cursos, modulos, materias]);
+
+  const cursoSeleccionado = useMemo(
+    () => (selectedCursoId != null ? cursos.find((c) => c.id === selectedCursoId) ?? null : null),
+    [selectedCursoId, cursos]
+  );
+
+  const planillaSeleccionada = useMemo(
+    () => (selectedCursoId != null ? planillaMap.get(selectedCursoId) ?? [] : []),
+    [selectedCursoId, planillaMap]
+  );
+
+  useEffect(() => {
+    if (selectedCursoId == null) return;
+    let cancelled = false;
+    const frame = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        if (!cancelled) {
+          planillaPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+    };
+  }, [selectedCursoId]);
+
+  const handleCreateModulo = async () => {
+    if (!carreraSeleccionadaId) {
+      toast.error('Seleccioná carrera arriba antes de abrir un período.');
+      return;
+    }
+    if (!moduloFiltroSemestre) {
+      toast.error('Seleccioná un semestre para listar las materias del plan.');
+      return;
+    }
+    if (!moduloForm.materiaId) {
+      toast.error('Selecciona una materia antes de continuar.');
+      return;
+    }
+    if (!moduloForm.anio || !moduloForm.mes) {
+      toast.error('Completa el año y mes del módulo.');
+      return;
+    }
+    const anioNum = Number(moduloForm.anio);
+    const { min: anioMin, max: anioMax } = limitesAnioModulo();
+    if (!Number.isInteger(anioNum) || anioNum < anioMin || anioNum > anioMax) {
+      toast.error(`El año debe ser un número entre ${anioMin} y ${anioMax}.`);
+      return;
+    }
+    if (!moduloForm.fechaInicio || !moduloForm.fechaFin) {
+      toast.error('Completa las fechas de inicio y fin.');
+      return;
+    }
+    const mesNum = Number(moduloForm.mes);
+    const errFechas = mensajeErrorFechasModuloEnMes(anioNum, mesNum, moduloForm.fechaInicio, moduloForm.fechaFin);
+    if (errFechas) {
+      toast.error(errFechas);
+      return;
+    }
+    try {
+      const payload = {
+        materiaId: Number(moduloForm.materiaId),
+        anio: anioNum,
+        mes: mesNum,
+        fechaInicio: moduloForm.fechaInicio,
+        fechaFin: moduloForm.fechaFin,
+      };
+      const nuevo = await apiFetch<Modulo>('/academico/modulos', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      setModulos((prev) => [nuevo, ...prev]);
+      toast.success('Módulo creado');
+      setModuloForm((f) => ({
+        materiaId: '',
+        anio: f.anio || String(new Date().getFullYear()),
+        mes: '',
+        fechaInicio: '',
+        fechaFin: '',
+      }));
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'No se pudo crear el módulo';
+      toast.error(msg);
+    }
+  };
+
+  const handleCreateCurso = async () => {
+    try {
+      if (!carreraSeleccionadaId) {
+        toast.error('Seleccioná carrera arriba antes de abrir un curso.');
+        return;
+      }
+      if (!cursoForm.docenteId) {
+        toast.error('Selecciona un docente desde el buscador.');
+        return;
+      }
+
+      const payload = {
+        moduloId: Number(cursoForm.moduloId),
+        docenteId: cursoForm.docenteId,
+      };
+      await apiFetch<Curso>('/academico/cursos', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      // Recargar cursos y módulos para obtener nombres completos
+      const [modResp, cursoResp] = await Promise.all([
+        apiFetch<ApiList<Modulo>>('/academico/modulos'),
+        apiFetch<ApiList<Curso>>('/academico/cursos'),
+      ]);
+      setModulos(modResp?.datos ?? []);
+      setCursos(cursoResp?.datos ?? []);
+      toast.success('Curso creado');
+      setCursoForm({ moduloId: '', docenteId: '' });
+    setCursoFiltroSemestre('');
+      setDocenteSearch('');
+      setDocenteSearchOpen(false);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'No se pudo crear el curso';
+      toast.error(msg);
+    }
+  };
+
+  const handleSelectCurso = async (cursoId: number) => {
+    setSelectedCursoId(cursoId);
+    setAlumnoSearch('');
+    setAlumnoSearchOpen(false);
+    setCopiarDesdeCursoId('');
+    if (planillaMap.has(cursoId)) return;
+    setPlanillaLoading(true);
+    try {
+      const resp = await apiFetch<{ total: number; datos: Matricula[] }>(`/academico/cursos/${cursoId}/matriculas`);
+      setPlanillaMap((prev) => new Map(prev).set(cursoId, resp?.datos ?? []));
+    } catch {
+      toast.error('No se pudo cargar la planilla');
+    } finally {
+      setPlanillaLoading(false);
+    }
+  };
+
+  const cerrarPlanillaCurso = () => {
+    setSelectedCursoId(null);
+    setAlumnoSearch('');
+    setAlumnoSearchOpen(false);
+    setCopiarDesdeCursoId('');
+  };
+
+  const puedeBuscarAlumnoPlanilla =
+    Boolean(carreraSeleccionadaId) &&
+    (alcanceVisualAcademico === 'carrera' || Boolean(facultadSeleccionadaId));
+
+  const cerrarBuscadorAlumnoPlanilla = useCallback(() => {
+    setAlumnoSearchOpen(false);
+    setAlumnoResultados([]);
+  }, []);
+
+  useEffect(() => {
+    if (!alumnoSearchOpen) return;
+    const onMouseDown = (event: MouseEvent) => {
+      const root = alumnoSearchWrapRef.current;
+      if (root && !root.contains(event.target as Node)) {
+        cerrarBuscadorAlumnoPlanilla();
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') cerrarBuscadorAlumnoPlanilla();
+    };
+    document.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onMouseDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [alumnoSearchOpen, cerrarBuscadorAlumnoPlanilla]);
+
+  const handleBuscarAlumno = useCallback(
+    async (q: string) => {
+      const termino = q.trim();
+      if (!termino) {
+        setAlumnoResultados([]);
+        return;
+      }
+      if (!carreraSeleccionadaId) {
+        setAlumnoResultados([]);
+        return;
+      }
+      if (alcanceVisualAcademico !== 'carrera' && !facultadSeleccionadaId) {
+        setAlumnoResultados([]);
+        return;
+      }
+      setAlumnoSearchLoading(true);
+      try {
+        const params = new URLSearchParams({ q: termino, limit: '10' });
+        params.set('carreraId', carreraSeleccionadaId);
+        if (alcanceVisualAcademico !== 'carrera' && facultadSeleccionadaId) {
+          params.set('facultadId', facultadSeleccionadaId);
+        }
+        const resp = await apiFetch<{ total: number; datos: AlumnoBusqueda[] }>(
+          `/academico/alumnos/buscar?${params.toString()}`
+        );
+        setAlumnoResultados(resp?.datos ?? []);
+      } catch {
+        setAlumnoResultados([]);
+      } finally {
+        setAlumnoSearchLoading(false);
+      }
+    },
+    [alcanceVisualAcademico, facultadSeleccionadaId, carreraSeleccionadaId]
+  );
+
+  const handleMatricularAlumno = async (cursoId: number, alumno: AlumnoBusqueda) => {
+    try {
+      const nueva = await apiFetch<Matricula>(`/academico/cursos/${cursoId}/matriculas`, {
+        method: 'POST',
+        body: JSON.stringify({ alumnoId: alumno.id }),
+      });
+      // enriquecer con nombre
+      const enriquecida: Matricula = {
+        ...nueva,
+        numero_documento: alumno.numero_documento,
+        nombre_completo:
+          alumno.nombre_apellido ??
+          [alumno.apellidos, alumno.nombres].map((s) => s?.trim()).filter(Boolean).join(', '),
+      };
+      setPlanillaMap((prev) => {
+        const lista = [...(prev.get(cursoId) ?? []), enriquecida];
+        return new Map(prev).set(cursoId, lista);
+      });
+      setCursos((prev) => prev.map((c) => c.id === cursoId ? { ...c, inscriptos: (c.inscriptos ?? 0) + 1 } : c));
+      setAlumnoSearch('');
+      setAlumnoResultados([]);
+      setAlumnoSearchOpen(false);
+      toast.success(`${enriquecida.nombre_completo} agregado a la planilla`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'No se pudo agregar el alumno');
+    }
+  };
+
+  const handleDesmatricularAlumno = (cursoId: number, matricula: Matricula) => {
+    setPendingDelete({
+      title: 'Quitar alumno',
+      description: `¿Quitar a ${matricula.nombre_completo} de la planilla? Se eliminará su matrícula y el historial de asistencia asociado.`,
+      onConfirm: async () => {
+        setDialogLoading(true);
+        try {
+          await apiFetch(`/academico/cursos/${cursoId}/matriculas/${matricula.alumno_id}`, { method: 'DELETE' });
+          setPlanillaMap((prev) => {
+            const lista = (prev.get(cursoId) ?? []).filter((m) => m.id !== matricula.id);
+            return new Map(prev).set(cursoId, lista);
+          });
+          setCursos((prev) => prev.map((c) => c.id === cursoId ? { ...c, inscriptos: Math.max((c.inscriptos ?? 1) - 1, 0) } : c));
+          toast.success('Alumno quitado de la planilla');
+          setPendingDelete(null);
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : 'No se pudo quitar el alumno');
+        } finally {
+          setDialogLoading(false);
+        }
+      },
+    });
+  };
+
+  const handleMatricularDesdeLote = async (cursoId: number, loteId: number, semestre: string) => {
+    if (!loteId) {
+      toast.error('Selecciona un semestre');
+      return;
+    }
+    setLoteImportLoading(true);
+    try {
+      const res = await apiFetch<{
+        insertados: number;
+        saltados: number;
+        omitidosSemestre?: number;
+        totalLote: number;
+        encontrados: number;
+      }>(`/academico/cursos/${cursoId}/matriculas/desde-lote`, { method: 'POST', body: JSON.stringify({ loteId }) });
+      const om = res.omitidosSemestre ?? 0;
+      const insertados = res.insertados ?? 0;
+      const saltados = res.saltados ?? 0;
+      const tituloSemestre = `${semestre}º semestre`;
+
+      if (insertados === 0 && om > 0) {
+        toast.error(`${tituloSemestre}: ningún alumno inscripto`, {
+          description: `${om} alumno(s) omitidos: su semestre curricular no coincide con el de este curso.${saltados > 0 ? ` ${saltados} ya estaban en la planilla.` : ''}`,
+        });
+      } else if (insertados === 0) {
+        toast.error(`${tituloSemestre}: ningún alumno inscripto`, {
+          description:
+            saltados > 0 ? `${saltados} alumno(s) ya estaban en la planilla.` : 'No había alumnos nuevos para agregar en este lote.',
+        });
+      } else if (om > 0) {
+        toast.warning(`${tituloSemestre}: ${insertados} alumno(s) inscripto(s)`, {
+          duration: 8000,
+          description: `${om} omitidos por semestre curricular distinto.${saltados > 0 ? ` ${saltados} ya estaban en la planilla.` : ''}`,
+        });
+      } else {
+        toast.success(`${tituloSemestre}: ${insertados} alumno(s) inscripto(s)`, {
+          description: saltados > 0 ? `${saltados} ya estaban en la planilla.` : undefined,
+        });
+      }
+      // recargar planilla
+      const resp = await apiFetch<{ total: number; datos: Matricula[] }>(`/academico/cursos/${cursoId}/matriculas`);
+      setPlanillaMap((prev) => new Map(prev).set(cursoId, resp?.datos ?? []));
+      setCursos((prev) => prev.map((c) => c.id === cursoId ? { ...c, inscriptos: resp?.total ?? c.inscriptos } : c));
+      setSemestreLotePorCurso((prev) => ({ ...prev, [cursoId]: '' }));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'No se pudo importar la lista');
+    } finally {
+      setLoteImportLoading(false);
+    }
+  };
+
+  const handleCopiarMatriculas = async (cursoId: number) => {
+    const origenId = Number(copiarDesdeCursoId);
+    if (!origenId || origenId === cursoId) {
+      toast.error('Selecciona un curso origen diferente');
+      return;
+    }
+    try {
+      const res = await apiFetch<{ insertados: number; saltados: number }>(`/academico/cursos/${cursoId}/copiar-matriculas`, {
+        method: 'POST',
+        body: JSON.stringify({ desdeCursoId: origenId }),
+      });
+      toast.success(`${res.insertados} alumno(s) copiados${res.saltados ? `, ${res.saltados} ya estaban` : ''}`);
+      // recargar planilla
+      const resp = await apiFetch<{ total: number; datos: Matricula[] }>(`/academico/cursos/${cursoId}/matriculas`);
+      setPlanillaMap((prev) => new Map(prev).set(cursoId, resp?.datos ?? []));
+      setCursos((prev) => prev.map((c) => c.id === cursoId ? { ...c, inscriptos: resp?.total ?? c.inscriptos } : c));
+      setCopiarDesdeCursoId('');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'No se pudo copiar la planilla');
+    }
+  };
+
+  const handleCreatePlan = async () => {
+    if (!carreraSeleccionadaId) {
+      toast.error('Selecciona una carrera primero');
+      return;
+    }
+    const carreraCtx =
+      carrerasFiltradas.find((c) => String(c.id) === carreraSeleccionadaId) ??
+      carrerasEnAlcance.find((c) => String(c.id) === carreraSeleccionadaId);
+    const facultadIdPlan =
+      facultadSeleccionadaId ? Number(facultadSeleccionadaId) : carreraCtx?.facultad_id;
+    if (!facultadIdPlan) {
+      toast.error('No se pudo resolver la facultad de la carrera seleccionada.');
+      return;
+    }
+    try {
+      const cid = Number(carreraSeleccionadaId);
+      const body: Record<string, unknown> = {
+        carreraId: cid,
+        facultadId: facultadIdPlan,
+        facultadNombre: facultadSeleccionada?.nombre ?? '',
+        nombreCarrera: carreraSeleccionada?.nombre ?? '',
+        nombre: planForm.nombre,
+        resolucion: planForm.resolucion || undefined,
+        anioVigencia: planForm.anioVigencia ? Number(planForm.anioVigencia) : undefined,
+      };
+      const resp = await apiFetch<PlanCreadoResponse>('/academico/planes', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+      if (resp.facultadResuelta) {
+        setFacultades((prev) =>
+          prev.some((f) => f.id === resp.facultadResuelta!.id) ? prev : [...prev, resp.facultadResuelta!]
+        );
+        setFacultadSeleccionadaId(String(resp.facultadResuelta.id));
+      }
+      if (resp.carreraResuelta) {
+        setCarreras((prev) =>
+          prev.some((c) => c.id === resp.carreraResuelta!.id) ? prev : [...prev, resp.carreraResuelta!]
+        );
+        setCarreraSeleccionadaId(String(resp.carreraResuelta.id));
+      }
+      const { carreraResuelta, facultadResuelta, ...nuevoPlan } = resp;
+      setPlanes((prev) => [...prev, nuevoPlan]);
+      setPlanForm({ nombre: '', resolucion: '', anioVigencia: '' });
+      setShowAddPlanForm(false);
+      setExpandedPlanId(nuevoPlan.id);
+      toast.success(
+        facultadResuelta || carreraResuelta ? 'Estructura actualizada y plan creado' : 'Plan creado'
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'No se pudo crear el plan');
+    }
+  };
+
+  const handleCreateMateria = async () => {
+    if (!addMateriaForPlanId) return;
+    const sem = semestrePorPlan[addMateriaForPlanId];
+    if (sem === undefined) {
+      toast.error('Seleccioná un semestre antes de agregar una materia.');
+      return;
+    }
+    try {
+      const nueva = await apiFetch<Materia>('/academico/materias', {
+        method: 'POST',
+        body: JSON.stringify({
+          planId: addMateriaForPlanId,
+          nombre: materiaForm.nombre,
+          codigo: materiaForm.codigo,
+          semestre: sem,
+        }),
+      });
+      setMaterias((prev) => [...prev, nueva]);
+      setMateriaForm({ nombre: '', codigo: '' });
+      setAddMateriaForPlanId(null);
+      toast.success('Materia creada');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'No se pudo crear la materia');
+    }
+  };
+
+  const handleEditPlan = (plan: Plan) => {
+    setPendingEdit({
+      title: 'Editar plan de estudio',
+      fields: [
+        { key: 'nombre', label: 'Nombre', defaultValue: plan.nombre, required: true },
+        { key: 'resolucion', label: 'Resolución (opcional)', defaultValue: plan.resolucion ?? '' },
+        { key: 'anioVigencia', label: 'Año de vigencia (opcional)', defaultValue: plan.anio_vigencia ? String(plan.anio_vigencia) : '', type: 'number' },
+      ],
+      onSave: async (values) => {
+        const anioVigencia = values.anioVigencia.trim() ? Number(values.anioVigencia) : null;
+        if (values.anioVigencia.trim() && Number.isNaN(anioVigencia)) {
+          toast.error('Año de vigencia inválido');
+          return;
+        }
+        setDialogLoading(true);
+        try {
+          const actualizado = await apiFetch<Plan>(`/academico/planes/${plan.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ nombre: values.nombre, resolucion: values.resolucion.trim() || null, anioVigencia }),
+          });
+          setPlanes((prev) => prev.map((p) => (p.id === plan.id ? actualizado : p)));
+          toast.success('Plan actualizado');
+          setPendingEdit(null);
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : 'No se pudo actualizar el plan');
+        } finally {
+          setDialogLoading(false);
+        }
+      },
+    });
+  };
+
+  const handleDeletePlan = (plan: Plan) => {
+    setPendingDelete({
+      title: 'Eliminar plan',
+      description: `¿Eliminar el plan "${plan.nombre}"? Esta acción no se puede deshacer.`,
+      onConfirm: async () => {
+        setDialogLoading(true);
+        try {
+          await apiFetch(`/academico/planes/${plan.id}`, { method: 'DELETE' });
+          setPlanes((prev) => prev.filter((p) => p.id !== plan.id));
+          setSemestrePorPlan((prev) => {
+            const { [plan.id]: _removed, ...rest } = prev;
+            return rest;
+          });
+          // Limpiar materias del plan eliminado del estado y del formulario
+          setMaterias((prev) => {
+            const restantes = prev.filter((m) => m.plan_id !== plan.id);
+            const selectedStillValid = restantes.some((m) => String(m.id) === moduloForm.materiaId);
+            if (!selectedStillValid) setModuloForm((f) => ({ ...f, materiaId: '' }));
+            return restantes;
+          });
+          toast.success('Plan eliminado');
+          setPendingDelete(null);
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : 'No se pudo eliminar el plan');
+        } finally {
+          setDialogLoading(false);
+        }
+      },
+    });
+  };
+
+  const handleEditMateria = (materia: Materia) => {
+    setPendingEdit({
+      title: 'Editar materia',
+      fields: [
+        { key: 'nombre', label: 'Nombre', defaultValue: materia.nombre, required: true },
+        { key: 'codigo', label: 'Código', defaultValue: materia.codigo, required: true },
+        {
+          key: 'semestre',
+          label: 'Semestre (1–10)',
+          defaultValue: String(materia.semestre ?? 1),
+          type: 'number',
+          required: true,
+        },
+      ],
+      onSave: async (values) => {
+        const semRaw = Number(values.semestre);
+        if (!Number.isFinite(semRaw) || semRaw < 1 || semRaw > MAX_SEMESTRE_PLAN) {
+          toast.error(`El semestre debe ser un número entre 1 y ${MAX_SEMESTRE_PLAN}`);
+          return;
+        }
+        setDialogLoading(true);
+        try {
+          const actualizada = await apiFetch<Materia>(`/academico/materias/${materia.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+              nombre: values.nombre,
+              codigo: values.codigo,
+              semestre: semRaw,
+            }),
+          });
+          setMaterias((prev) => prev.map((m) => (m.id === materia.id ? actualizada : m)));
+          toast.success('Materia actualizada');
+          setPendingEdit(null);
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : 'No se pudo actualizar la materia');
+        } finally {
+          setDialogLoading(false);
+        }
+      },
+    });
+  };
+
+  const handleDeleteMateria = (materia: Materia) => {
+    setPendingDelete({
+      title: 'Eliminar materia',
+      description: `¿Eliminar la materia "${materia.nombre}"? Esta acción no se puede deshacer.`,
+      onConfirm: async () => {
+        setDialogLoading(true);
+        try {
+          await apiFetch(`/academico/materias/${materia.id}`, { method: 'DELETE' });
+          setMaterias((prev) => prev.filter((m) => m.id !== materia.id));
+          if (String(materia.id) === moduloForm.materiaId) setModuloForm((f) => ({ ...f, materiaId: '' }));
+          toast.success('Materia eliminada');
+          setPendingDelete(null);
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : 'No se pudo eliminar la materia');
+        } finally {
+          setDialogLoading(false);
+        }
+      },
+    });
+  };
+
+  const toDateInputValue = (iso: string | null | undefined) => (iso ? String(iso).slice(0, 10) : '');
+
+  const handleEditModulo = (mod: Modulo) => {
+    const materiaOptions = [...materiasDeCarrera]
+      .sort(compareMateriasCurriculares)
+      .map((m) => ({ value: String(m.id), label: `${m.codigo} · ${m.nombre}` }));
+    const mesOptions = MESES.map((nombre, i) => ({ value: String(i + 1), label: nombre }));
+    if (materiaOptions.length === 0) {
+      toast.error('No hay materias cargadas para esta carrera.');
+      return;
+    }
+
+    setPendingEdit({
+      title: 'Editar módulo',
+      fields: [
+        { key: 'materiaId', label: 'Materia', required: true, defaultValue: String(mod.materia_id), options: materiaOptions },
+        { key: 'anio', label: 'Año', type: 'number', required: true, defaultValue: String(mod.anio) },
+        { key: 'mes', label: 'Mes', required: true, defaultValue: String(mod.mes), options: mesOptions },
+        { key: 'fechaInicio', label: 'Fecha inicio', type: 'date', required: true, defaultValue: toDateInputValue(mod.fecha_inicio) },
+        { key: 'fechaFin', label: 'Fecha fin', type: 'date', required: true, defaultValue: toDateInputValue(mod.fecha_fin) },
+      ],
+      onSave: async (values) => {
+        const anioNum = Number(values.anio);
+        const mesNum = Number(values.mes);
+        const { min, max } = limitesAnioModulo();
+        if (!Number.isInteger(anioNum) || anioNum < min || anioNum > max) {
+          toast.error(`El año debe ser un número entre ${min} y ${max}.`);
+          return;
+        }
+        if (!Number.isFinite(mesNum) || mesNum < 1 || mesNum > 12) {
+          toast.error('El mes no es válido.');
+          return;
+        }
+        if (!values.fechaInicio?.trim() || !values.fechaFin?.trim()) {
+          toast.error('Completá las fechas de inicio y fin.');
+          return;
+        }
+        const errFechasEdit = mensajeErrorFechasModuloEnMes(
+          anioNum,
+          mesNum,
+          values.fechaInicio.trim(),
+          values.fechaFin.trim()
+        );
+        if (errFechasEdit) {
+          toast.error(errFechasEdit);
+          return;
+        }
+        setDialogLoading(true);
+        try {
+          await apiFetch(`/academico/modulos/${mod.id}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+              materiaId: Number(values.materiaId),
+              anio: anioNum,
+              mes: mesNum,
+              fechaInicio: values.fechaInicio.trim(),
+              fechaFin: values.fechaFin.trim(),
+            }),
+          });
+          const [modResp, cursoResp] = await Promise.all([
+            apiFetch<ApiList<Modulo>>('/academico/modulos'),
+            apiFetch<ApiList<Curso>>('/academico/cursos'),
+          ]);
+          setModulos(modResp?.datos ?? []);
+          setCursos(cursoResp?.datos ?? []);
+          toast.success('Módulo actualizado');
+          setPendingEdit(null);
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : 'No se pudo actualizar el módulo');
+        } finally {
+          setDialogLoading(false);
+        }
+      },
+    });
+  };
+
+  const handleEditCurso = (curso: Curso) => {
+    const moduloOptions = sortedModulos.map((m) => ({
+      value: String(m.id),
+      label: `${m.materia ?? `Módulo ${m.id}`} · ${MESES[(m.mes ?? 1) - 1]} ${m.anio}`,
+    }));
+    if (moduloOptions.length === 0) {
+      toast.error('No hay módulos disponibles para este curso.');
+      return;
+    }
+    const docenteOptions = docentesOrdenados.map((d) => ({
+      value: d.id,
+      label: formatDocenteLabel(d),
+    }));
+    if (!docenteOptions.some((o) => o.value === curso.docente_id)) {
+      docenteOptions.unshift({
+        value: curso.docente_id,
+        label: curso.docente ?? String(curso.docente_id),
+      });
+    }
+
+    setPendingEdit({
+      title: 'Editar curso',
+      fields: [
+        { key: 'moduloId', label: 'Módulo académico', required: true, defaultValue: String(curso.modulo_id), options: moduloOptions },
+        { key: 'docenteId', label: 'Docente', required: true, defaultValue: curso.docente_id, options: docenteOptions },
+        { key: 'aula', label: 'Aula (opcional)', defaultValue: curso.aula ?? '' },
+        { key: 'horarioInicio', label: 'Horario inicio (opcional)', defaultValue: curso.horario_inicio ? String(curso.horario_inicio).slice(0, 5) : '' },
+        { key: 'horarioFin', label: 'Horario fin (opcional)', defaultValue: curso.horario_fin ? String(curso.horario_fin).slice(0, 5) : '' },
+        { key: 'notas', label: 'Notas (opcional)', defaultValue: curso.notas ?? '' },
+      ],
+      onSave: async (values) => {
+        const horarioIni = values.horarioInicio.trim();
+        const horarioFin = values.horarioFin.trim();
+        if (horarioIni && !/^\d{1,2}:\d{2}$/.test(horarioIni)) {
+          toast.error('Horario inicio: usá formato HH:MM (ej. 08:30).');
+          return;
+        }
+        if (horarioFin && !/^\d{1,2}:\d{2}$/.test(horarioFin)) {
+          toast.error('Horario fin: usá formato HH:MM (ej. 10:00).');
+          return;
+        }
+        setDialogLoading(true);
+        try {
+          await apiFetch(`/academico/cursos/${curso.id}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+              moduloId: Number(values.moduloId),
+              docenteId: values.docenteId,
+              aula: values.aula.trim() || null,
+              horarioInicio: horarioIni || null,
+              horarioFin: horarioFin || null,
+              notas: values.notas.trim() || null,
+            }),
+          });
+          const [modResp, cursoResp] = await Promise.all([
+            apiFetch<ApiList<Modulo>>('/academico/modulos'),
+            apiFetch<ApiList<Curso>>('/academico/cursos'),
+          ]);
+          setModulos(modResp?.datos ?? []);
+          setCursos(cursoResp?.datos ?? []);
+          toast.success('Curso actualizado');
+          setPendingEdit(null);
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : 'No se pudo actualizar el curso');
+        } finally {
+          setDialogLoading(false);
+        }
+      },
+    });
+  };
+
+  const handleDeleteModulo = (mod: Modulo) => {
+    setPendingDelete({
+      title: 'Eliminar módulo',
+      description: `¿Eliminar el módulo "${mod.materia ?? `Módulo ${mod.id}`} · ${MESES[(mod.mes ?? 1) - 1]} ${mod.anio}"? Se eliminarán también sus cursos y sesiones asociadas.`,
+      onConfirm: async () => {
+        setDialogLoading(true);
+        try {
+          await apiFetch(`/academico/modulos/${mod.id}`, { method: 'DELETE' });
+          setModulos((prev) => prev.filter((m) => m.id !== mod.id));
+          toast.success('Módulo eliminado');
+          setPendingDelete(null);
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : 'No se pudo eliminar el módulo');
+        } finally {
+          setDialogLoading(false);
+        }
+      },
+    });
+  };
+
+  const handleDeleteCurso = (curso: Curso) => {
+    const label = `${curso.materia ?? `Módulo ${curso.modulo_id}`} · ${curso.docente ?? curso.docente_id}`;
+    setPendingDelete({
+      title: 'Eliminar curso',
+      description: `¿Eliminar el curso "${label}"? Se eliminarán también sus matrículas y sesiones asociadas.`,
+      onConfirm: async () => {
+        setDialogLoading(true);
+        try {
+          await apiFetch(`/academico/cursos/${curso.id}`, { method: 'DELETE' });
+          setCursos((prev) => prev.filter((c) => c.id !== curso.id));
+          if (selectedCursoId === curso.id) {
+            setSelectedCursoId(null);
+            setAlumnoSearch('');
+            setAlumnoSearchOpen(false);
+            setCopiarDesdeCursoId('');
+          }
+          setPlanillaMap((prev) => {
+            const next = new Map(prev);
+            next.delete(curso.id);
+            return next;
+          });
+          toast.success('Curso eliminado');
+          setPendingDelete(null);
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : 'No se pudo eliminar el curso');
+        } finally {
+          setDialogLoading(false);
+        }
+      },
+    });
+  };
+
+  const rangoAnioModulo = limitesAnioModulo();
+
+  return (
+    <div className="system-bg text-slate-800 dark:text-[#e7eef9] min-h-screen h-screen overflow-hidden">
+      <div className="flex h-full w-full overflow-hidden">
+        {sidebarOpen ? (
+          <div className="fixed inset-0 bg-black/70 z-20 lg:hidden" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
+        ) : null}
+
+        <AppSidebar sidebarOpen={sidebarOpen} onLogout={onLogout} onClose={() => setSidebarOpen(false)} />
+
+        <main className="flex-1 flex flex-col h-full overflow-hidden">
+          <header className="flex-shrink-0 flex flex-col gap-2 py-2.5 px-6 bg-white/95 backdrop-blur-md border-b border-slate-200 z-10 dark:bg-[#132a52]/90 dark:border-slate-800">
+            <div className="flex items-center justify-between gap-3 min-h-10">
+              <div className="flex items-center gap-3">
+                <button
+                  className="lg:hidden text-slate-600 hover:text-black dark:text-slate-400 dark:hover:text-slate-200"
+                  onClick={() => setSidebarOpen(true)}
+                  aria-label="Abrir menú"
+                >
+                  <span className="material-symbols-outlined">menu</span>
+                </button>
+                <span className="material-symbols-outlined text-[#6b8bc3]">auto_stories</span>
+                <div>
+                  <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Administración</p>
+                  <h1 className="text-xl font-semibold text-black dark:text-[#e7eef9]">Períodos y Cursos</h1>
+                </div>
+              </div>
+              {loading ? (
+                <div className="flex items-center gap-2 text-sm text-slate-600 shrink-0 dark:text-slate-400">
+                  <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                  Cargando...
+                </div>
+              ) : null}
+            </div>
+            <AcademicoSubnav />
+          </header>
+
+          <section className="flex-1 overflow-auto p-6 space-y-6">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-4 text-black shadow-sm dark:border-slate-800 dark:bg-[#132a52] dark:text-[#e7eef9] dark:shadow-none">
+              <div>
+                <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Módulo base</p>
+                <h2 className="text-lg font-semibold">Planes y períodos académicos</h2>
+              </div>
+
+              {!contextoSelectorListo ? (
+                <ScopeSelectorSkeleton soloCarrera={alcanceListo && alcanceVisualAcademico === 'carrera'} />
+              ) : (
+                <div className={`grid grid-cols-1 gap-4 ${alcanceVisualAcademico === 'carrera' ? '' : 'xl:grid-cols-2'}`}>
+                  {alcanceVisualAcademico === 'carrera' ? null : (
+                    <ScopeSelector
+                      label="Facultad"
+                      options={facultadesDisponibles}
+                      value={facultadSeleccionadaId}
+                      placeholder="Seleccioná facultad"
+                      controlClassName={inpScope}
+                      onChange={(id) => {
+                        setFacultadSeleccionadaId(id);
+                        setCarreraSeleccionadaId('');
+                      }}
+                    />
+                  )}
+
+                  <ScopeSelector
+                    label="Carrera"
+                    options={carrerasOpcionesSelector}
+                    value={carreraSeleccionadaId}
+                    placeholder="Seleccioná carrera"
+                    emptyOptionsHint={
+                      alcanceVisualAcademico !== 'carrera' && !facultadSeleccionadaId
+                        ? 'Seleccioná facultad primero'
+                        : 'Sin carreras disponibles'
+                    }
+                    disabled={alcanceVisualAcademico === 'carrera' ? false : !facultadSeleccionadaId}
+                    controlClassName={inpScope}
+                    onChange={(id) => {
+                      setCarreraSeleccionadaId(id);
+                      if (id) {
+                        const c = carrerasFiltradas.find((x) => String(x.id) === id);
+                        if (c?.facultad_id) setFacultadSeleccionadaId(String(c.facultad_id));
+                      }
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* ── Planes de estudio – acordeón por carrera ── */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-sm">
+                    Planes de estudio
+                    {carreraSeleccionada ? (
+                      <span className="ml-2 text-xs font-normal text-slate-600 dark:text-slate-400">· {carreraSeleccionada.nombre}</span>
+                    ) : null}
+                  </h3>
+                  {carreraSeleccionada && (
+                    <span className="text-xs text-slate-600 dark:text-slate-400">{planesDeCarrera.length} plan(es)</span>
+                  )}
+                </div>
+
+                {!contextoSelectorListo ? (
+                  <div className="rounded-lg border border-dashed border-slate-200 p-6 space-y-3 dark:border-slate-700">
+                    <Skeleton className="h-4 w-40 rounded bg-slate-200 dark:bg-white/10" />
+                    <Skeleton className="h-16 w-full rounded-lg bg-slate-200 dark:bg-white/10" />
+                    <Skeleton className="h-10 w-full rounded-lg bg-slate-200 dark:bg-white/10" />
+                  </div>
+                ) : carreraSeleccionada ? (
+                  <div className="space-y-2">
+                    {planesDeCarrera.length === 0 && !showAddPlanForm && (
+                      <p className="text-sm text-slate-600 text-center py-3 dark:text-slate-400">
+                        No hay planes para esta carrera. Creá el primero.
+                      </p>
+                    )}
+
+                    {planesDeCarrera.map((plan) => {
+                      const isOpen = expandedPlanId === plan.id;
+                      const planMaterias = materiasPorPlan.get(plan.id) ?? [];
+                      const semElegido = semestrePorPlan[plan.id] !== undefined;
+                      const semActivo = semestrePorPlan[plan.id] ?? 1;
+                      const materiasDelSemestre = semElegido
+                        ? planMaterias
+                            .filter((m) => (m.semestre ?? 1) === semActivo)
+                            .sort(compareMateriasCurriculares)
+                        : [];
+                      return (
+                        <div key={plan.id} className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden dark:border-slate-700 dark:bg-slate-900/50 dark:shadow-none">
+                          {/* Plan header */}
+                          <button
+                            type="button"
+                            className="w-full flex items-center justify-between p-3 text-left hover:bg-slate-100 dark:hover:bg-slate-800/50"
+                            onClick={() => {
+                              if (isOpen) {
+                                setExpandedPlanId(null);
+                              } else {
+                                setExpandedPlanId(plan.id);
+                              }
+                            }}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="material-symbols-outlined text-slate-400 text-base leading-none">
+                                {isOpen ? 'expand_less' : 'expand_more'}
+                              </span>
+                              <div>
+                                <p className="font-medium text-sm">{plan.nombre}</p>
+                                <p className="text-xs text-slate-400">
+                                  {plan.anio_vigencia ? `Vigente desde ${plan.anio_vigencia}` : 'Sin año de vigencia'}
+                                  {plan.resolucion ? ` · Res. ${plan.resolucion}` : ''}
+                                  {' · '}{planMaterias.length} materia{planMaterias.length !== 1 ? 's' : ''}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                              <button className="btn-modern btn-modern-xs btn-modern-edit" onClick={() => handleEditPlan(plan)}>Editar</button>
+                              <button className="btn-modern btn-modern-xs btn-modern-danger" onClick={() => handleDeletePlan(plan)}>Eliminar</button>
+                            </div>
+                          </button>
+
+                          {/* Plan content (expandable) */}
+                          {isOpen && (
+                            <div className="border-t border-slate-200 bg-gradient-to-b from-slate-50 to-white p-4 space-y-4 dark:border-slate-700/80 dark:from-slate-900/40 dark:to-slate-950/30">
+                              <div className="w-full sm:max-w-md">
+                                  <AppSelect
+                                    aria-label="Semestre del plan"
+                                    value={semElegido ? String(semActivo) : ''}
+                                    onChange={(v) => {
+                                      if (v === '') return;
+                                      setSemestrePorPlan((p) => ({ ...p, [plan.id]: Number(v) }));
+                                    }}
+                                    placeholder="Seleccionar semestre"
+                                    options={Array.from({ length: MAX_SEMESTRE_PLAN }, (_, i) => {
+                                      const n = i + 1;
+                                      const count = planMaterias.filter((m) => (m.semestre ?? 1) === n).length;
+                                      return {
+                                        value: String(n),
+                                        label: `${formatearSemestre(n)}${count ? ` · ${count} materia${count === 1 ? '' : 's'}` : ''}`,
+                                      };
+                                    })}
+                                    triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                                  />
+                              </div>
+
+                              {!semElegido && (
+                                <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 text-center text-xs text-slate-700 dark:border-slate-600/60 dark:bg-slate-900/30 dark:text-slate-400">
+                                  Elegí un semestre para ver las materias y poder agregar nuevas.
+                                </p>
+                              )}
+                              {semElegido && planMaterias.length === 0 && (
+                                <p className="text-xs text-slate-600 py-1 text-center dark:text-slate-400">
+                                  No hay materias en este plan. Agregá la primera con el botón de abajo.
+                                </p>
+                              )}
+                              {semElegido && planMaterias.length > 0 && materiasDelSemestre.length === 0 && (
+                                <p className="text-xs text-slate-600 py-1 text-center dark:text-slate-400">
+                                  No hay materias en {formatearSemestre(semActivo)}. Podés agregar una con el botón de abajo o elegir otro semestre.
+                                </p>
+                              )}
+                              <div className="divide-y divide-slate-200 rounded-lg border border-slate-200 overflow-hidden bg-white dark:divide-slate-800/90 dark:border-slate-800/80 dark:bg-[#0a1628]/50">
+                                {materiasDelSemestre.map((m, idx) => (
+                                  <div key={m.id} className="py-2 flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-3">
+                                      <span className="text-xs text-slate-500 w-5 text-right shrink-0">{idx + 1}.</span>
+                                      <div>
+                                        <p className="text-sm font-medium">{m.nombre}</p>
+                                        <p className="text-xs text-slate-600 dark:text-slate-400">{m.codigo}</p>
+                                      </div>
+                                    </div>
+                                    <div className="flex gap-1 shrink-0">
+                                      <button className="btn-modern btn-modern-xs btn-modern-edit" onClick={() => handleEditMateria(m)}>Editar</button>
+                                      <button className="btn-modern btn-modern-xs btn-modern-danger" onClick={() => handleDeleteMateria(m)}>Eliminar</button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+
+                              {addMateriaForPlanId === plan.id && semElegido ? (
+                                <div className="pt-2 space-y-2 border-t border-slate-200 dark:border-slate-700/80">
+                                  <p className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                                    Nueva materia en {formatearSemestre(semActivo)}
+                                  </p>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <input
+                                      className="px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                                      placeholder="Nombre de la materia"
+                                      value={materiaForm.nombre}
+                                      onChange={(e) => setMateriaForm((f) => ({ ...f, nombre: e.target.value }))}
+                                      autoFocus
+                                    />
+                                    <input
+                                      className="px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                                      placeholder="Código (ej: INF-001)"
+                                      value={materiaForm.codigo}
+                                      onChange={(e) => setMateriaForm((f) => ({ ...f, codigo: e.target.value }))}
+                                    />
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <button className="btn-modern btn-modern-primary btn-modern-sm" onClick={() => void handleCreateMateria()}>Guardar materia</button>
+                                    <button className="btn-modern btn-modern-sm btn-modern-ghost" onClick={() => { setAddMateriaForPlanId(null); setMateriaForm({ nombre: '', codigo: '' }); }}>Cancelar</button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex gap-2 pt-1 border-t border-slate-200 dark:border-slate-700/80">
+                                  <button
+                                    type="button"
+                                    className="btn-modern btn-modern-primary btn-modern-sm disabled:pointer-events-none disabled:!bg-slate-200 disabled:!text-slate-500 disabled:!border-slate-300 disabled:!shadow-none disabled:!opacity-100 dark:disabled:!bg-[#4f8cdb] dark:disabled:!text-white dark:disabled:!border-[#3d7bc9] dark:disabled:!shadow-[0_4px_12px_rgba(79,140,219,0.28)] dark:disabled:!opacity-40"
+                                    disabled={!semElegido}
+                                    title={!semElegido ? 'Primero seleccioná un semestre' : undefined}
+                                    onClick={() => {
+                                      if (!semElegido) return;
+                                      setAddMateriaForPlanId(plan.id);
+                                      setMateriaForm({ nombre: '', codigo: '' });
+                                    }}
+                                  >
+                                    <span className="material-symbols-outlined text-base leading-none">add</span>
+                                    Agregar materia
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* Nuevo plan inline */}
+                    {showAddPlanForm ? (
+                      <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 space-y-3">
+                        <p className="text-sm font-semibold text-primary">Nuevo plan · {carreraSeleccionada.nombre}</p>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                          <input
+                            className="px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                            placeholder="Nombre del plan"
+                            value={planForm.nombre}
+                            onChange={(e) => setPlanForm((f) => ({ ...f, nombre: e.target.value }))}
+                            autoFocus
+                          />
+                          <input
+                            className="px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                            placeholder="Resolución (opcional)"
+                            value={planForm.resolucion}
+                            onChange={(e) => setPlanForm((f) => ({ ...f, resolucion: e.target.value }))}
+                          />
+                          <input
+                            className="px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                            placeholder="Año vigencia"
+                            type="number"
+                            value={planForm.anioVigencia}
+                            onChange={(e) => setPlanForm((f) => ({ ...f, anioVigencia: e.target.value }))}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <button className="btn-modern btn-modern-primary btn-modern-sm" onClick={() => void handleCreatePlan()}>Crear plan</button>
+                          <button className="btn-modern btn-modern-sm btn-modern-ghost" onClick={() => { setShowAddPlanForm(false); setPlanForm({ nombre: '', resolucion: '', anioVigencia: '' }); }}>Cancelar</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="w-full rounded-lg border border-dashed border-slate-400 py-2 text-sm text-slate-600 hover:border-primary hover:text-primary flex items-center justify-center gap-2 dark:border-slate-600 dark:text-slate-400"
+                        onClick={() => setShowAddPlanForm(true)}
+                      >
+                        <span className="material-symbols-outlined text-base leading-none">add</span>
+                        Nuevo plan de estudio
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-600 text-center py-4 border border-dashed border-slate-300 rounded-lg dark:text-slate-400 dark:border-slate-600">
+                    Selecciona una carrera arriba para ver y gestionar sus planes de estudio.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-4 text-black shadow-sm dark:border-slate-800 dark:bg-[#132a52] dark:text-[#e7eef9] dark:shadow-none">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Nuevo módulo</p>
+                    <h2 className="text-lg font-semibold">Abrir período académico</h2>
+                  </div>
+                  <span className="material-symbols-outlined text-primary">library_add</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="flex flex-col gap-1 text-sm col-span-2">
+                    <span className="text-slate-600 text-xs dark:text-slate-400">Semestre del plan</span>
+                    <AppSelect
+                      aria-label="Semestre para filtrar materias"
+                      value={moduloFiltroSemestre}
+                      disabled={!contextoAcademicoListo}
+                      onChange={(v) => {
+                        setModuloFiltroSemestre(v);
+                        setModuloForm((f) => ({ ...f, materiaId: '' }));
+                      }}
+                      placeholder="Seleccionar semestre"
+                      options={Array.from({ length: MAX_SEMESTRE_PLAN }, (_, i) => {
+                        const n = i + 1;
+                        return { value: String(n), label: formatearSemestre(n) };
+                      })}
+                      triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm col-span-2">
+                    <span className="text-slate-600 text-xs dark:text-slate-400">Materia</span>
+                    <AppSelect
+                      aria-label="Materia del módulo"
+                      value={moduloForm.materiaId}
+                      disabled={
+                        !contextoAcademicoListo ||
+                        !moduloFiltroSemestre ||
+                        (Boolean(moduloFiltroSemestre) && materiasParaModuloPeriodo.length === 0)
+                      }
+                      title={
+                        contextoAcademicoListo && !moduloFiltroSemestre
+                          ? 'Primero elegí un semestre'
+                          : moduloFiltroSemestre && materiasParaModuloPeriodo.length === 0
+                            ? `No hay materias en ${formatearSemestre(Number(moduloFiltroSemestre))}`
+                            : undefined
+                      }
+                      onChange={(v) => setModuloForm((f) => ({ ...f, materiaId: v }))}
+                      placeholder={moduloFiltroSemestre ? 'Selecciona una materia' : 'Elige un semestre'}
+                      emptyOptionsText={
+                        moduloFiltroSemestre && materiasParaModuloPeriodo.length === 0 ? 'Sin opciones' : undefined
+                      }
+                      options={materiasParaModuloPeriodo.map((m) => ({
+                        value: String(m.id),
+                        label: `${m.nombre} · ${m.codigo}`,
+                      }))}
+                      triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                    />
+                    {moduloFiltroSemestre && materiasParaModuloPeriodo.length === 0 ? (
+                      <p className="text-xs text-slate-600 dark:text-slate-400">
+                        No hay materias en {formatearSemestre(Number(moduloFiltroSemestre))}
+                        {carreraSeleccionadaId ? ' para esta carrera' : ''}. Agregalas en planes de estudio o probá otro semestre.
+                      </p>
+                    ) : null}
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm">
+                    <span className="text-slate-600 text-xs dark:text-slate-400">Año</span>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={rangoAnioModulo.min}
+                      max={rangoAnioModulo.max}
+                      step={1}
+                      className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                      value={moduloForm.anio}
+                      disabled={!contextoAcademicoListo}
+                      onChange={(e) => {
+                        const newAnio = e.target.value;
+                        setModuloForm((f) => ({ ...f, anio: newAnio, fechaInicio: '', fechaFin: '' }));
+                      }}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm">
+                    <span className="text-slate-600 text-xs dark:text-slate-400">Mes</span>
+                    <AppSelect
+                      aria-label="Mes del módulo"
+                      value={moduloForm.mes}
+                      disabled={!contextoAcademicoListo}
+                      onChange={(v) => {
+                        setModuloForm((f) => ({ ...f, mes: v, fechaInicio: '', fechaFin: '' }));
+                      }}
+                      placeholder="Mes"
+                      options={MESES.map((nombre, i) => ({
+                        value: String(i + 1),
+                        label: nombre,
+                      }))}
+                      triggerClassName="px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm">
+                    <span className="text-slate-600 text-xs dark:text-slate-400">Fecha inicio</span>
+                    <input
+                      type="date"
+                      lang="es"
+                      className="px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                      value={moduloForm.fechaInicio}
+                      disabled={!contextoAcademicoListo || !rangoFechasModuloForm}
+                      min={rangoFechasModuloForm?.min}
+                      max={rangoFechasModuloForm?.max}
+                      onChange={(e) =>
+                        setModuloForm((f) => ({
+                          ...f,
+                          fechaInicio: e.target.value,
+                          fechaFin: f.fechaFin && e.target.value && f.fechaFin < e.target.value ? '' : f.fechaFin,
+                        }))
+                      }
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm">
+                    <span className="text-slate-600 text-xs dark:text-slate-400">Fecha fin</span>
+                    <input
+                      type="date"
+                      lang="es"
+                      className="px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                      value={moduloForm.fechaFin}
+                      disabled={!contextoAcademicoListo || !rangoFechasModuloForm}
+                      min={
+                        moduloForm.fechaInicio && rangoFechasModuloForm && moduloForm.fechaInicio >= rangoFechasModuloForm.min
+                          ? moduloForm.fechaInicio
+                          : rangoFechasModuloForm?.min
+                      }
+                      max={rangoFechasModuloForm?.max}
+                      onChange={(e) => setModuloForm((f) => ({ ...f, fechaFin: e.target.value }))}
+                    />
+                  </label>
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleCreateModulo}
+                    className="btn-modern btn-modern-primary"
+                    disabled={loading || !contextoAcademicoListo || !moduloFiltroSemestre || !moduloForm.materiaId}
+                  >
+                    Crear módulo
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3 text-black shadow-sm dark:border-slate-800 dark:bg-[#132a52] dark:text-[#e7eef9] dark:shadow-none">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <h3 className="text-lg font-semibold">Módulos</h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">
+                      {modulosListaVisibles.length === sortedModulos.length
+                        ? `${sortedModulos.length} registro${sortedModulos.length !== 1 ? 's' : ''}`
+                        : `${modulosListaVisibles.length} de ${sortedModulos.length} registro${sortedModulos.length !== 1 ? 's' : ''}`}
+                    </p>
+                  </div>
+                  <span className="material-symbols-outlined text-slate-500 text-[22px] shrink-0">calendar_month</span>
+                </div>
+                {carreraSeleccionadaId ? (
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <div className="relative flex-1 min-w-[8.5rem]">
+                      <span className="material-symbols-outlined pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-[16px]">
+                        search
+                      </span>
+                      <input
+                        type="search"
+                        aria-label="Buscar en módulos"
+                        className={inpListaFiltro}
+                        placeholder="Buscar materia o período…"
+                        value={moduloListaBusqueda}
+                        onChange={(e) => setModuloListaBusqueda(e.target.value)}
+                      />
+                    </div>
+                    <AppSelect
+                      aria-label="Filtrar módulos por año"
+                      className="w-[7.25rem] shrink-0"
+                      size="xs"
+                      value={moduloListaAnio}
+                      onChange={setModuloListaAnio}
+                      allowEmpty
+                      emptyLabel="Todos"
+                      options={aniosDisponiblesModulos.map((anio) => ({
+                        value: String(anio),
+                        label: String(anio),
+                      }))}
+                      triggerClassName="px-2 py-1.5 rounded-md bg-white border border-slate-300 text-xs text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                    />
+                  </div>
+                ) : null}
+                {/* Altura ≈ 3 filas de tarjeta; a partir de la 4ª aparece scroll vertical */}
+                <div className="max-h-[270px] overflow-y-auto overflow-x-hidden space-y-2 pr-0.5">
+                  {!carreraSeleccionadaId ? (
+                    <p className="text-sm text-slate-500 py-6 text-center">Selecciona una carrera para ver los módulos.</p>
+                  ) : sortedModulos.length === 0 ? (
+                    <p className="text-sm text-slate-600 py-6 text-center dark:text-slate-400">Sin módulos para esta carrera.</p>
+                  ) : modulosListaVisibles.length === 0 ? (
+                    <p className="text-sm text-slate-600 py-6 text-center dark:text-slate-400">
+                      Ningún módulo coincide con la búsqueda o el año seleccionado.
+                    </p>
+                  ) : modulosListaVisibles.map((mod) => {
+                    const fechaInicio = mod.fecha_inicio ? new Date(mod.fecha_inicio).toLocaleDateString('es-PY', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+                    const fechaFin    = mod.fecha_fin    ? new Date(mod.fecha_fin).toLocaleDateString('es-PY', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+                    const periodo = `${MESES[(mod.mes ?? 1) - 1]} ${mod.anio}`;
+                    return (
+                      <div key={mod.id} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 flex items-center justify-between gap-3 hover:bg-slate-100 dark:border-slate-700/70 dark:bg-slate-900/40 dark:hover:bg-slate-800/40">
+                        <div className="flex items-start gap-2.5 min-w-0">
+                          <span className="material-symbols-outlined text-primary/70 text-[20px] mt-0.5 shrink-0">book</span>
+                          <div className="min-w-0 space-y-0.5">
+                            <p className="font-semibold text-sm truncate">{mod.materia ?? 'Materia'}</p>
+                            <p className="text-xs text-slate-600 flex items-center gap-1 dark:text-slate-400">
+                              <span className="material-symbols-outlined text-[13px]">calendar_today</span>
+                              {periodo}
+                            </p>
+                            <p className="text-[11px] text-slate-600 dark:text-slate-500">{fechaInicio} → {fechaFin}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                          <button
+                            type="button"
+                            className="btn-modern btn-modern-xs btn-modern-edit"
+                            onClick={() => handleEditModulo(mod)}
+                          >
+                            Editar
+                          </button>
+                          <button type="button" className="btn-modern btn-modern-xs btn-modern-danger" onClick={() => handleDeleteModulo(mod)}>
+                            Eliminar
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-4 text-black shadow-sm dark:border-slate-800 dark:bg-[#132a52] dark:text-[#e7eef9] dark:shadow-none">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Nuevo curso</p>
+                    <h2 className="text-lg font-semibold">Abrir curso</h2>
+                  </div>
+                  <span className="material-symbols-outlined text-primary">add_circle</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <label className="flex flex-col gap-1 text-sm">
+                    <span className="text-slate-600 text-xs dark:text-slate-400">Semestre</span>
+                    <AppSelect
+                      aria-label="Semestre del curso"
+                      value={cursoFiltroSemestre}
+                      disabled={!contextoAcademicoListo || !carreraSeleccionadaId}
+                      onChange={(v) => {
+                        setCursoFiltroSemestre(v);
+                        setCursoForm((f) => ({ ...f, moduloId: '' }));
+                      }}
+                      placeholder={carreraSeleccionadaId ? 'Selecciona un semestre' : 'Elige una carrera primero'}
+                      options={semestresCursoDisponibles.map((s) => ({
+                        value: String(s),
+                        label: s > 0 ? formatearSemestre(s) : 'Sin semestre asignado',
+                      }))}
+                      triggerClassName="px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm">
+                    <span className="text-slate-600 text-xs dark:text-slate-400">Módulo (materia + mes)</span>
+                    <AppSelect
+                      aria-label="Módulo del curso"
+                      value={cursoForm.moduloId}
+                      disabled={
+                        !contextoAcademicoListo ||
+                        !cursoFiltroSemestre ||
+                        (Boolean(cursoFiltroSemestre) && sortedModulosCurso.length === 0)
+                      }
+                      onChange={(v) => setCursoForm((f) => ({ ...f, moduloId: v }))}
+                      placeholder={cursoFiltroSemestre ? 'Selecciona un módulo' : 'Elige un semestre primero'}
+                      emptyOptionsText={
+                        cursoFiltroSemestre && sortedModulosCurso.length === 0 ? 'Sin opciones' : undefined
+                      }
+                      options={sortedModulosCurso.map((m) => ({
+                        value: String(m.id),
+                        label: `${m.materia ?? `Materia ${m.materia_id}`} · ${MESES[(m.mes ?? 1) - 1]} ${m.anio}`,
+                      }))}
+                      triggerClassName="px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                    />
+                  </label>
+                  <div className="flex flex-col gap-1 text-sm relative md:col-span-2">
+                    <span className="text-slate-600 text-xs dark:text-slate-400">Docente</span>
+                    <div className="relative">
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 material-symbols-outlined text-[16px]">
+                        search
+                      </span>
+                      <input
+                        aria-label="Buscar docente por nombre"
+                        className="w-full pl-8 pr-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                        value={docenteSearch}
+                        disabled={!contextoAcademicoListo}
+                        onChange={(e) => {
+                          setDocenteSearch(e.target.value);
+                          setDocenteSearchOpen(true);
+                          setCursoForm((f) => ({ ...f, docenteId: '' }));
+                        }}
+                        onFocus={() => {
+                          if (contextoAcademicoListo) setDocenteSearchOpen(true);
+                        }}
+                        onBlur={() => setTimeout(() => setDocenteSearchOpen(false), 150)}
+                        placeholder="Buscar por nombre o correo"
+                      />
+                    </div>
+                    {contextoAcademicoListo && docenteSearchOpen ? (
+                      <div className="absolute top-full mt-1 z-20 w-full rounded-xl border border-slate-200 bg-white shadow-2xl ring-1 ring-slate-200/80 overflow-hidden dark:border-slate-700/60 dark:bg-[#0b1427] dark:ring-white/5">
+                        {docentesFiltrados.length ? (
+                          <div className="max-h-[170px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60">
+                            {docentesFiltrados.map((docente) => (
+                              <button
+                                key={docente.id}
+                                type="button"
+                                className="w-full px-3 py-2.5 text-left hover:bg-slate-100 dark:hover:bg-slate-800/70 flex items-center gap-2.5"
+                                onMouseDown={(event) => {
+                                  event.preventDefault();
+                                  // Usa docente.id (usuario) si no tiene persona vinculada; el backend resuelve ambos
+                                  setCursoForm((f) => ({ ...f, docenteId: docente.persona?.id || docente.id }));
+                                  setDocenteSearch(formatDocenteLabel(docente));
+                                  setDocenteSearchOpen(false);
+                                }}
+                              >
+                                <span className="material-symbols-outlined text-slate-500 text-[18px] shrink-0">person</span>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium text-black truncate dark:text-[#e7eef9]">{formatDocenteLabel(docente)}</p>
+                                  <p className="text-xs text-slate-600 truncate dark:text-slate-400">{docente.email}{docente.persona?.legajo ? ` · Legajo ${docente.persona.legajo}` : ''}</p>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="px-3 py-3 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                            <span className="material-symbols-outlined text-[18px]">search_off</span>
+                            Sin coincidencias
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
+                    <div className="min-h-5">
+                      {docenteSeleccionado ? (
+                        <p className="text-xs text-emerald-700 flex items-center gap-1 dark:text-emerald-300">
+                          <span className="material-symbols-outlined text-[13px]">check_circle</span>
+                          {formatDocenteLabel(docenteSeleccionado)}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-slate-500">Elige una opción de la lista.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleCreateCurso}
+                    className="btn-modern btn-modern-primary"
+                    disabled={loading || !contextoAcademicoListo || !cursoForm.moduloId || !cursoForm.docenteId}
+                  >
+                    Crear curso
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3 text-black shadow-sm dark:border-slate-800 dark:bg-[#132a52] dark:text-[#e7eef9] dark:shadow-none">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <h3 className="text-lg font-semibold">Cursos</h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">
+                      {cursosListaVisibles.length === cursosFiltradosPorCarrera.length
+                        ? `${cursosFiltradosPorCarrera.length} registro${cursosFiltradosPorCarrera.length !== 1 ? 's' : ''}`
+                        : `${cursosListaVisibles.length} de ${cursosFiltradosPorCarrera.length} registro${cursosFiltradosPorCarrera.length !== 1 ? 's' : ''}`}
+                    </p>
+                  </div>
+                  <span className="material-symbols-outlined text-slate-500 text-[22px] shrink-0">school</span>
+                </div>
+                {carreraSeleccionadaId ? (
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <div className="relative flex-1 min-w-[8.5rem]">
+                      <span className="material-symbols-outlined pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-[16px]">
+                        search
+                      </span>
+                      <input
+                        type="search"
+                        aria-label="Buscar en cursos"
+                        className={inpListaFiltro}
+                        placeholder="Buscar materia o docente…"
+                        value={cursoListaBusqueda}
+                        onChange={(e) => setCursoListaBusqueda(e.target.value)}
+                      />
+                    </div>
+                    <AppSelect
+                      aria-label="Filtrar cursos por año"
+                      className="w-[7.25rem] shrink-0"
+                      size="xs"
+                      value={cursoListaAnio}
+                      onChange={setCursoListaAnio}
+                      allowEmpty
+                      emptyLabel="Todos"
+                      options={aniosDisponiblesCursos.map((anio) => ({
+                        value: String(anio),
+                        label: String(anio),
+                      }))}
+                      triggerClassName="px-2 py-1.5 rounded-md bg-white border border-slate-300 text-xs text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                    />
+                  </div>
+                ) : null}
+
+                {/* Altura ≈ 3 filas de tarjeta; a partir de la 4ª aparece scroll vertical */}
+                <div className="max-h-[270px] overflow-y-auto overflow-x-auto pr-0.5">
+                  {!carreraSeleccionadaId ? (
+                    <p className="text-sm text-slate-500 py-6 text-center">Selecciona una carrera para ver los cursos.</p>
+                  ) : !cursosFiltradosPorCarrera.length ? (
+                    <p className="text-sm text-slate-600 py-6 text-center dark:text-slate-400">Sin cursos para esta carrera.</p>
+                  ) : cursosListaVisibles.length === 0 ? (
+                    <p className="text-sm text-slate-600 py-6 text-center dark:text-slate-400">
+                      Ningún curso coincide con la búsqueda o el año seleccionado.
+                    </p>
+                  ) : (
+                    <div className="min-w-[17.5rem]">
+                      <div
+                        className="sticky top-0 z-10 grid grid-cols-[1.25rem_minmax(0,1fr)_minmax(6.5rem,8.5rem)_3.5rem_8.75rem] gap-x-2 items-center px-3 py-2 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500 bg-white border-b border-slate-200 shadow-[0_1px_3px_rgba(15,23,42,0.06)] dark:text-slate-400 dark:bg-[#132a52] dark:border-slate-700 dark:shadow-[0_1px_0_#1e293b]"
+                        aria-hidden
+                      >
+                        <span />
+                        <span>Materia</span>
+                        <span className="truncate">Docente</span>
+                        <span className="text-right">Alumnos</span>
+                        <span />
+                      </div>
+                      <div className="space-y-1.5 pt-0.5">
+                      {cursosListaVisibles.map((curso) => {
+                        const isSelected = selectedCursoId === curso.id;
+                        const materiaTitulo = curso.materia ?? `Módulo ${curso.modulo_id}`;
+                        const docenteNombre = curso.docente ?? String(curso.docente_id ?? '—');
+                        const inscriptos = curso.inscriptos ?? 0;
+                        return (
+                          <div
+                            key={curso.id}
+                            className={`rounded-lg border grid grid-cols-[1.25rem_minmax(0,1fr)_minmax(6.5rem,8.5rem)_3.5rem_8.75rem] gap-x-2 items-center px-3 py-2.5 transition-colors ${
+                              isSelected
+                                ? 'border-primary/60 bg-primary/5 ring-2 ring-primary/30 dark:bg-primary/10'
+                                : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm dark:border-slate-700/70 dark:bg-slate-900/30 dark:hover:border-slate-600/80'
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              className="contents text-left"
+                              onClick={() => void handleSelectCurso(curso.id)}
+                            >
+                              <span
+                                className={`material-symbols-outlined text-[18px] leading-none justify-self-center cursor-pointer ${
+                                  isSelected ? 'text-primary' : 'text-slate-400 dark:text-slate-500'
+                                }`}
+                              >
+                                {isSelected ? 'check_circle' : 'school'}
+                              </span>
+                              <span className="min-w-0 text-sm font-semibold leading-snug text-slate-900 truncate cursor-pointer dark:text-[#e7eef9]">
+                                {materiaTitulo}
+                              </span>
+                              <span
+                                className="min-w-0 text-xs leading-snug text-slate-600 truncate cursor-pointer dark:text-slate-400"
+                                title={docenteNombre}
+                              >
+                                {docenteNombre}
+                              </span>
+                              <span className="justify-self-end text-xs leading-snug tabular-nums whitespace-nowrap cursor-pointer">
+                                <span className="font-semibold text-slate-800 dark:text-slate-200">{inscriptos}</span>
+                                <span className="text-slate-500 dark:text-slate-500"> insc.</span>
+                              </span>
+                            </button>
+                            <div
+                              data-curso-acciones
+                              className="col-start-5 flex items-center justify-end gap-1 border-l border-slate-200/80 pl-1.5 dark:border-slate-700/80"
+                            >
+                              <button
+                                type="button"
+                                className="btn-modern btn-modern-xs btn-modern-edit"
+                                onClick={() => handleEditCurso(curso)}
+                              >
+                                Editar
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-modern btn-modern-xs btn-modern-danger"
+                                onClick={() => handleDeleteCurso(curso)}
+                              >
+                                Eliminar
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {cursoSeleccionado ? (
+              <div
+                ref={planillaPanelRef}
+                className="rounded-xl border border-slate-200 bg-white shadow-sm scroll-mt-4 dark:border-slate-800 dark:bg-[#132a52] dark:shadow-none flex flex-col min-h-0"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3 p-4 border-b border-slate-200 dark:border-slate-800">
+                  <div className="min-w-0 space-y-1">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Planilla de alumnos</p>
+                    <h3 className="text-lg font-semibold text-black dark:text-[#e7eef9] truncate">
+                      {cursoSeleccionado.materia ?? `Módulo ${cursoSeleccionado.modulo_id}`}
+                    </h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                      {cursoSeleccionado.docente ?? cursoSeleccionado.docente_id} ·{' '}
+                      <span className="tabular-nums">{planillaSeleccionada.length} alumno{planillaSeleccionada.length !== 1 ? 's' : ''}</span>
+                    </p>
+                    {formatCursoUbicacionHorario(cursoSeleccionado) ? (
+                      <p className="text-xs text-slate-500 flex items-center gap-1 dark:text-slate-500">
+                        <span className="material-symbols-outlined text-[14px]">meeting_room</span>
+                        {formatCursoUbicacionHorario(cursoSeleccionado)}
+                      </p>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-modern btn-modern-ghost btn-modern-sm shrink-0"
+                    onClick={cerrarPlanillaCurso}
+                    aria-label="Cerrar planilla"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">close</span>
+                    Cerrar
+                  </button>
+                </div>
+
+                <div className="p-4 space-y-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Agregar alumno</p>
+                      <div ref={alumnoSearchWrapRef} className="relative">
+                        <input
+                          aria-label="Buscar alumno"
+                          className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black placeholder:text-slate-400 focus:border-primary focus:outline-none text-sm disabled:opacity-60 disabled:cursor-not-allowed dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9] dark:placeholder:text-slate-500"
+                          placeholder={
+                            puedeBuscarAlumnoPlanilla
+                              ? 'Buscar por nombre o documento...'
+                              : carreraSeleccionadaId
+                                ? 'Seleccioná facultad arriba para buscar alumnos'
+                                : 'Seleccioná facultad y carrera arriba'
+                          }
+                          disabled={!puedeBuscarAlumnoPlanilla}
+                          value={alumnoSearch}
+                          onChange={(e) => {
+                            setAlumnoSearch(e.target.value);
+                            setAlumnoSearchOpen(true);
+                            void handleBuscarAlumno(e.target.value);
+                          }}
+                          onFocus={() => {
+                            if (!puedeBuscarAlumnoPlanilla) return;
+                            setAlumnoSearchOpen(true);
+                          }}
+                          onBlur={() => {
+                            window.setTimeout(() => cerrarBuscadorAlumnoPlanilla(), 150);
+                          }}
+                        />
+                        {alumnoSearchOpen && (alumnoResultados.length > 0 || alumnoSearchLoading) ? (
+                          <div className="absolute top-full mt-1 z-30 w-full rounded-xl border border-slate-200 bg-white shadow-2xl overflow-hidden dark:border-slate-600 dark:bg-[#0b1427]">
+                            {alumnoSearchLoading ? (
+                              <p className="px-3 py-3 text-xs text-slate-600 dark:text-slate-400">Buscando...</p>
+                            ) : (
+                              <div
+                                className="max-h-40 overflow-y-auto overscroll-contain"
+                                role="listbox"
+                                aria-label="Resultados de búsqueda de alumnos"
+                              >
+                                {alumnoResultados.map((al) => {
+                                  const nombre =
+                                    al.nombre_apellido ??
+                                    [al.apellidos, al.nombres].map((s) => s?.trim()).filter(Boolean).join(', ');
+                                  return (
+                                    <button
+                                      key={al.id}
+                                      type="button"
+                                      role="option"
+                                      className="flex h-14 w-full shrink-0 flex-col justify-center px-3 text-left hover:bg-slate-100 border-b border-slate-100 last:border-b-0 dark:hover:bg-slate-800 dark:border-slate-800"
+                                      onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        void handleMatricularAlumno(cursoSeleccionado.id, al);
+                                      }}
+                                    >
+                                      <p className="truncate text-sm font-medium leading-tight text-black dark:text-[#e7eef9]">
+                                        {nombre}
+                                      </p>
+                                      <p className="truncate text-xs leading-tight text-slate-600 dark:text-slate-400">
+                                        Doc: {al.numero_documento}
+                                      </p>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    {(() => {
+                      const curso = cursoSeleccionado;
+                      const semestreCurso = obtenerSemestrePlanCurso(curso, modulos, materias);
+                      const lotesParaCurso = lotesAlumnos.filter((l) => {
+                        if (l.destino_carrera_id && curso.carrera_id) {
+                          return l.destino_carrera_id === curso.carrera_id;
+                        }
+                        if (l.destino_carrera && carreraSeleccionada) {
+                          return normalizarTexto(l.destino_carrera) === normalizarTexto(carreraSeleccionada.nombre);
+                        }
+                        return false;
+                      });
+                      const lotesPorSemestre = new Map<number, LoteAlumnos>();
+                      for (const lote of [...lotesParaCurso].sort((a, b) => b.id - a.id)) {
+                        const semestre = extraerNumeroSemestre(lote.descripcion);
+                        if (!semestre) continue;
+                        if (semestreCurso != null && semestre !== semestreCurso) continue;
+                        if (lote.alumnos_en_etiqueta_semestre === 0) continue;
+                        if (lotesPorSemestre.has(semestre)) continue;
+                        lotesPorSemestre.set(semestre, lote);
+                      }
+                      const semestresDisponibles = Array.from(lotesPorSemestre.entries()).sort((a, b) => a[0] - b[0]);
+                      const sinPlanillasCompatibles = semestreCurso == null || semestresDisponibles.length === 0;
+                      const semestreSelRaw = semestreLotePorCurso[curso.id] ?? '';
+                      const semestreSeleccionado =
+                        !sinPlanillasCompatibles && semestresDisponibles.some(([s]) => String(s) === semestreSelRaw)
+                          ? semestreSelRaw
+                          : !sinPlanillasCompatibles && semestresDisponibles.length === 1
+                            ? String(semestresDisponibles[0][0])
+                            : '';
+                      const loteSeleccionado = semestreSeleccionado
+                        ? lotesPorSemestre.get(Number(semestreSeleccionado)) ?? null
+                        : null;
+                      const placeholderLote = sinPlanillasCompatibles
+                        ? 'Sin planilla para este semestre'
+                        : 'Seleccionar semestre...';
+
+                      return (
+                        <div className="space-y-1">
+                          <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Asignar planilla importada</p>
+                          <div className="flex gap-2 items-center">
+                            <AppSelect
+                              aria-label="Seleccionar semestre importado para asignar al curso"
+                              className="flex-1"
+                              value={semestreSeleccionado}
+                              disabled={sinPlanillasCompatibles}
+                              onChange={(v) => setSemestreLotePorCurso((prev) => ({ ...prev, [curso.id]: v }))}
+                              placeholder={placeholderLote}
+                              options={semestresDisponibles.map(([semestre]) => ({
+                                value: String(semestre),
+                                label: formatearSemestre(semestre),
+                              }))}
+                              triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-sm text-black focus:border-primary focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                            />
+                            <button
+                              type="button"
+                              className="btn-modern btn-modern-sm btn-modern-primary shrink-0"
+                              disabled={sinPlanillasCompatibles || !loteSeleccionado || loteImportLoading}
+                              onClick={() =>
+                                loteSeleccionado &&
+                                void handleMatricularDesdeLote(
+                                  curso.id,
+                                  loteSeleccionado.id,
+                                  formatearSemestre(Number(semestreSeleccionado))
+                                )
+                              }
+                            >
+                              {loteImportLoading ? '...' : 'Asignar'}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 items-center pt-1 border-t border-slate-200 dark:border-slate-700">
+                    <AppSelect
+                      aria-label="Curso origen para copiar planilla"
+                      className="flex-1 min-w-[12rem]"
+                      value={copiarDesdeCursoId}
+                      onChange={setCopiarDesdeCursoId}
+                      allowEmpty
+                      emptyLabel="Copiar planilla desde otro curso..."
+                      options={cursosFiltradosPorCarrera
+                        .filter((c) => {
+                          if (c.id === cursoSeleccionado.id) return false;
+                          const semOrigen = obtenerSemestrePlanCurso(c, modulos, materias);
+                          const semDestino = obtenerSemestrePlanCurso(cursoSeleccionado, modulos, materias);
+                          if (semDestino == null) return true;
+                          return semOrigen === semDestino;
+                        })
+                        .map((c) => ({
+                          value: String(c.id),
+                          label: `#${c.id} · ${c.materia ?? `Módulo ${c.modulo_id}`}`,
+                        }))}
+                      triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-sm text-black focus:border-primary focus:outline-none dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                    />
+                    <button
+                      type="button"
+                      className="btn-modern btn-modern-sm btn-modern-ghost border-slate-300 shrink-0 dark:border-slate-600"
+                      disabled={!copiarDesdeCursoId}
+                      onClick={() => void handleCopiarMatriculas(cursoSeleccionado.id)}
+                    >
+                      Copiar planilla
+                    </button>
+                  </div>
+
+                  <div className="rounded-lg border border-slate-200 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-950/20 overflow-hidden">
+                    {planillaLoading ? (
+                      <p className="text-sm text-slate-600 text-center py-12 dark:text-slate-400">Cargando planilla...</p>
+                    ) : planillaSeleccionada.length === 0 ? (
+                      <p className="text-sm text-slate-600 text-center py-12 dark:text-slate-400">
+                        Sin alumnos inscritos. Usá el buscador o asigná una planilla importada.
+                      </p>
+                    ) : (
+                      <div className="h-[min(28rem,55vh)] overflow-y-auto overflow-x-auto overscroll-contain">
+                        <table className="w-full text-sm border-collapse min-w-[32rem]">
+                          <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-[#0d1b2e]">
+                            <tr className="text-left text-xs uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                              <th className="px-3 py-2.5 w-10 font-semibold">#</th>
+                              <th className="px-3 py-2.5 font-semibold">Apellidos y nombres</th>
+                              <th className="px-3 py-2.5 w-28 font-semibold">Documento</th>
+                              <th className="px-3 py-2.5 w-24 font-semibold">Estado</th>
+                              <th className="px-3 py-2.5 w-24 text-right font-semibold">Acción</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                            {planillaSeleccionada.map((m, idx) => (
+                              <tr
+                                key={m.id}
+                                className="bg-white hover:bg-slate-50 dark:bg-transparent dark:hover:bg-slate-900/50"
+                              >
+                                <td className="px-3 py-3 text-xs text-slate-500 tabular-nums">{idx + 1}</td>
+                                <td className="px-3 py-3 font-medium text-black dark:text-[#e7eef9]">{m.nombre_completo}</td>
+                                <td className="px-3 py-3 text-slate-600 tabular-nums dark:text-slate-400">{m.numero_documento}</td>
+                                <td className="px-3 py-3 text-slate-600 capitalize dark:text-slate-400">{m.estado_academico}</td>
+                                <td className="px-3 py-3 text-right">
+                                  <button
+                                    type="button"
+                                    className="btn-modern btn-modern-xs btn-modern-danger"
+                                    onClick={() => handleDesmatricularAlumno(cursoSeleccionado.id, m)}
+                                  >
+                                    Quitar
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            </div>
+
+          </section>
+        </main>
+      </div>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => { if (pendingDelete) void pendingDelete.onConfirm(); }}
+        title={pendingDelete?.title ?? ''}
+        description={pendingDelete?.description}
+        confirmLabel="Eliminar"
+        variant="danger"
+        loading={dialogLoading}
+      />
+
+      <EditItemDialog
+        open={pendingEdit !== null}
+        title={pendingEdit?.title ?? ''}
+        fields={pendingEdit?.fields ?? []}
+        onCancel={() => setPendingEdit(null)}
+        onSave={(values) => { if (pendingEdit) void pendingEdit.onSave(values); }}
+        loading={dialogLoading}
+        resolveDateBounds={(v) => rangoFechasMesModulo(v.anio, v.mes)}
+      />
+    </div>
+  );
+}
+
+
