@@ -4,7 +4,14 @@ import { logger } from '../../utils/logger';
 import { formatGeneradoParaguay } from '../../utils/pdf-kit-brand';
 import { generarAuditoriaEventosPdf } from './auditoria.pdf';
 import { generarNombrePdfConTimestamp } from '../reportes/reportes.utils';
-import { subirActaPdf } from '../../services/actas-storage.service';
+import { registrarActaGenerada, type ActaGeneradaRow } from '../../services/actas-generadas.service';
+
+export interface ExportAuditoriaPdfResult {
+    acta: ActaGeneradaRow;
+    buffer: Buffer;
+    fileName: string;
+    total: number;
+}
 
 export type ResultadoAuditoria = 'ok' | 'error';
 export type SeveridadAuditoria = 'baja' | 'media' | 'alta';
@@ -673,10 +680,10 @@ export async function obtenerEventoAuditoriaPorId(id: number): Promise<EventoAud
     }
 }
 
-export async function exportarEventosAuditoriaPdf(
+export async function construirExportAuditoriaPdfBuffer(
     filtro: FiltroEventosAuditoria = {},
     meta?: ExportarAuditoriaPdfMeta
-): Promise<{ url_documento: string; total: number }> {
+): Promise<{ buffer: Buffer; fileName: string; total: number }> {
     const capExportacion = 500;
     const lim = Math.min(Math.max(filtro.limit ?? capExportacion, 1), capExportacion);
     const { total, datos } = await listarEventosAuditoria({
@@ -726,26 +733,44 @@ export async function exportarEventosAuditoriaPdf(
         return `${item.recurso_tipo ?? '-'} ${recursoId}`.trim();
     };
 
-    const buffer = await generarAuditoriaEventosPdf(
-        {
-            titulo: 'REPORTE DE AUDITORÍA DEL SISTEMA',
-            filtros: filtrosResumen,
-            total,
-            generadoEn: formatGeneradoParaguay(new Date()),
-            capExportacion: lim,
-            exportedBy: meta?.exportedBy,
-            requestId: meta?.requestId,
-            eventos: datos.map((item) => ({
-                fecha_hora: item.fecha_hora,
-                actor: describirActor(item),
-                modulo: item.modulo,
-                accion: item.accion,
-                recurso: describirRecurso(item),
-                resultado: item.resultado,
-            })),
-        }
-    );
-    const urlDocumento = await subirActaPdf(buffer, fileName);
+    const buffer = await generarAuditoriaEventosPdf({
+        titulo: 'REPORTE DE AUDITORÍA DEL SISTEMA',
+        filtros: filtrosResumen,
+        total,
+        generadoEn: formatGeneradoParaguay(new Date()),
+        capExportacion: lim,
+        exportedBy: meta?.exportedBy,
+        requestId: meta?.requestId,
+        eventos: datos.map((item) => ({
+            fecha_hora: item.fecha_hora,
+            actor: describirActor(item),
+            modulo: item.modulo,
+            accion: item.accion,
+            recurso: describirRecurso(item),
+            resultado: item.resultado,
+        })),
+    });
 
-    return { url_documento: urlDocumento, total };
+    return { buffer, fileName, total };
+}
+
+export async function exportarEventosAuditoriaPdf(
+    filtro: FiltroEventosAuditoria = {},
+    meta?: ExportarAuditoriaPdfMeta,
+    usuarioId?: string
+): Promise<ExportAuditoriaPdfResult> {
+    const { buffer, fileName, total } = await construirExportAuditoriaPdfBuffer(filtro, meta);
+
+    if (!usuarioId) {
+        throw new Error('No se pudo determinar el usuario que exporta');
+    }
+
+    const acta = await registrarActaGenerada({
+        cursoId: null,
+        tipoActa: 'export_auditoria',
+        parametros: { ...filtro },
+        generadoPor: usuarioId,
+    });
+
+    return { acta, buffer, fileName, total };
 }

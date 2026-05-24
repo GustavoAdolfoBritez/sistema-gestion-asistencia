@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { AppSidebar } from '../components/AppSidebar';
 import { AppSelect } from '../components/ui/app-select';
-import { API_ORIGIN, apiFetch } from '../utils/api';
+import { downloadPdfFromApi, openPdfBlob, apiFetch } from '../utils/api';
 import { etiquetasRoles } from '../utils/role-labels';
 
 interface Props {
@@ -33,11 +33,6 @@ interface EventoAuditoria {
 interface ApiList<T> {
   total: number;
   datos: T[];
-}
-
-interface ExportAuditoriaResponse {
-  url_documento: string;
-  total: number;
 }
 
 const RESULTADOS: Array<'ok' | 'error'> = ['ok', 'error'];
@@ -381,18 +376,12 @@ export function AuditoriaPage({ onLogout }: Props) {
     }
   }, [queryString]);
 
-  function getDocumentoUrl(url: string) {
-    if (!url) return '#';
-    if (/^https?:\/\//i.test(url)) return url;
-    const apiBase = API_ORIGIN;
-    return `${apiBase}${url.startsWith('/') ? url : `/${url}`}`;
-  }
-
   const exportarPdf = useCallback(async () => {
     setExportandoPdf(true);
     try {
-      const response = await apiFetch<ExportAuditoriaResponse>('/auditoria/eventos/pdf', {
+      const { blob } = await downloadPdfFromApi('/auditoria/eventos/pdf', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           desde: desde ? `${desde}T00:00:00Z` : undefined,
           hasta: hasta ? `${hasta}T23:59:59Z` : undefined,
@@ -402,9 +391,8 @@ export function AuditoriaPage({ onLogout }: Props) {
           q: q.trim() || undefined,
         }),
       });
-      if (!response?.url_documento) throw new Error('No se obtuvo el PDF exportado');
-      window.open(getDocumentoUrl(response.url_documento), '_blank', 'noopener,noreferrer');
-      toast.success(`PDF de auditoría generado (${response.total} eventos).`);
+      openPdfBlob(blob);
+      toast.success('PDF de auditoría generado.');
     } catch (error) {
       const mensaje = error instanceof Error ? error.message : 'No se pudo exportar PDF de auditoría';
       toast.error(mensaje);

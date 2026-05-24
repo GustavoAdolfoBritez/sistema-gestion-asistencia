@@ -24,6 +24,78 @@ export function getDocumentoUrl(url: string | null | undefined): string {
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
   return `${API_ORIGIN}${trimmed.startsWith('/') ? trimmed : `/${trimmed}`}`;
 }
+
+export function esUrlActaRegenerable(url: string | null | undefined): boolean {
+  return Boolean(url && /^\/reportes\/actas\/\d+\/pdf$/i.test(url.trim()));
+}
+
+function parsePdfFileName(contentDisposition: string | null): string {
+  if (!contentDisposition) return 'documento.pdf';
+  const match = /filename\*=UTF-8''([^;]+)|filename="([^"]+)"/i.exec(contentDisposition);
+  const raw = match?.[1] ?? match?.[2];
+  return raw ? decodeURIComponent(raw) : 'documento.pdf';
+}
+
+/** Descarga un PDF desde la API (GET o POST) con autenticación. */
+export async function downloadPdfFromApi(
+  path: string,
+  options: RequestInit = {}
+): Promise<{ blob: Blob; fileName: string }> {
+  const url = path.startsWith('/') ? `${API_BASE_URL}${path}` : `${API_BASE_URL}/${path}`;
+  const headers = new Headers(options.headers ?? {});
+
+  const token = TOKEN_KEYS.map((key) => localStorage.getItem(key)).find(Boolean);
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const response = await fetch(url, { ...options, headers });
+
+  if (response.status === 401) {
+    const payload = await response.json().catch(() => ({}));
+    const mensaje =
+      typeof payload?.mensaje === 'string' && payload.mensaje.trim()
+        ? payload.mensaje
+        : 'Tu sesión expiró. Iniciá sesión de nuevo.';
+    notifySessionExpired();
+    showSessionExpiredToast(mensaje);
+    throw new SessionExpiredError(mensaje);
+  }
+
+  const contentType = response.headers.get('Content-Type') ?? '';
+  if (!response.ok) {
+    if (contentType.includes('application/json')) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload?.mensaje ?? 'No se pudo descargar el PDF');
+    }
+    throw new Error('No se pudo descargar el PDF');
+  }
+
+  const blob = await response.blob();
+  return { blob, fileName: parsePdfFileName(response.headers.get('Content-Disposition')) };
+}
+
+export function openPdfBlob(blob: Blob): void {
+  const objectUrl = URL.createObjectURL(blob);
+  window.open(objectUrl, '_blank', 'noopener,noreferrer');
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+}
+
+/** Abre un documento: URL pública, legacy o acta regenerable vía API autenticada. */
+export async function abrirDocumento(url: string | null | undefined): Promise<void> {
+  if (!url?.trim()) return;
+  const trimmed = url.trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    window.open(trimmed, '_blank', 'noopener,noreferrer');
+    return;
+  }
+  if (esUrlActaRegenerable(trimmed)) {
+    const { blob } = await downloadPdfFromApi(trimmed);
+    openPdfBlob(blob);
+    return;
+  }
+  window.open(getDocumentoUrl(trimmed), '_blank', 'noopener,noreferrer');
+}
 const TOKEN_KEYS = ['accessToken', 'token', 'authToken'];
 const USER_STORAGE_KEY = 'currentUser';
 

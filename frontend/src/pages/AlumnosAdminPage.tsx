@@ -7,7 +7,7 @@ import { AppSelect } from '../components/ui/app-select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { useMisAlcances } from '../hooks/useMisAlcances';
 import { useScopeForm } from '../hooks/useScopeForm';
-import { API_ORIGIN, apiFetch } from '../utils/api';
+import { abrirDocumento, apiFetch, downloadPdfFromApi, openPdfBlob } from '../utils/api';
 import { readStoredUser } from '../utils/session-user';
 import { esGestionUnicaCarreraAlumnosListado, puedeAprobarJustificaciones } from '../utils/rbac';
 import {
@@ -76,10 +76,6 @@ interface FichaAlumno {
     materiasPromedioAnio: number;
   };
   trayectoria: TrayectoriaItem[];
-}
-
-interface DocumentoResponse {
-  url_documento: string;
 }
 
 interface JustificacionAlumnoFicha {
@@ -379,13 +375,6 @@ export function AlumnosAdminPage({ onLogout }: Props) {
     [selectedAlumnoId, comentariosJustModal, refrescarFichaSilenciosa]
   );
 
-  function getDocumentoUrl(url: string) {
-    if (!url) return '#';
-    if (/^https?:\/\//i.test(url)) return url;
-    const apiBase = API_ORIGIN;
-    return `${apiBase}${url.startsWith('/') ? url : `/${url}`}`;
-  }
-
   const descargarInformeAlumno = useCallback(async () => {
     if (!selectedAlumnoId) {
       toast.error('Selecciona un alumno para generar su informe.');
@@ -393,13 +382,10 @@ export function AlumnosAdminPage({ onLogout }: Props) {
     }
     setGenerandoInforme(true);
     try {
-      const response = await apiFetch<DocumentoResponse>(`/reportes/alumnos/${selectedAlumnoId}/informe-pdf`, {
+      const { blob } = await downloadPdfFromApi(`/reportes/alumnos/${selectedAlumnoId}/informe-pdf`, {
         method: 'POST',
       });
-      if (!response?.url_documento) {
-        throw new Error('No se obtuvo la URL del documento generado.');
-      }
-      window.open(getDocumentoUrl(response.url_documento), '_blank', 'noopener,noreferrer');
+      openPdfBlob(blob);
       toast.success('Informe individual generado correctamente.');
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'No se pudo generar el informe individual';
@@ -1268,7 +1254,13 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                                     <td className="px-4 py-3 text-right align-middle whitespace-nowrap">
                                       {j.documento_url ? (
                                         <a
-                                          href={getDocumentoUrl(j.documento_url)}
+                                          href="#"
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            void abrirDocumento(j.documento_url).catch((err) =>
+                                              toast.error(err instanceof Error ? err.message : 'No se pudo abrir el PDF')
+                                            );
+                                          }}
                                           target="_blank"
                                           rel="noopener noreferrer"
                                           className="inline-flex items-center justify-center gap-1 rounded-lg border border-sky-600 bg-sky-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:border-sky-700 hover:bg-sky-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 focus-visible:ring-offset-1 dark:border-sky-400/40 dark:bg-sky-500/30 dark:text-sky-50 dark:hover:border-sky-300/60 dark:hover:bg-sky-500/45 dark:focus-visible:ring-sky-400/60 dark:focus-visible:ring-offset-[#0c1a32]"

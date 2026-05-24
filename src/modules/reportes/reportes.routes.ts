@@ -17,9 +17,10 @@ import {
     generarPdfConsolidadoRiesgoInhabilitados,
     generarPdfEstadisticasAusentismoFacultadCarrera,
     listarAusentismoAgregadoFacultadCarrera,
-    validarCarreraEnAlcanceFacultades
+    validarCarreraEnAlcanceFacultades,
+    regenerarPdfActaGenerada,
 } from './reportes.service';
-import { supabase } from '../../config/supabase';
+import { enviarPdfBuffer } from '../../utils/pdf-response';
 import { autenticarConPoliticaAlcance, autorizarRoles, normalizarRolComparacion, normalizarRolesDesdePayload } from '../../middlewares/auth.middleware';
 import {
     RBAC,
@@ -336,13 +337,14 @@ router.post('/reportes/estadisticas/ausentismo/pdf', autorizarRoles(...ROLES_REP
             carreraId: carreraId ? Number(carreraId) : undefined
         };
         await validarFiltrosGeograficosReportes(alcance, filtros);
-        const documento = await generarPdfEstadisticasAusentismoFacultadCarrera(
+        const pdf = await generarPdfEstadisticasAusentismoFacultadCarrera(
             {
                 periodo: periodo ? String(periodo) : undefined,
                 facultadId: filtros.facultadId,
                 carreraId: filtros.carreraId
             },
-            alcance
+            alcance,
+            usuarioId
         );
 
         await registrarEventoAuditoriaSegura({
@@ -350,11 +352,12 @@ router.post('/reportes/estadisticas/ausentismo/pdf', autorizarRoles(...ROLES_REP
             accion: 'generar_estadisticas_ausentismo_pdf',
             recursoTipo: 'reporte_ausentismo',
             detalle: { periodo, facultadId, carreraId },
-            despues: documento,
+            despues: { actaId: pdf.acta.id, url_documento: pdf.acta.url_documento },
             contexto: contextoAuditoria
         });
 
-        res.status(201).json(documento);
+        res.setHeader('X-Acta-Id', String(pdf.acta.id));
+        enviarPdfBuffer(res, pdf.buffer, pdf.fileName, 201);
     } catch (error) {
         if (error instanceof ForbiddenScopeError) {
             return res.status(403).json({ mensaje: error.message });
@@ -453,7 +456,7 @@ router.post('/reportes/consolidado-riesgo/pdf', autorizarRoles(...ROLES_REPORTES
             cursoId: cursoId ? Number(cursoId) : undefined
         };
         await validarFiltrosGeograficosReportes(alcance, filtros);
-        const documento = await generarPdfConsolidadoRiesgoInhabilitados(
+        const pdf = await generarPdfConsolidadoRiesgoInhabilitados(
             {
                 periodo: periodo ? String(periodo) : undefined,
                 anio: anio != null && anio !== '' ? Number(anio) : undefined,
@@ -466,17 +469,19 @@ router.post('/reportes/consolidado-riesgo/pdf', autorizarRoles(...ROLES_REPORTES
                 orderBy: orderBy ? String(orderBy) as 'faltas_desc' | 'asistencia_asc' | 'alumno_asc' : undefined,
                 limit: limit ? Number(limit) : undefined
             },
-            alcance
+            alcance,
+            usuarioId
         );
         await registrarEventoAuditoriaSegura({
             modulo: 'reportes',
             accion: 'generar_consolidado_riesgo_pdf',
             recursoTipo: 'reporte_consolidado',
             detalle: { periodo, anio, semestre, facultadId, carreraId, cursoId, estado, search, orderBy },
-            despues: documento,
+            despues: { actaId: pdf.acta.id, url_documento: pdf.acta.url_documento },
             contexto: contextoAuditoria
         });
-        res.status(201).json(documento);
+        res.setHeader('X-Acta-Id', String(pdf.acta.id));
+        enviarPdfBuffer(res, pdf.buffer, pdf.fileName, 201);
     } catch (error) {
         if (error instanceof ForbiddenScopeError) {
             return res.status(403).json({ mensaje: error.message });
@@ -585,17 +590,18 @@ router.post('/reportes/alumnos/:alumnoId/informe-pdf', autorizarRoles(...ROLES_A
         if (!alumnoId) {
             return res.status(400).json({ mensaje: 'alumnoId inválido' });
         }
-        const documento = await generarPdfInformeAlumno(alumnoId, alcance);
+        const pdf = await generarPdfInformeAlumno(alumnoId, alcance, usuarioId);
         await registrarEventoAuditoriaSegura({
             modulo: 'reportes',
             accion: 'generar_informe_alumno_pdf',
             recursoTipo: 'alumno',
             recursoId: alumnoId,
             detalle: { alumnoId, tipoDocumento: 'informe_individual' },
-            despues: documento,
+            despues: { actaId: pdf.acta.id, url_documento: pdf.acta.url_documento },
             contexto: contextoAuditoria
         });
-        res.status(201).json(documento);
+        res.setHeader('X-Acta-Id', String(pdf.acta.id));
+        enviarPdfBuffer(res, pdf.buffer, pdf.fileName, 201);
     } catch (error) {
         if (error instanceof ForbiddenScopeError) {
             return res.status(403).json({ mensaje: error.message });
@@ -634,6 +640,38 @@ async function docenteOwnCurso(usuarioId: string, cursoId: number): Promise<bool
     return rows.length > 0;
 }
 
+router.get('/reportes/actas/:actaId/pdf', async (req, res, next) => {
+    try {
+        if (!tieneAlgunoDeLosRoles(req, ROLES_PERMITIDOS_ACTAS)) {
+            return res.status(403).json({ mensaje: 'No tienes permisos para esta acción' });
+        }
+
+        const usuarioId = req.usuario?.usuarioId;
+        const roles = req.usuario?.roles ?? [];
+        if (!usuarioId) {
+            return res.status(401).json({ mensaje: 'No autenticado' });
+        }
+
+        const actaId = Number(req.params.actaId);
+        if (!Number.isFinite(actaId) || actaId <= 0) {
+            return res.status(400).json({ mensaje: 'actaId inválido' });
+        }
+
+        const alcance = await resolverAlcanceMatriculasFacultad(usuarioId, roles);
+        const { buffer, fileName } = await regenerarPdfActaGenerada(actaId, alcance);
+        enviarPdfBuffer(res, buffer, fileName);
+    } catch (error) {
+        if (error instanceof ForbiddenScopeError) {
+            return res.status(403).json({ mensaje: error.message });
+        }
+        if (error instanceof Error) {
+            return res.status(400).json({ mensaje: error.message });
+        }
+        next(error);
+    }
+});
+
+/** Compatibilidad con URLs legacy de Storage (actas antiguas en Supabase). */
 router.get('/reportes/actas/descargar/:fileName', async (req, res) => {
     if (!tieneAlgunoDeLosRoles(req, ROLES_PERMITIDOS_ACTAS)) {
         return res.status(403).json({ mensaje: 'No tienes permisos para esta acción' });
@@ -650,6 +688,7 @@ router.get('/reportes/actas/descargar/:fileName', async (req, res) => {
         return res.status(400).json({ mensaje: 'fileName inválido' });
     }
 
+    const { supabase } = await import('../../config/supabase');
     const { data } = supabase.storage.from('actas').getPublicUrl(safeFileName);
     return res.redirect(data.publicUrl);
 });
@@ -696,10 +735,9 @@ router.post('/reportes/actas', async (req, res, next) => {
         const alcance = await resolverAlcanceMatriculasFacultad(usuarioId, rolesParaAlcance);
         await assertCursoEnAlcance(Number(cursoId), alcance);
 
-        const acta = await crearActa({
+        const pdf = await crearActa({
             cursoId: Number(cursoId),
             tipoActa: String(tipoActa),
-            urlDocumento: urlDocumento ? String(urlDocumento) : undefined,
             periodo: periodo ? String(periodo) : undefined
         }, usuarioId);
 
@@ -707,17 +745,18 @@ router.post('/reportes/actas', async (req, res, next) => {
             modulo: 'reportes',
             accion: 'crear_acta',
             recursoTipo: 'acta_generada',
-            recursoId: acta.id,
+            recursoId: pdf.acta.id,
             detalle: {
                 cursoId: Number(cursoId),
                 tipoActa: String(tipoActa),
                 periodo: periodo ? String(periodo) : undefined
             },
-            despues: acta,
+            despues: pdf.acta,
             contexto: contextoAuditoria
         });
 
-        res.status(201).json(acta);
+        res.setHeader('X-Acta-Id', String(pdf.acta.id));
+        enviarPdfBuffer(res, pdf.buffer, pdf.fileName, 201);
     } catch (error) {
         if (error instanceof ForbiddenScopeError) {
             return res.status(403).json({ mensaje: error.message });

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { toast } from 'sonner';
 import { AppSidebar } from '../components/AppSidebar';
 import { AppSelect } from '../components/ui/app-select';
-import { API_BASE_URL, API_ORIGIN, apiFetch, getDocumentoUrl, notifySessionExpired } from '../utils/api';
+import { API_BASE_URL, abrirDocumento, apiFetch, downloadPdfFromApi, notifySessionExpired, openPdfBlob } from '../utils/api';
 import {
   contarFaltasDesdeSesiones,
   descripcionEstadoAsistencia,
@@ -632,23 +632,16 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
 
     setGenerandoPdfLegal(true);
     try {
-      const acta = await apiFetch<{ url_documento: string }>('/reportes/actas', {
+      const { blob } = await downloadPdfFromApi('/reportes/actas', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           cursoId: cursoNum,
           tipoActa: 'pdf_legal',
           periodo: mesAnio,
         }),
       });
-
-      const urlDocumento = String(acta?.url_documento ?? '');
-      if (!urlDocumento) {
-        throw new Error('No se pudo determinar el archivo generado.');
-      }
-
-      const apiBase = API_ORIGIN;
-      const downloadUrl = `${apiBase}${urlDocumento.startsWith('/') ? urlDocumento : `/${urlDocumento}`}`;
-      window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+      openPdfBlob(blob);
       toast.success('Planilla legal generada correctamente.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'No se pudo generar la planilla legal');
@@ -1927,7 +1920,13 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                                 <p className="line-clamp-2">{j.motivo}</p>
                                 {j.documento_url ? (
                                   <a
-                                    href={getDocumentoUrl(j.documento_url)}
+                                    href="#"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      void abrirDocumento(j.documento_url).catch((err) =>
+                                        toast.error(err instanceof Error ? err.message : 'No se pudo abrir el PDF')
+                                      );
+                                    }}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 mt-1"

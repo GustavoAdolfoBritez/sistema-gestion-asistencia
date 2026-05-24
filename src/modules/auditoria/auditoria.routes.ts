@@ -8,6 +8,7 @@ import {
     construirContextoAuditoria,
     registrarEventoAuditoriaSegura
 } from './auditoria.service';
+import { enviarPdfBuffer } from '../../utils/pdf-response';
 
 const router = Router();
 
@@ -72,6 +73,11 @@ router.post('/auditoria/eventos/pdf', async (req, res, next) => {
         const contextoAuditoria = construirContextoAuditoria(req);
         const { desde, hasta, actorUsuarioId, modulo, accion, resultado, severidad, recursoTipo, q, limit } = req.body ?? {};
 
+        const usuarioId = contextoAuditoria.actorUsuarioId;
+        if (!usuarioId) {
+            return res.status(401).json({ mensaje: 'No autenticado' });
+        }
+
         const exportacion = await exportarEventosAuditoriaPdf(
             {
                 desde: desde ? String(desde) : undefined,
@@ -89,7 +95,8 @@ router.post('/auditoria/eventos/pdf', async (req, res, next) => {
             {
                 exportedBy: contextoAuditoria.actorEmail ?? contextoAuditoria.actorUsuarioId,
                 requestId: contextoAuditoria.requestId,
-            }
+            },
+            usuarioId
         );
 
         await registrarEventoAuditoriaSegura({
@@ -100,11 +107,12 @@ router.post('/auditoria/eventos/pdf', async (req, res, next) => {
                 filtros: { desde, hasta, modulo, accion, resultado, q },
                 total: exportacion.total
             },
-            despues: exportacion,
+            despues: { actaId: exportacion.acta.id, url_documento: exportacion.acta.url_documento },
             contexto: contextoAuditoria
         });
 
-        res.status(201).json(exportacion);
+        res.setHeader('X-Acta-Id', String(exportacion.acta.id));
+        enviarPdfBuffer(res, exportacion.buffer, exportacion.fileName, 201);
     } catch (error) {
         if (error instanceof Error) {
             if (error.message.includes('auditoria_eventos no existe')) {

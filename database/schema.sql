@@ -323,11 +323,12 @@ CREATE TABLE IF NOT EXISTS registros_importacion (
 -- -----------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS actas_generadas (
     id BIGSERIAL PRIMARY KEY,
-    curso_id INTEGER NOT NULL REFERENCES cursos(id) ON DELETE CASCADE,
+    curso_id INTEGER REFERENCES cursos(id) ON DELETE CASCADE,
     tipo_acta VARCHAR(50) NOT NULL, -- asistencia, habilitados
     url_documento TEXT NOT NULL,
     generado_por UUID REFERENCES usuarios(id),
-    generado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    generado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    parametros JSONB NOT NULL DEFAULT '{}'::jsonb
 );
 
 CREATE TABLE IF NOT EXISTS estadisticas_ausentismo (

@@ -1,8 +1,41 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const reportes_service_1 = require("./reportes.service");
-const supabase_1 = require("../../config/supabase");
+const pdf_response_1 = require("../../utils/pdf-response");
 const auth_middleware_1 = require("../../middlewares/auth.middleware");
 const rbac_1 = require("../../utils/rbac");
 const alumnos_scope_1 = require("../../utils/alumnos-scope");
@@ -276,20 +309,21 @@ router.post('/reportes/estadisticas/ausentismo/pdf', (0, auth_middleware_1.autor
             carreraId: carreraId ? Number(carreraId) : undefined
         };
         await validarFiltrosGeograficosReportes(alcance, filtros);
-        const documento = await (0, reportes_service_1.generarPdfEstadisticasAusentismoFacultadCarrera)({
+        const pdf = await (0, reportes_service_1.generarPdfEstadisticasAusentismoFacultadCarrera)({
             periodo: periodo ? String(periodo) : undefined,
             facultadId: filtros.facultadId,
             carreraId: filtros.carreraId
-        }, alcance);
+        }, alcance, usuarioId);
         await (0, auditoria_service_1.registrarEventoAuditoriaSegura)({
             modulo: 'reportes',
             accion: 'generar_estadisticas_ausentismo_pdf',
             recursoTipo: 'reporte_ausentismo',
             detalle: { periodo, facultadId, carreraId },
-            despues: documento,
+            despues: { actaId: pdf.acta.id, url_documento: pdf.acta.url_documento },
             contexto: contextoAuditoria
         });
-        res.status(201).json(documento);
+        res.setHeader('X-Acta-Id', String(pdf.acta.id));
+        (0, pdf_response_1.enviarPdfBuffer)(res, pdf.buffer, pdf.fileName, 201);
     }
     catch (error) {
         if (error instanceof alumnos_scope_1.ForbiddenScopeError) {
@@ -382,7 +416,7 @@ router.post('/reportes/consolidado-riesgo/pdf', (0, auth_middleware_1.autorizarR
             cursoId: cursoId ? Number(cursoId) : undefined
         };
         await validarFiltrosGeograficosReportes(alcance, filtros);
-        const documento = await (0, reportes_service_1.generarPdfConsolidadoRiesgoInhabilitados)({
+        const pdf = await (0, reportes_service_1.generarPdfConsolidadoRiesgoInhabilitados)({
             periodo: periodo ? String(periodo) : undefined,
             anio: anio != null && anio !== '' ? Number(anio) : undefined,
             semestre: semestre != null && semestre !== '' ? Number(semestre) : undefined,
@@ -393,16 +427,17 @@ router.post('/reportes/consolidado-riesgo/pdf', (0, auth_middleware_1.autorizarR
             search: search ? String(search) : undefined,
             orderBy: orderBy ? String(orderBy) : undefined,
             limit: limit ? Number(limit) : undefined
-        }, alcance);
+        }, alcance, usuarioId);
         await (0, auditoria_service_1.registrarEventoAuditoriaSegura)({
             modulo: 'reportes',
             accion: 'generar_consolidado_riesgo_pdf',
             recursoTipo: 'reporte_consolidado',
             detalle: { periodo, anio, semestre, facultadId, carreraId, cursoId, estado, search, orderBy },
-            despues: documento,
+            despues: { actaId: pdf.acta.id, url_documento: pdf.acta.url_documento },
             contexto: contextoAuditoria
         });
-        res.status(201).json(documento);
+        res.setHeader('X-Acta-Id', String(pdf.acta.id));
+        (0, pdf_response_1.enviarPdfBuffer)(res, pdf.buffer, pdf.fileName, 201);
     }
     catch (error) {
         if (error instanceof alumnos_scope_1.ForbiddenScopeError) {
@@ -507,17 +542,18 @@ router.post('/reportes/alumnos/:alumnoId/informe-pdf', (0, auth_middleware_1.aut
         if (!alumnoId) {
             return res.status(400).json({ mensaje: 'alumnoId inválido' });
         }
-        const documento = await (0, reportes_service_1.generarPdfInformeAlumno)(alumnoId, alcance);
+        const pdf = await (0, reportes_service_1.generarPdfInformeAlumno)(alumnoId, alcance, usuarioId);
         await (0, auditoria_service_1.registrarEventoAuditoriaSegura)({
             modulo: 'reportes',
             accion: 'generar_informe_alumno_pdf',
             recursoTipo: 'alumno',
             recursoId: alumnoId,
             detalle: { alumnoId, tipoDocumento: 'informe_individual' },
-            despues: documento,
+            despues: { actaId: pdf.acta.id, url_documento: pdf.acta.url_documento },
             contexto: contextoAuditoria
         });
-        res.status(201).json(documento);
+        res.setHeader('X-Acta-Id', String(pdf.acta.id));
+        (0, pdf_response_1.enviarPdfBuffer)(res, pdf.buffer, pdf.fileName, 201);
     }
     catch (error) {
         if (error instanceof alumnos_scope_1.ForbiddenScopeError) {
@@ -550,6 +586,35 @@ async function docenteOwnCurso(usuarioId, cursoId) {
          LIMIT 1`, [cursoId, usuarioId]);
     return rows.length > 0;
 }
+router.get('/reportes/actas/:actaId/pdf', async (req, res, next) => {
+    try {
+        if (!tieneAlgunoDeLosRoles(req, ROLES_PERMITIDOS_ACTAS)) {
+            return res.status(403).json({ mensaje: 'No tienes permisos para esta acción' });
+        }
+        const usuarioId = req.usuario?.usuarioId;
+        const roles = req.usuario?.roles ?? [];
+        if (!usuarioId) {
+            return res.status(401).json({ mensaje: 'No autenticado' });
+        }
+        const actaId = Number(req.params.actaId);
+        if (!Number.isFinite(actaId) || actaId <= 0) {
+            return res.status(400).json({ mensaje: 'actaId inválido' });
+        }
+        const alcance = await (0, alumnos_scope_1.resolverAlcanceMatriculasFacultad)(usuarioId, roles);
+        const { buffer, fileName } = await (0, reportes_service_1.regenerarPdfActaGenerada)(actaId, alcance);
+        (0, pdf_response_1.enviarPdfBuffer)(res, buffer, fileName);
+    }
+    catch (error) {
+        if (error instanceof alumnos_scope_1.ForbiddenScopeError) {
+            return res.status(403).json({ mensaje: error.message });
+        }
+        if (error instanceof Error) {
+            return res.status(400).json({ mensaje: error.message });
+        }
+        next(error);
+    }
+});
+/** Compatibilidad con URLs legacy de Storage (actas antiguas en Supabase). */
 router.get('/reportes/actas/descargar/:fileName', async (req, res) => {
     if (!tieneAlgunoDeLosRoles(req, ROLES_PERMITIDOS_ACTAS)) {
         return res.status(403).json({ mensaje: 'No tienes permisos para esta acción' });
@@ -563,7 +628,8 @@ router.get('/reportes/actas/descargar/:fileName', async (req, res) => {
     if (!safeFileName || decodedFileName.includes('..')) {
         return res.status(400).json({ mensaje: 'fileName inválido' });
     }
-    const { data } = supabase_1.supabase.storage.from('actas').getPublicUrl(safeFileName);
+    const { supabase } = await Promise.resolve().then(() => __importStar(require('../../config/supabase')));
+    const { data } = supabase.storage.from('actas').getPublicUrl(safeFileName);
     return res.redirect(data.publicUrl);
 });
 router.post('/reportes/actas', async (req, res, next) => {
@@ -600,26 +666,26 @@ router.post('/reportes/actas', async (req, res, next) => {
         const rolesParaAlcance = req.usuario?.roles ?? [];
         const alcance = await (0, alumnos_scope_1.resolverAlcanceMatriculasFacultad)(usuarioId, rolesParaAlcance);
         await (0, alumnos_scope_1.assertCursoEnAlcance)(Number(cursoId), alcance);
-        const acta = await (0, reportes_service_1.crearActa)({
+        const pdf = await (0, reportes_service_1.crearActa)({
             cursoId: Number(cursoId),
             tipoActa: String(tipoActa),
-            urlDocumento: urlDocumento ? String(urlDocumento) : undefined,
             periodo: periodo ? String(periodo) : undefined
         }, usuarioId);
         await (0, auditoria_service_1.registrarEventoAuditoriaSegura)({
             modulo: 'reportes',
             accion: 'crear_acta',
             recursoTipo: 'acta_generada',
-            recursoId: acta.id,
+            recursoId: pdf.acta.id,
             detalle: {
                 cursoId: Number(cursoId),
                 tipoActa: String(tipoActa),
                 periodo: periodo ? String(periodo) : undefined
             },
-            despues: acta,
+            despues: pdf.acta,
             contexto: contextoAuditoria
         });
-        res.status(201).json(acta);
+        res.setHeader('X-Acta-Id', String(pdf.acta.id));
+        (0, pdf_response_1.enviarPdfBuffer)(res, pdf.buffer, pdf.fileName, 201);
     }
     catch (error) {
         if (error instanceof alumnos_scope_1.ForbiddenScopeError) {

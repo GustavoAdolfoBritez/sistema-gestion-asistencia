@@ -7,7 +7,7 @@ import { calcularContextoSelectorListo, deriveAlcanceVisual } from '../hooks/use
 import { AppSelect, appSelectDarkSurfaceClass } from '../components/ui/app-select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { useMisAlcances } from '../hooks/useMisAlcances';
-import { API_ORIGIN, apiFetch, toastApiError } from '../utils/api';
+import { abrirDocumento, apiFetch, downloadPdfFromApi, openPdfBlob, toastApiError } from '../utils/api';
 import { formatDateTime24 } from '../utils/datetime';
 import { puedeEjecutarCierreMensual } from '../utils/rbac';
 import { readStoredUser } from '../utils/session-user';
@@ -49,10 +49,6 @@ interface ConsolidadoRiesgoItem {
   porcentaje_asistencia: number;
   faltas_acumuladas: number;
   estado_consolidado: 'INHABILITADO';
-}
-
-interface DocumentoResponse {
-  url_documento: string;
 }
 
 interface AusentismoAgregadoItem {
@@ -317,13 +313,6 @@ export function ReportesPage({ onLogout }: Props) {
     return cursoOpciones.filter((c) => Number(c.anio) === y);
   }, [cursoOpciones, anioFiltroCursos]);
 
-  function getDocumentoUrl(url: string) {
-    if (!url) return '#';
-    if (/^https?:\/\//i.test(url)) return url;
-    const apiBase = API_ORIGIN;
-    return `${apiBase}${url.startsWith('/') ? url : `/${url}`}`;
-  }
-
   // Cargar carreras al montar
   useEffect(() => {
     apiFetch<ApiList<Carrera>>('/academico/carreras')
@@ -484,14 +473,15 @@ export function ReportesPage({ onLogout }: Props) {
       return;
     }
     try {
-      const response = await apiFetch<Acta>('/reportes/actas', {
+      const { blob } = await downloadPdfFromApi('/reportes/actas', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cursoId: cursoNum, tipoActa, periodo }),
       });
       toast.success(`Acta ${tipoActa} generada correctamente`);
       await Promise.all([cargarActas(), cargarChecklist()]);
-      if ((tipoActa === 'pdf_legal' || tipoActa === 'habilitados_no_habilitados') && response?.url_documento) {
-        window.open(getDocumentoUrl(response.url_documento), '_blank', 'noopener,noreferrer');
+      if (tipoActa === 'pdf_legal' || tipoActa === 'habilitados_no_habilitados') {
+        openPdfBlob(blob);
       }
     } catch (error) {
       toastApiError(error, 'No se pudo generar el acta');
@@ -568,8 +558,9 @@ export function ReportesPage({ onLogout }: Props) {
     }
     setConsolidadoPdfLoading(true);
     try {
-      const response = await apiFetch<DocumentoResponse>('/reportes/consolidado-riesgo/pdf', {
+      const { blob } = await downloadPdfFromApi('/reportes/consolidado-riesgo/pdf', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           periodo,
           anio: Number(anioFiltroCursos),
@@ -584,8 +575,7 @@ export function ReportesPage({ onLogout }: Props) {
           orderBy: consolidadoSort,
         }),
       });
-      if (!response?.url_documento) throw new Error('No se obtuvo el PDF generado.');
-      window.open(getDocumentoUrl(response.url_documento), '_blank', 'noopener,noreferrer');
+      openPdfBlob(blob);
       toast.success('PDF consolidado generado correctamente.');
     } catch (error) {
       toastApiError(error, 'No se pudo generar el PDF consolidado');
@@ -654,8 +644,9 @@ export function ReportesPage({ onLogout }: Props) {
     }
     setAusentismoPdfLoading(true);
     try {
-      const response = await apiFetch<DocumentoResponse>('/reportes/estadisticas/ausentismo/pdf', {
+      const { blob } = await downloadPdfFromApi('/reportes/estadisticas/ausentismo/pdf', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           periodo: ausentismoPeriodoApi,
           facultadId:
@@ -671,8 +662,7 @@ export function ReportesPage({ onLogout }: Props) {
               : undefined,
         }),
       });
-      if (!response?.url_documento) throw new Error('No se obtuvo el PDF generado.');
-      window.open(getDocumentoUrl(response.url_documento), '_blank', 'noopener,noreferrer');
+      openPdfBlob(blob);
       toast.success('PDF de ausentismo generado correctamente.');
       void cargarAusentismoAgregado();
     } catch (error) {
@@ -1169,15 +1159,14 @@ export function ReportesPage({ onLogout }: Props) {
                           <p className="text-xs text-slate-400 truncate">{a.materia}</p>
                           <p className="text-xs text-slate-500">{formatDateTime24(a.generado_en, { locale: 'es-AR' })}</p>
                         </div>
-                        <a
-                          href={getDocumentoUrl(a.url_documento)}
-                          target="_blank"
-                          rel="noreferrer"
+                        <button
+                          type="button"
+                          onClick={() => void abrirDocumento(a.url_documento).catch((err) => toastApiError(err, 'No se pudo abrir el documento'))}
                           className="flex-shrink-0 p-1.5 rounded-lg bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 "
-                          title="Abrir documento"
+                          title="Abrir documento (datos actuales)"
                         >
                           <span className="material-symbols-outlined text-[16px]">open_in_new</span>
-                        </a>
+                        </button>
                       </div>
                     )) : (
                       <div className="flex flex-col items-center justify-center py-8 text-slate-500">

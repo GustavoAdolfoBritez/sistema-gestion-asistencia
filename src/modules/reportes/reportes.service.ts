@@ -1,6 +1,6 @@
 import { pool } from '../../config/database';
 import type { AlcanceMatriculasFacultad } from '../../utils/alumnos-scope';
-import { alumnoCarreraReferenciaEnAlcance, ForbiddenScopeError } from '../../utils/alumnos-scope';
+import { alumnoCarreraReferenciaEnAlcance, assertCursoEnAlcance, ForbiddenScopeError } from '../../utils/alumnos-scope';
 import { generarPlanillaLegalPdf } from './reportes.pdf';
 import { generarActaHabilitadosPdf } from './reportes.habilitados.pdf';
 import { generarInformeAlumnoPdf } from './reportes.alumno.pdf';
@@ -8,11 +8,23 @@ import { generarConsolidadoRiesgoPdf } from './reportes.pdf.consolidado';
 import { generarPdfAusentismoFacultadCarrera } from './reportes.pdf.ausentismo';
 import { SQL_ALUMNO_APELLIDOS_COMA_NOMBRES } from '../../utils/alumno-nombre-sql';
 import { generarNombrePdfConTimestamp } from './reportes.utils';
-import { subirActaPdf } from '../../services/actas-storage.service';
+import {
+    obtenerActaGeneradaPorId,
+    registrarActaGenerada,
+    type ActaGeneradaRow,
+} from '../../services/actas-generadas.service';
+import { construirExportAuditoriaPdfBuffer, type FiltroEventosAuditoria } from '../auditoria/auditoria.service';
+import { construirExportUsuariosPdfBuffer, type UsuarioFiltro } from '../usuarios/usuarios.service';
 
-async function generarPdfYSubirActa(fileName: string, generar: () => Promise<Buffer>): Promise<string> {
-    const buffer = await generar();
-    return subirActaPdf(buffer, fileName);
+export interface PdfGeneradoConActa {
+    acta: ActaGeneradaRow;
+    buffer: Buffer;
+    fileName: string;
+}
+
+interface PdfBufferResult {
+    buffer: Buffer;
+    fileName: string;
 }
 
 interface AlertasFiltro {
@@ -1070,10 +1082,10 @@ export async function listarJustificacionesAlumnoReporte(
     return rows;
 }
 
-export async function generarPdfInformeAlumno(
+async function buildInformeAlumnoBuffer(
     alumnoId: string,
-    alcance: AlcanceMatriculasFacultad = { tipo: 'sin_restriccion' }
-) {
+    alcance: AlcanceMatriculasFacultad
+): Promise<PdfBufferResult> {
     const historial = await obtenerHistorialAlumnoReporte(alumnoId, alcance);
     const ap = historial.alumno.apellidos?.trim() ?? '';
     const nom = historial.alumno.nombres?.trim() ?? '';
@@ -1090,39 +1102,55 @@ export async function generarPdfInformeAlumno(
         anioLectivo: historial.alumno.cohorte_anio,
     });
 
-    const urlDocumento = await generarPdfYSubirActa(fileName, () =>
-        generarInformeAlumnoPdf({
-            alumno: {
-                id: historial.alumno.id,
-                nombreCompleto,
-                numeroDocumento: historial.alumno.numero_documento,
-                facultadReferenciaNombre: historial.alumno.facultad_referencia_nombre ?? null,
-                carreraReferenciaNombre: historial.alumno.carrera_referencia_nombre ?? null,
-                semestreCurricular: Number(historial.alumno.semestre_curricular) || 1,
-                cohorteAnio: historial.alumno.cohorte_anio ?? null,
-            },
-            resumen: historial.resumen,
-            trayectoria: historial.trayectoria.map((item) => ({
-                periodo: `${String(item.mes).padStart(2, '0')}/${item.anio}`,
-                facultad: item.facultad,
-                carrera: item.carrera,
-                materia: item.materia,
-                estadoAcademico: item.estado_academico,
-                porcentajeAsistencia: Number(item.porcentaje_asistencia ?? 0),
-                faltasAcumuladas: Number(item.faltas_acumuladas ?? 0),
-                justificacionesAprobadas: Number(item.justificaciones_aprobadas ?? 0),
-            })),
-            generadoEn: generatedAt,
-        })
-    );
+    const buffer = await generarInformeAlumnoPdf({
+        alumno: {
+            id: historial.alumno.id,
+            nombreCompleto,
+            numeroDocumento: historial.alumno.numero_documento,
+            facultadReferenciaNombre: historial.alumno.facultad_referencia_nombre ?? null,
+            carreraReferenciaNombre: historial.alumno.carrera_referencia_nombre ?? null,
+            semestreCurricular: Number(historial.alumno.semestre_curricular) || 1,
+            cohorteAnio: historial.alumno.cohorte_anio ?? null,
+        },
+        resumen: historial.resumen,
+        trayectoria: historial.trayectoria.map((item) => ({
+            periodo: `${String(item.mes).padStart(2, '0')}/${item.anio}`,
+            facultad: item.facultad,
+            carrera: item.carrera,
+            materia: item.materia,
+            estadoAcademico: item.estado_academico,
+            porcentajeAsistencia: Number(item.porcentaje_asistencia ?? 0),
+            faltasAcumuladas: Number(item.faltas_acumuladas ?? 0),
+            justificacionesAprobadas: Number(item.justificaciones_aprobadas ?? 0),
+        })),
+        generadoEn: generatedAt,
+    });
 
-    return { url_documento: urlDocumento };
+    return { buffer, fileName };
 }
 
-export async function generarPdfConsolidadoRiesgoInhabilitados(
-    filtro: ConsolidadoFiltro = {},
-    alcance: AlcanceMatriculasFacultad = { tipo: 'sin_restriccion' }
-) {
+export async function generarPdfInformeAlumno(
+    alumnoId: string,
+    alcance: AlcanceMatriculasFacultad = { tipo: 'sin_restriccion' },
+    usuarioId: string
+): Promise<PdfGeneradoConActa> {
+    const historial = await obtenerHistorialAlumnoReporte(alumnoId, alcance);
+    const { buffer, fileName } = await buildInformeAlumnoBuffer(alumnoId, alcance);
+    const cursoId = historial.trayectoria[0]?.curso_id ?? null;
+    const acta = await registrarActaGenerada({
+        cursoId,
+        tipoActa: 'informe_alumno',
+        parametros: { alumnoId },
+        generadoPor: usuarioId,
+    });
+
+    return { acta, buffer, fileName };
+}
+
+async function buildConsolidadoInhabilitadosBuffer(
+    filtro: ConsolidadoFiltro,
+    alcance: AlcanceMatriculasFacultad
+): Promise<PdfBufferResult> {
     const { periodo: periodoLabel } = normalizarPeriodo(filtro.periodo);
     const filas = await listarConsolidadoRiesgoInhabilitados(
         { ...filtro, periodo: periodoLabel, limit: 5000 },
@@ -1137,27 +1165,42 @@ export async function generarPdfConsolidadoRiesgoInhabilitados(
         periodo: periodoLabel,
     });
 
-    const urlDocumento = await generarPdfYSubirActa(fileName, () =>
-        generarConsolidadoRiesgoPdf({
-            periodo: periodoLabelToMesAnio(periodoLabel),
-            total: filas.length,
-            totalInhabilitados: filas.length,
-            filas: filas.map((f) => ({
-                periodo: f.periodo,
-                facultad: f.facultad,
-                carrera: f.carrera,
-                semestre: Number(f.semestre ?? 0),
-                materia: f.materia,
-                alumno: f.alumno,
-                documento: f.numero_documento,
-                porcentajeAsistencia: Number(f.porcentaje_asistencia ?? 0),
-                faltasAcumuladas: Number(f.faltas_acumuladas ?? 0),
-                estadoConsolidado: 'INHABILITADO',
-            })),
-        })
-    );
+    const buffer = await generarConsolidadoRiesgoPdf({
+        periodo: periodoLabelToMesAnio(periodoLabel),
+        total: filas.length,
+        totalInhabilitados: filas.length,
+        filas: filas.map((f) => ({
+            periodo: f.periodo,
+            facultad: f.facultad,
+            carrera: f.carrera,
+            semestre: Number(f.semestre ?? 0),
+            materia: f.materia,
+            alumno: f.alumno,
+            documento: f.numero_documento,
+            porcentajeAsistencia: Number(f.porcentaje_asistencia ?? 0),
+            faltasAcumuladas: Number(f.faltas_acumuladas ?? 0),
+            estadoConsolidado: 'INHABILITADO',
+        })),
+    });
 
-    return { url_documento: urlDocumento };
+    return { buffer, fileName };
+}
+
+export async function generarPdfConsolidadoRiesgoInhabilitados(
+    filtro: ConsolidadoFiltro = {},
+    alcance: AlcanceMatriculasFacultad = { tipo: 'sin_restriccion' },
+    usuarioId: string
+): Promise<PdfGeneradoConActa> {
+    const { periodo: periodoLabel } = normalizarPeriodo(filtro.periodo);
+    const { buffer, fileName } = await buildConsolidadoInhabilitadosBuffer(filtro, alcance);
+    const acta = await registrarActaGenerada({
+        cursoId: filtro.cursoId ?? null,
+        tipoActa: 'consolidado_inhabilitados',
+        parametros: { ...filtro, periodo: periodoLabel },
+        generadoPor: usuarioId,
+    });
+
+    return { acta, buffer, fileName };
 }
 
 function clasificarNivelAusentismo(porcentajeAusentismo: number): string {
@@ -1297,10 +1340,10 @@ export async function listarAusentismoAgregadoFacultadCarrera(
     return { periodo: periodoLabel, filas };
 }
 
-export async function generarPdfEstadisticasAusentismoFacultadCarrera(
-    filtro: EstadisticaFiltro = {},
-    alcance: AlcanceMatriculasFacultad = { tipo: 'sin_restriccion' }
-) {
+async function buildEstadisticasAusentismoBuffer(
+    filtro: EstadisticaFiltro,
+    alcance: AlcanceMatriculasFacultad
+): Promise<PdfBufferResult & { periodoLabel: string }> {
     const { periodo: periodoLabel, filas: filasAgregadas } = await listarAusentismoAgregadoFacultadCarrera(
         filtro,
         alcance
@@ -1327,60 +1370,70 @@ export async function generarPdfEstadisticasAusentismoFacultadCarrera(
 
     const promedioAusentismo = resumen.totalCarreras > 0 ? Number((resumen.sumAusentismo / resumen.totalCarreras).toFixed(2)) : 0;
     const promedioAsistencia = Number((100 - promedioAusentismo).toFixed(2));
-
     const alcanceTxt = await describirAlcanceAusentismoPdf(filtro, alcance);
-
     const fileName = generarNombrePdfConTimestamp({
         titulo: 'Estadísticas de Ausentismo',
         periodo: periodoLabel,
     });
-    const urlDocumento = await generarPdfYSubirActa(fileName, () =>
-        generarPdfAusentismoFacultadCarrera({
-            periodo: periodoLabelToMesAnio(periodoLabel),
-            alcance: alcanceTxt,
-            resumen: {
-                totalCarreras: resumen.totalCarreras,
-                totalCursos: resumen.totalCursos,
-                totalSesiones: resumen.totalSesiones,
-                totalFaltas: resumen.totalFaltas,
-                promedioAusentismo,
-                promedioAsistencia,
-            },
-            filas: filasAgregadas,
-        })
-    );
+    const buffer = await generarPdfAusentismoFacultadCarrera({
+        periodo: periodoLabelToMesAnio(periodoLabel),
+        alcance: alcanceTxt,
+        resumen: {
+            totalCarreras: resumen.totalCarreras,
+            totalCursos: resumen.totalCursos,
+            totalSesiones: resumen.totalSesiones,
+            totalFaltas: resumen.totalFaltas,
+            promedioAusentismo,
+            promedioAsistencia,
+        },
+        filas: filasAgregadas,
+    });
 
-    return { url_documento: urlDocumento };
+    return { buffer, fileName, periodoLabel };
 }
 
-export async function crearActa(input: CrearActaInput, usuarioId: string) {
+export async function generarPdfEstadisticasAusentismoFacultadCarrera(
+    filtro: EstadisticaFiltro = {},
+    alcance: AlcanceMatriculasFacultad = { tipo: 'sin_restriccion' },
+    usuarioId: string
+): Promise<PdfGeneradoConActa> {
+    const { buffer, fileName, periodoLabel } = await buildEstadisticasAusentismoBuffer(filtro, alcance);
+    const acta = await registrarActaGenerada({
+        cursoId: filtro.cursoId ?? null,
+        tipoActa: 'estadisticas_ausentismo',
+        parametros: { ...filtro, periodo: periodoLabel },
+        generadoPor: usuarioId,
+    });
+
+    return { acta, buffer, fileName };
+}
+
+export async function crearActa(input: CrearActaInput, usuarioId: string): Promise<PdfGeneradoConActa> {
     await asegurarCursoExiste(input.cursoId);
 
     const safeTipo = input.tipoActa.trim().toLowerCase().replace(/\s+/g, '_');
-    let documento: string;
+    let buffer: Buffer;
+    let fileName: string;
 
     if (safeTipo === 'pdf_legal') {
-        documento = await generarPdfLegal(input.cursoId, input.periodo);
+        ({ buffer, fileName } = await buildPdfLegalBuffer(input.cursoId, input.periodo));
     } else if (safeTipo === 'habilitados_no_habilitados') {
-        documento = await generarPdfHabilitadosNoHabilitados(input.cursoId, input.periodo);
+        ({ buffer, fileName } = await buildPdfHabilitadosBuffer(input.cursoId, input.periodo));
     } else {
-        documento = input.urlDocumento?.trim() ?? '';
-        if (!documento) {
-            throw new Error('Debe indicar urlDocumento para este tipo de acta');
-        }
+        throw new Error('Tipo de acta no soportado para generación automática');
     }
 
-    const { rows } = await pool.query(
-        `INSERT INTO actas_generadas (curso_id, tipo_acta, url_documento, generado_por)
-         VALUES ($1, $2, $3, $4)
-         RETURNING id, curso_id, tipo_acta, url_documento, generado_por, generado_en`,
-        [input.cursoId, input.tipoActa, documento, usuarioId]
-    );
+    const acta = await registrarActaGenerada({
+        cursoId: input.cursoId,
+        tipoActa: input.tipoActa,
+        parametros: { periodo: input.periodo ?? null },
+        generadoPor: usuarioId,
+    });
 
-    return rows[0];
+    return { acta, buffer, fileName };
 }
 
-async function generarPdfHabilitadosNoHabilitados(cursoId: number, periodo?: string) {
+async function buildPdfHabilitadosBuffer(cursoId: number, periodo?: string): Promise<PdfBufferResult> {
     const { periodo: periodoLabel } = normalizarPeriodo(periodo);
     const [anioPeriodo, mesPeriodo] = periodoLabel.split('-').map(Number);
 
@@ -1451,26 +1504,25 @@ const { rows } = await pool.query<{
     });
 
     const semestreCurso = Number(first.semestre) || 1;
-    return generarPdfYSubirActa(fileName, () =>
-        generarActaHabilitadosPdf({
-            periodo: periodoLabel,
-            cursoId,
-            materia: first.materia,
-            docente: first.docente,
-            carrera: first.carrera,
-            facultad: first.facultad,
-            semestre: semestreCurso,
-            alumnos,
-            resumen: {
-                total: alumnos.length,
-                habilitados: totalHabilitados,
-                noHabilitados: totalNoHabilitados,
-            },
-        })
-    );
+    const buffer = await generarActaHabilitadosPdf({
+        periodo: periodoLabel,
+        cursoId,
+        materia: first.materia,
+        docente: first.docente,
+        carrera: first.carrera,
+        facultad: first.facultad,
+        semestre: semestreCurso,
+        alumnos,
+        resumen: {
+            total: alumnos.length,
+            habilitados: totalHabilitados,
+            noHabilitados: totalNoHabilitados,
+        },
+    });
+    return { buffer, fileName };
 }
 
-async function generarPdfLegal(cursoId: number, periodo?: string) {
+async function buildPdfLegalBuffer(cursoId: number, periodo?: string): Promise<PdfBufferResult> {
     const { periodo: periodoLabel, inicio, fin } = normalizarPeriodo(periodo);
     const { rows } = await pool.query<{
         curso_id: number;
@@ -1577,24 +1629,23 @@ async function generarPdfLegal(cursoId: number, periodo?: string) {
         materia: first.materia,
         periodo: periodoLabel,
     });
-    return generarPdfYSubirActa(fileName, () =>
-        generarPlanillaLegalPdf({
-            facultad: first.facultad,
-            carrera: first.carrera,
-            asignatura: first.materia,
-            profesor: first.docente,
-            cursoLabel,
-            semestre,
-            seccion,
-            anioLectivo: String(first.anio),
-            mesTitulo: nombreMesUpper(periodoLabel),
-            sesiones: sesiones.map((fecha) => ({
-                fecha,
-                marcadorSuperior: (modalidadPorFecha.get(fecha) ?? 'presencial') === 'virtual' ? 'V' : 'P',
-            })),
-            alumnos,
-        })
-    );
+    const buffer = await generarPlanillaLegalPdf({
+        facultad: first.facultad,
+        carrera: first.carrera,
+        asignatura: first.materia,
+        profesor: first.docente,
+        cursoLabel,
+        semestre,
+        seccion,
+        anioLectivo: String(first.anio),
+        mesTitulo: nombreMesUpper(periodoLabel),
+        sesiones: sesiones.map((fecha) => ({
+            fecha,
+            marcadorSuperior: (modalidadPorFecha.get(fecha) ?? 'presencial') === 'virtual' ? 'V' : 'P',
+        })),
+        alumnos,
+    });
+    return { buffer, fileName };
 }
 
 export async function obtenerChecklistCierreMensual(
@@ -1916,4 +1967,60 @@ export async function recalcularEstadisticaCurso(
         ...upsertRows[0],
         total_matriculas: totalMatriculas
     };
+}
+
+function periodoDesdeParametros(parametros: Record<string, unknown>): string | undefined {
+    const raw = parametros.periodo;
+    return raw == null || raw === '' ? undefined : String(raw);
+}
+
+/** Regenera un PDF registrado en actas_generadas con datos actuales (sin leer Storage). */
+export async function regenerarPdfActaGenerada(
+    actaId: number,
+    alcance: AlcanceMatriculasFacultad = { tipo: 'sin_restriccion' }
+): Promise<PdfBufferResult> {
+    const acta = await obtenerActaGeneradaPorId(actaId);
+    if (!acta) {
+        throw new Error('Acta no encontrada');
+    }
+
+    if (acta.curso_id != null) {
+        await assertCursoEnAlcance(acta.curso_id, alcance);
+    }
+
+    const params = acta.parametros ?? {};
+    const tipo = acta.tipo_acta.trim().toLowerCase().replace(/\s+/g, '_');
+
+    if (tipo === 'pdf_legal') {
+        if (acta.curso_id == null) throw new Error('Acta sin curso asociado');
+        return buildPdfLegalBuffer(acta.curso_id, periodoDesdeParametros(params));
+    }
+    if (tipo === 'habilitados_no_habilitados') {
+        if (acta.curso_id == null) throw new Error('Acta sin curso asociado');
+        return buildPdfHabilitadosBuffer(acta.curso_id, periodoDesdeParametros(params));
+    }
+    if (tipo === 'informe_alumno') {
+        const alumnoId = String(params.alumnoId ?? '').trim();
+        if (!alumnoId) throw new Error('Parámetros de informe incompletos');
+        return buildInformeAlumnoBuffer(alumnoId, alcance);
+    }
+    if (tipo === 'consolidado_inhabilitados') {
+        return buildConsolidadoInhabilitadosBuffer(params as ConsolidadoFiltro, alcance);
+    }
+    if (tipo === 'estadisticas_ausentismo') {
+        const { buffer, fileName } = await buildEstadisticasAusentismoBuffer(params as EstadisticaFiltro, alcance);
+        return { buffer, fileName };
+    }
+    if (tipo === 'export_usuarios') {
+        return construirExportUsuariosPdfBuffer(params as UsuarioFiltro);
+    }
+    if (tipo === 'export_auditoria') {
+        return construirExportAuditoriaPdfBuffer(params as FiltroEventosAuditoria);
+    }
+
+    if (/^https?:\/\//i.test(acta.url_documento)) {
+        throw new Error('Este documento legacy está almacenado externamente; abrilo desde la URL histórica');
+    }
+
+    throw new Error(`Tipo de acta no regenerable: ${acta.tipo_acta}`);
 }

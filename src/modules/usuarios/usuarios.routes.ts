@@ -3,6 +3,7 @@ import { autenticar, autorizarRoles } from '../../middlewares/auth.middleware';
 import { ROLES_LECTURA_DIRECCION, ROLES_GESTION_USUARIOS, ROLES_ELIMINAR_USUARIOS } from '../../utils/rbac';
 import { pool } from '../../config/database';
 import { construirContextoAuditoria, registrarEventoAuditoriaSegura } from '../auditoria/auditoria.service';
+import { enviarPdfBuffer } from '../../utils/pdf-response';
 import type { EstadoUsuario } from './usuarios.service';
 import {
     actualizarDatosUsuario,
@@ -60,6 +61,11 @@ usuariosApi.post('/export/pdf', autorizarRoles(...ROLES_GESTION_USUARIOS), async
                 ? (rolCategoria as 'admins' | 'secretaria' | 'directores' | 'docentes')
                 : undefined;
 
+        const usuarioId = contextoAuditoria.actorUsuarioId;
+        if (!usuarioId) {
+            return res.status(401).json({ mensaje: 'No autenticado' });
+        }
+
         const exportacion = await exportarUsuariosPdf(
             {
                 estado: estadoFiltrado,
@@ -70,7 +76,8 @@ usuariosApi.post('/export/pdf', autorizarRoles(...ROLES_GESTION_USUARIOS), async
             {
                 exportedBy: contextoAuditoria.actorEmail ?? contextoAuditoria.actorUsuarioId,
                 requestId: contextoAuditoria.requestId,
-            }
+            },
+            usuarioId
         );
 
         await registrarEventoAuditoriaSegura({
@@ -81,11 +88,12 @@ usuariosApi.post('/export/pdf', autorizarRoles(...ROLES_GESTION_USUARIOS), async
                 filtros: { estado: estadoFiltrado, rol, q, rolCategoria: cat },
                 total: exportacion.total,
             },
-            despues: { url_documento: exportacion.url_documento },
+            despues: { actaId: exportacion.acta.id, url_documento: exportacion.acta.url_documento },
             contexto: contextoAuditoria,
         });
 
-        res.status(201).json(exportacion);
+        res.setHeader('X-Acta-Id', String(exportacion.acta.id));
+        enviarPdfBuffer(res, exportacion.buffer, exportacion.fileName, 201);
     } catch (error) {
         if (error instanceof Error) {
             return res.status(400).json({ mensaje: error.message });

@@ -13,6 +13,7 @@ exports.actualizarEstadoUsuario = actualizarEstadoUsuario;
 exports.actualizarScopesUsuario = actualizarScopesUsuario;
 exports.actualizarRolesUsuario = actualizarRolesUsuario;
 exports.resetearPasswordUsuario = resetearPasswordUsuario;
+exports.construirExportUsuariosPdfBuffer = construirExportUsuariosPdfBuffer;
 exports.exportarUsuariosPdf = exportarUsuariosPdf;
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const crypto_1 = require("crypto");
@@ -20,8 +21,8 @@ const database_1 = require("../../config/database");
 const role_names_1 = require("../../utils/role-names");
 const pdf_kit_brand_1 = require("../../utils/pdf-kit-brand");
 const usuarios_pdf_1 = require("./usuarios.pdf");
-const actas_storage_service_1 = require("../../services/actas-storage.service");
 const reportes_utils_1 = require("../reportes/reportes.utils");
+const actas_generadas_service_1 = require("../../services/actas-generadas.service");
 const CAMPOS_SELECT = `
     u.id,
     u.nombres,
@@ -478,7 +479,7 @@ async function resetearPasswordUsuario(usuarioId, nuevaPassword) {
     };
 }
 const CAP_EXPORT_USUARIOS_PDF = 500;
-async function exportarUsuariosPdf(filtro = {}, meta) {
+async function construirExportUsuariosPdfBuffer(filtro = {}, meta) {
     const total = await contarUsuarios(filtro);
     if (!total) {
         throw new Error('No hay usuarios para exportar con los filtros actuales');
@@ -515,6 +516,18 @@ async function exportarUsuariosPdf(filtro = {}, meta) {
             roles: u.roles.length ? u.roles.join(', ') : '—',
         })),
     });
-    const urlDocumento = await (0, actas_storage_service_1.subirActaPdf)(buffer, fileName);
-    return { url_documento: urlDocumento, total };
+    return { buffer, fileName, total };
+}
+async function exportarUsuariosPdf(filtro = {}, meta, usuarioId) {
+    const { buffer, fileName, total } = await construirExportUsuariosPdfBuffer(filtro, meta);
+    if (!usuarioId) {
+        throw new Error('No se pudo determinar el usuario que exporta');
+    }
+    const acta = await (0, actas_generadas_service_1.registrarActaGenerada)({
+        cursoId: null,
+        tipoActa: 'export_usuarios',
+        parametros: { ...filtro },
+        generadoPor: usuarioId,
+    });
+    return { acta, buffer, fileName, total };
 }

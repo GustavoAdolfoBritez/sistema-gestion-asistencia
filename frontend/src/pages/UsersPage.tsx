@@ -7,7 +7,7 @@ import { UserAvatar } from '../components/ui/user-avatar';
 import { SkeletonRow } from '../components/ui/skeleton';
 import { AppSelect } from '../components/ui/app-select';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
-import { API_ORIGIN, apiFetch } from '../utils/api';
+import { downloadPdfFromApi, openPdfBlob, apiFetch } from '../utils/api';
 import { formatDateOnly } from '../utils/datetime';
 import { appPath } from '../navigation/app-paths';
 import { readStoredUser } from '../utils/session-user';
@@ -31,11 +31,6 @@ function puedeEliminarUsuariosSesion(roles: string[] | undefined): boolean {
   return set.has('administrador general') || set.has('secretaria academica');
 }
 
-interface ExportUsuariosPdfResponse {
-  url_documento: string;
-  total: number;
-}
-
 function usuarioCoincideFiltroRol(roles: string[], roleFilter: string): boolean {
   if (roleFilter === 'all') return true;
   if (roleFilter === 'Administrador General') {
@@ -56,13 +51,6 @@ function roleFilterToExportBody(
   if (roleFilter === 'Docente') return { rolCategoria: 'docentes' };
   if (roleFilter === 'Coordinador de Facultad') return { rolCategoria: 'directores' };
   return { rol: roleFilter };
-}
-
-function getDocumentoUrlForPdf(url: string) {
-  if (!url) return '#';
-  if (/^https?:\/\//i.test(url)) return url;
-  const apiBase = API_ORIGIN;
-  return `${apiBase}${url.startsWith('/') ? url : `/${url}`}`;
 }
 
 type EstadoUsuario = 'activo' | 'inactivo' | 'suspendido';
@@ -636,13 +624,13 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
       if (statusFilter !== 'all') body.estado = statusFilter;
       Object.assign(body, roleFilterToExportBody(roleFilter));
 
-      const response = await apiFetch<ExportUsuariosPdfResponse>('/usuarios/export/pdf', {
+      const { blob } = await downloadPdfFromApi('/usuarios/export/pdf', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      if (!response?.url_documento) throw new Error('No se obtuvo el PDF exportado');
-      window.open(getDocumentoUrlForPdf(response.url_documento), '_blank', 'noopener,noreferrer');
-      toast.success(`PDF generado (${response.total} usuario${response.total === 1 ? '' : 's'}).`);
+      openPdfBlob(blob);
+      toast.success('PDF de usuarios generado.');
     } catch (err) {
       const mensaje = err instanceof Error ? err.message : 'No se pudo exportar el listado';
       toast.error(mensaje);

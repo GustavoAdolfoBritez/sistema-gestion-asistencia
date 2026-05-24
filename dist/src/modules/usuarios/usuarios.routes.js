@@ -5,6 +5,7 @@ const auth_middleware_1 = require("../../middlewares/auth.middleware");
 const rbac_1 = require("../../utils/rbac");
 const database_1 = require("../../config/database");
 const auditoria_service_1 = require("../auditoria/auditoria.service");
+const pdf_response_1 = require("../../utils/pdf-response");
 const usuarios_service_1 = require("./usuarios.service");
 const router = (0, express_1.Router)();
 const adminAuth = [auth_middleware_1.autenticar, (0, auth_middleware_1.autorizarRoles)(...rbac_1.ROLES_GESTION_USUARIOS)];
@@ -39,6 +40,10 @@ usuariosApi.post('/export/pdf', (0, auth_middleware_1.autorizarRoles)(...rbac_1.
         const cat = typeof rolCategoria === 'string' && ROL_CATEGORIAS.has(rolCategoria)
             ? rolCategoria
             : undefined;
+        const usuarioId = contextoAuditoria.actorUsuarioId;
+        if (!usuarioId) {
+            return res.status(401).json({ mensaje: 'No autenticado' });
+        }
         const exportacion = await (0, usuarios_service_1.exportarUsuariosPdf)({
             estado: estadoFiltrado,
             rol: typeof rol === 'string' && rol.trim() ? rol.trim() : undefined,
@@ -47,7 +52,7 @@ usuariosApi.post('/export/pdf', (0, auth_middleware_1.autorizarRoles)(...rbac_1.
         }, {
             exportedBy: contextoAuditoria.actorEmail ?? contextoAuditoria.actorUsuarioId,
             requestId: contextoAuditoria.requestId,
-        });
+        }, usuarioId);
         await (0, auditoria_service_1.registrarEventoAuditoriaSegura)({
             modulo: 'usuarios',
             accion: 'exportar_usuarios_pdf',
@@ -56,10 +61,11 @@ usuariosApi.post('/export/pdf', (0, auth_middleware_1.autorizarRoles)(...rbac_1.
                 filtros: { estado: estadoFiltrado, rol, q, rolCategoria: cat },
                 total: exportacion.total,
             },
-            despues: { url_documento: exportacion.url_documento },
+            despues: { actaId: exportacion.acta.id, url_documento: exportacion.acta.url_documento },
             contexto: contextoAuditoria,
         });
-        res.status(201).json(exportacion);
+        res.setHeader('X-Acta-Id', String(exportacion.acta.id));
+        (0, pdf_response_1.enviarPdfBuffer)(res, exportacion.buffer, exportacion.fileName, 201);
     }
     catch (error) {
         if (error instanceof Error) {

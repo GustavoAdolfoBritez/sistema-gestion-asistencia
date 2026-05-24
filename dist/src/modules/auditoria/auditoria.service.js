@@ -5,13 +5,14 @@ exports.registrarEventoAuditoria = registrarEventoAuditoria;
 exports.registrarEventoAuditoriaSegura = registrarEventoAuditoriaSegura;
 exports.listarEventosAuditoria = listarEventosAuditoria;
 exports.obtenerEventoAuditoriaPorId = obtenerEventoAuditoriaPorId;
+exports.construirExportAuditoriaPdfBuffer = construirExportAuditoriaPdfBuffer;
 exports.exportarEventosAuditoriaPdf = exportarEventosAuditoriaPdf;
 const database_1 = require("../../config/database");
 const logger_1 = require("../../utils/logger");
 const pdf_kit_brand_1 = require("../../utils/pdf-kit-brand");
 const auditoria_pdf_1 = require("./auditoria.pdf");
 const reportes_utils_1 = require("../reportes/reportes.utils");
-const actas_storage_service_1 = require("../../services/actas-storage.service");
+const actas_generadas_service_1 = require("../../services/actas-generadas.service");
 function buildRecursoKey(tipo, id) {
     return `${tipo}:${id}`;
 }
@@ -482,7 +483,7 @@ async function obtenerEventoAuditoriaPorId(id) {
         throw error;
     }
 }
-async function exportarEventosAuditoriaPdf(filtro = {}, meta) {
+async function construirExportAuditoriaPdfBuffer(filtro = {}, meta) {
     const capExportacion = 500;
     const lim = Math.min(Math.max(filtro.limit ?? capExportacion, 1), capExportacion);
     const { total, datos } = await listarEventosAuditoria({
@@ -550,6 +551,18 @@ async function exportarEventosAuditoriaPdf(filtro = {}, meta) {
             resultado: item.resultado,
         })),
     });
-    const urlDocumento = await (0, actas_storage_service_1.subirActaPdf)(buffer, fileName);
-    return { url_documento: urlDocumento, total };
+    return { buffer, fileName, total };
+}
+async function exportarEventosAuditoriaPdf(filtro = {}, meta, usuarioId) {
+    const { buffer, fileName, total } = await construirExportAuditoriaPdfBuffer(filtro, meta);
+    if (!usuarioId) {
+        throw new Error('No se pudo determinar el usuario que exporta');
+    }
+    const acta = await (0, actas_generadas_service_1.registrarActaGenerada)({
+        cursoId: null,
+        tipoActa: 'export_auditoria',
+        parametros: { ...filtro },
+        generadoPor: usuarioId,
+    });
+    return { acta, buffer, fileName, total };
 }

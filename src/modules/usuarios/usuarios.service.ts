@@ -10,8 +10,15 @@ import {
 } from '../../utils/role-names';
 import { formatGeneradoParaguay } from '../../utils/pdf-kit-brand';
 import { generarListadoUsuariosPdf } from './usuarios.pdf';
-import { subirActaPdf } from '../../services/actas-storage.service';
 import { generarNombrePdfConTimestamp } from '../reportes/reportes.utils';
+import { registrarActaGenerada, type ActaGeneradaRow } from '../../services/actas-generadas.service';
+
+export interface ExportUsuariosPdfResult {
+    acta: ActaGeneradaRow;
+    buffer: Buffer;
+    fileName: string;
+    total: number;
+}
 
 export type EstadoUsuario = 'activo' | 'inactivo' | 'suspendido';
 
@@ -688,10 +695,10 @@ export interface ExportarUsuariosPdfMeta {
 
 const CAP_EXPORT_USUARIOS_PDF = 500;
 
-export async function exportarUsuariosPdf(
+export async function construirExportUsuariosPdfBuffer(
     filtro: UsuarioFiltro = {},
     meta?: ExportarUsuariosPdfMeta
-): Promise<{ url_documento: string; total: number }> {
+): Promise<{ buffer: Buffer; fileName: string; total: number }> {
     const total = await contarUsuarios(filtro);
     if (!total) {
         throw new Error('No hay usuarios para exportar con los filtros actuales');
@@ -715,25 +722,43 @@ export async function exportarUsuariosPdf(
     const fileName = generarNombrePdfConTimestamp({
         titulo: 'Listado de Usuarios del Sistema',
     });
-    const buffer = await generarListadoUsuariosPdf(
-        {
-            titulo: 'LISTADO DE USUARIOS DEL SISTEMA',
-            filtros: filtrosResumen,
-            generadoEn: formatGeneradoParaguay(new Date()),
-            exportedBy: meta?.exportedBy,
-            requestId: meta?.requestId,
-            usuarios: datos.map((u) => ({
-                nombres: u.nombres,
-                apellidos: u.apellidos,
-                email: u.email,
-                usuario: u.usuario,
-                telefono: (u.telefono ?? '').trim() || '—',
-                estado: u.estado,
-                roles: u.roles.length ? u.roles.join(', ') : '—',
-            })),
-        }
-    );
-    const urlDocumento = await subirActaPdf(buffer, fileName);
+    const buffer = await generarListadoUsuariosPdf({
+        titulo: 'LISTADO DE USUARIOS DEL SISTEMA',
+        filtros: filtrosResumen,
+        generadoEn: formatGeneradoParaguay(new Date()),
+        exportedBy: meta?.exportedBy,
+        requestId: meta?.requestId,
+        usuarios: datos.map((u) => ({
+            nombres: u.nombres,
+            apellidos: u.apellidos,
+            email: u.email,
+            usuario: u.usuario,
+            telefono: (u.telefono ?? '').trim() || '—',
+            estado: u.estado,
+            roles: u.roles.length ? u.roles.join(', ') : '—',
+        })),
+    });
 
-    return { url_documento: urlDocumento, total };
+    return { buffer, fileName, total };
+}
+
+export async function exportarUsuariosPdf(
+    filtro: UsuarioFiltro = {},
+    meta?: ExportarUsuariosPdfMeta,
+    usuarioId?: string
+): Promise<ExportUsuariosPdfResult> {
+    const { buffer, fileName, total } = await construirExportUsuariosPdfBuffer(filtro, meta);
+
+    if (!usuarioId) {
+        throw new Error('No se pudo determinar el usuario que exporta');
+    }
+
+    const acta = await registrarActaGenerada({
+        cursoId: null,
+        tipoActa: 'export_usuarios',
+        parametros: { ...filtro },
+        generadoPor: usuarioId,
+    });
+
+    return { acta, buffer, fileName, total };
 }

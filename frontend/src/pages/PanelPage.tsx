@@ -13,7 +13,7 @@ import { AppSelect, appSelectDarkSurfaceClass } from '../components/ui/app-selec
 import { useMisAlcances } from '../hooks/useMisAlcances';
 import { useScopeForm } from '../hooks/useScopeForm';
 import { useTheme } from '../contexts/ThemeContext';
-import { apiFetch, getDocumentoUrl, toastApiError } from '../utils/api';
+import { abrirDocumento, apiFetch, toastApiError } from '../utils/api';
 import type { AppView } from '../utils/rbac';
 import { puedeAprobarJustificaciones } from '../utils/rbac';
 import {
@@ -851,7 +851,11 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
                           <p className="text-sm text-[#e7eef9] leading-snug">{j.motivo}</p>
                           {j.documento_url ? (
                             <a
-                              href={getDocumentoUrl(j.documento_url)}
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                void abrirDocumento(j.documento_url).catch((err) => toastApiError(err, 'No se pudo abrir el PDF'));
+                              }}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 mt-2 "
