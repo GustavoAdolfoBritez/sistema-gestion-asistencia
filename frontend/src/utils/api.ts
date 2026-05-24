@@ -75,17 +75,12 @@ export function buildAuthenticatedPdfUrl(path: string): string {
   return parsed.toString();
 }
 
-/** Abre un PDF de la API en pestaña nueva con nombre legible al guardar. */
-export function openPdfEnPestana(path: string, ventana?: Window | null): void {
+/** Abre un PDF de la API en otra pestaña (visor del navegador: imprimir o guardar). */
+export function openPdfEnPestana(path: string): void {
   try {
     const url = buildAuthenticatedPdfUrl(path);
-    if (ventana && !ventana.closed) {
-      ventana.location.href = url;
-      return;
-    }
     window.open(url, '_blank', 'noopener,noreferrer');
   } catch (error) {
-    ventana?.close();
     if (isSessionExpiredError(error)) {
       notifySessionExpired();
       showSessionExpiredToast('Tu sesión expiró. Iniciá sesión de nuevo.');
@@ -95,22 +90,9 @@ export function openPdfEnPestana(path: string, ventana?: Window | null): void {
   }
 }
 
-/** Reserva una pestaña en el mismo tick del clic (antes de awaits) para ver PDF inline. */
-function reservarPestanaPdf(): Window | null {
-  const ventana = window.open('', '_blank', 'noopener,noreferrer');
-  if (!ventana) {
-    toast.error('Permití ventanas emergentes para ver el PDF.');
-  }
-  return ventana;
-}
-
-function verPdfBlobEnPestana(blob: Blob, ventana?: Window | null): void {
+function abrirBlobEnPestana(blob: Blob): void {
   const objectUrl = URL.createObjectURL(blob);
-  if (ventana && !ventana.closed) {
-    ventana.location.href = objectUrl;
-  } else {
-    window.open(objectUrl, '_blank', 'noopener,noreferrer');
-  }
+  window.open(objectUrl, '_blank', 'noopener,noreferrer');
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
 }
 
@@ -156,13 +138,12 @@ export async function downloadPdfFromApi(
   return { blob, fileName: normalizarNombrePdf(parsePdfFileName(response.headers.get('Content-Disposition'))) };
 }
 
-/** Genera un PDF (POST) y lo abre en vista previa con nombre legible vía URL de regeneración. */
+/** Genera un PDF (POST) y lo abre en otra pestaña cuando termina. */
 export async function generarYAbrirPdf(
   path: string,
   options: RequestInit = {},
   abrir = true
 ): Promise<void> {
-  const ventana = abrir ? reservarPestanaPdf() : null;
   const url = path.startsWith('/') ? `${API_BASE_URL}${path}` : `${API_BASE_URL}/${path}`;
   const headers = new Headers(options.headers ?? {});
 
@@ -171,37 +152,31 @@ export async function generarYAbrirPdf(
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  try {
-    const response = await fetch(url, { ...options, headers });
+  const response = await fetch(url, { ...options, headers });
 
-    if (!response.ok) {
-      ventana?.close();
-      return manejarErrorPdfResponse(response);
-    }
+  if (!response.ok) {
+    return manejarErrorPdfResponse(response);
+  }
 
-    const actaId = response.headers.get('X-Acta-Id')?.trim();
-    if (actaId && /^\d+$/.test(actaId)) {
-      await response.arrayBuffer();
-      if (abrir) {
-        openPdfEnPestana(`/reportes/actas/${actaId}/pdf`, ventana);
-      }
-      return;
-    }
-
-    const blob = await response.blob();
+  const actaId = response.headers.get('X-Acta-Id')?.trim();
+  if (actaId && /^\d+$/.test(actaId)) {
+    await response.arrayBuffer();
     if (abrir) {
-      verPdfBlobEnPestana(blob, ventana);
+      openPdfEnPestana(`/reportes/actas/${actaId}/pdf`);
     }
-  } catch (error) {
-    ventana?.close();
-    throw error;
+    return;
+  }
+
+  const blob = await response.blob();
+  if (abrir) {
+    abrirBlobEnPestana(blob);
   }
 }
 
-/** Abre un PDF en pestaña nueva (vista previa, no descarga forzada). */
+/** Abre un PDF en otra pestaña. */
 export function openPdfBlob(blob: Blob, fileName = 'documento.pdf'): void {
   void fileName;
-  verPdfBlobEnPestana(blob);
+  abrirBlobEnPestana(blob);
 }
 
 /** Abre un documento: URL pública, legacy o acta regenerable vía API autenticada. */
