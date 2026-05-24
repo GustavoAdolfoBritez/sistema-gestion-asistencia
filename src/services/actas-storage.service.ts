@@ -6,7 +6,7 @@ const ACTAS_BUCKET = 'actas';
  * Supabase Storage exige claves seguras (sin espacios, comas, acentos ni caracteres reservados).
  * Convierte el nombre legible del PDF a un slug ASCII compatible.
  */
-function sanitizeStoragePath(fileName: string): string {
+export function sanitizeStoragePath(fileName: string): string {
     const base = fileName.replace(/\\/g, '/').split('/').pop() ?? 'documento.pdf';
     const stem = base.replace(/\.pdf$/i, '');
 

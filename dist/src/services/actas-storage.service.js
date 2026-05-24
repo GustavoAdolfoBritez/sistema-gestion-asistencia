@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.sanitizeStoragePath = sanitizeStoragePath;
 exports.subirActaPdf = subirActaPdf;
 const supabase_1 = require("../config/supabase");
 const ACTAS_BUCKET = 'actas';

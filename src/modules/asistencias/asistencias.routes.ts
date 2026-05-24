@@ -1,8 +1,5 @@
 import { Router } from 'express';
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
-import os from 'os';
 import {
     listarPlanillasAsignadas,
     obtenerPlanillaConPermisos,
@@ -34,32 +31,12 @@ import {
 } from '../../utils/rbac';
 import { construirContextoAuditoria, registrarEventoAuditoriaSegura } from '../auditoria/auditoria.service';
 import { ForbiddenScopeError } from '../../utils/alumnos-scope';
+import { subirJustificativoPdf } from '../../services/justificativos-storage.service';
 
 const router = Router();
 
-// Usamos el directorio temporal de la función (/tmp)
-const JUSTIFICATIVOS_DIR = path.join(os.tmpdir(), 'justificativos');
-
-// IMPORTANTE: Removemos el mkdirSync global. 
-// Lo ejecutaremos solo bajo demanda dentro de la configuración del storage.
-
-const storage = multer.diskStorage({
-    destination: (_req, _file, cb) => {
-        // Creamos la carpeta solo cuando realmente se va a subir un archivo
-        if (!fs.existsSync(JUSTIFICATIVOS_DIR)) {
-            fs.mkdirSync(JUSTIFICATIVOS_DIR, { recursive: true });
-        }
-        cb(null, JUSTIFICATIVOS_DIR);
-    },
-    filename: (_req, file, cb) => {
-        const ts = Date.now();
-        const safe = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
-        cb(null, `${ts}_${safe}`);
-    }
-});
-
 const upload = multer({
-    storage,
+    storage: multer.memoryStorage(),
     limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
     fileFilter: (_req, file, cb) => {
         if (file.mimetype === 'application/pdf') {
@@ -628,13 +605,13 @@ router.post(
     ...autenticarConPoliticaAlcance,
     autorizarRoles(...ROLES_REGISTRO_JUSTIFICACIONES),
     upload.single('archivo'),
-    (req, res, next) => {
+    async (req, res, next) => {
         try {
             if (!req.file) {
                 return res.status(400).json({ mensaje: 'No se recibió ningún archivo PDF' });
             }
-            const url = `/justificativos/${req.file.filename}`;
-            res.json({ url, filename: req.file.filename });
+            const url = await subirJustificativoPdf(req.file.buffer, req.file.originalname);
+            res.json({ url, filename: req.file.originalname });
         } catch (error) {
             next(error);
         }

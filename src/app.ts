@@ -36,8 +36,7 @@ app.use(cors(corsOptions));
 app.use(adjuntarRequestContext);
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan('dev'));
-// Servido vía Supabase Storage (bucket `actas`); no hay archivos locales en /actas.
-//app.use('/justificativos', express.static(path.resolve(process.cwd(), 'generated', 'justificativos')));
+// PDFs en Supabase Storage (buckets `actas` y `justificativos`); no hay archivos locales en disco.
 app.use(
     '/assets',
     express.static(path.resolve(process.cwd(), 'generated', 'assets'), {

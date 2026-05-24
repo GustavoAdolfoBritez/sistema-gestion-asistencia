@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { toast } from 'sonner';
 import { AppSidebar } from '../components/AppSidebar';
 import { AppSelect } from '../components/ui/app-select';
-import { API_BASE_URL, API_ORIGIN, apiFetch, notifySessionExpired } from '../utils/api';
+import { API_BASE_URL, API_ORIGIN, apiFetch, getDocumentoUrl, notifySessionExpired } from '../utils/api';
 import {
   contarFaltasDesdeSesiones,
   descripcionEstadoAsistencia,
@@ -1927,7 +1927,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                                 <p className="line-clamp-2">{j.motivo}</p>
                                 {j.documento_url ? (
                                   <a
-                                    href={`${API_ORIGIN}${j.documento_url}`}
+                                    href={getDocumentoUrl(j.documento_url)}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 mt-1"

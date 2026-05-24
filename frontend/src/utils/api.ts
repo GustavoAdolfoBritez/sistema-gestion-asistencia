@@ -16,6 +16,14 @@ function resolveApiBaseUrl(): string {
 
 export const API_BASE_URL = resolveApiBaseUrl();
 export const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, '');
+
+/** URL absoluta para documentos guardados como path relativo o URL pública (p. ej. Supabase). */
+export function getDocumentoUrl(url: string | null | undefined): string {
+  if (!url?.trim()) return '#';
+  const trimmed = url.trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `${API_ORIGIN}${trimmed.startsWith('/') ? trimmed : `/${trimmed}`}`;
+}
 const TOKEN_KEYS = ['accessToken', 'token', 'authToken'];
 const USER_STORAGE_KEY = 'currentUser';
 

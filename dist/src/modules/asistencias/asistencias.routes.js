@@ -5,35 +5,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const multer_1 = __importDefault(require("multer"));
-const path_1 = __importDefault(require("path"));
-const fs_1 = __importDefault(require("fs"));
-const os_1 = __importDefault(require("os"));
 const asistencias_service_1 = require("./asistencias.service");
 const auth_middleware_1 = require("../../middlewares/auth.middleware");
 const rbac_1 = require("../../utils/rbac");
 const auditoria_service_1 = require("../auditoria/auditoria.service");
 const alumnos_scope_1 = require("../../utils/alumnos-scope");
+const justificativos_storage_service_1 = require("../../services/justificativos-storage.service");
 const router = (0, express_1.Router)();
-// Usamos el directorio temporal de la función (/tmp)
-const JUSTIFICATIVOS_DIR = path_1.default.join(os_1.default.tmpdir(), 'justificativos');
-// IMPORTANTE: Removemos el mkdirSync global. 
-// Lo ejecutaremos solo bajo demanda dentro de la configuración del storage.
-const storage = multer_1.default.diskStorage({
-    destination: (_req, _file, cb) => {
-        // Creamos la carpeta solo cuando realmente se va a subir un archivo
-        if (!fs_1.default.existsSync(JUSTIFICATIVOS_DIR)) {
-            fs_1.default.mkdirSync(JUSTIFICATIVOS_DIR, { recursive: true });
-        }
-        cb(null, JUSTIFICATIVOS_DIR);
-    },
-    filename: (_req, file, cb) => {
-        const ts = Date.now();
-        const safe = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
-        cb(null, `${ts}_${safe}`);
-    }
-});
 const upload = (0, multer_1.default)({
-    storage,
+    storage: multer_1.default.memoryStorage(),
     limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
     fileFilter: (_req, file, cb) => {
         if (file.mimetype === 'application/pdf') {
@@ -459,13 +439,13 @@ router.get('/asistencias/ausentes', ...auth_middleware_1.autenticarConPoliticaAl
     }
 });
 // --- Upload de PDF justificativo ---
-router.post('/asistencias/justificaciones/upload', ...auth_middleware_1.autenticarConPoliticaAlcance, (0, auth_middleware_1.autorizarRoles)(...rbac_1.ROLES_REGISTRO_JUSTIFICACIONES), upload.single('archivo'), (req, res, next) => {
+router.post('/asistencias/justificaciones/upload', ...auth_middleware_1.autenticarConPoliticaAlcance, (0, auth_middleware_1.autorizarRoles)(...rbac_1.ROLES_REGISTRO_JUSTIFICACIONES), upload.single('archivo'), async (req, res, next) => {
     try {
         if (!req.file) {
             return res.status(400).json({ mensaje: 'No se recibió ningún archivo PDF' });
         }
-        const url = `/justificativos/${req.file.filename}`;
-        res.json({ url, filename: req.file.filename });
+        const url = await (0, justificativos_storage_service_1.subirJustificativoPdf)(req.file.buffer, req.file.originalname);
+        res.json({ url, filename: req.file.originalname });
     }
     catch (error) {
         next(error);

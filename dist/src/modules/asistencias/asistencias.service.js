@@ -427,9 +427,6 @@ async function registrarJustificacionDocente(input, contexto) {
     if (String(sesion.estado_modulo).toLowerCase() === 'cerrado') {
         throw new Error('No se pueden justificar inasistencias en un módulo académico cerrado');
     }
-    if (String(sesion.estado_sesion).toLowerCase() === 'cerrada') {
-        throw new Error('No se puede justificar la asistencia de una jornada cerrada');
-    }
     await asegurarMatriculaEnCurso(matriculaId, cursoId);
     const cliente = await database_1.pool.connect();
     try {
