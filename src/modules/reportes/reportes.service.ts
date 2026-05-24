@@ -8,6 +8,12 @@ import { generarConsolidadoRiesgoPdf } from './reportes.pdf.consolidado';
 import { generarPdfAusentismoFacultadCarrera } from './reportes.pdf.ausentismo';
 import { SQL_ALUMNO_APELLIDOS_COMA_NOMBRES } from '../../utils/alumno-nombre-sql';
 import { generarNombrePdfConTimestamp } from './reportes.utils';
+import { subirActaPdf } from '../../services/actas-storage.service';
+
+async function generarPdfYSubirActa(fileName: string, generar: () => Promise<Buffer>): Promise<string> {
+    const buffer = await generar();
+    return subirActaPdf(buffer, fileName);
+}
 
 interface AlertasFiltro {
     estado?: string;
@@ -1084,8 +1090,8 @@ export async function generarPdfInformeAlumno(
         anioLectivo: historial.alumno.cohorte_anio,
     });
 
-    await generarInformeAlumnoPdf(
-        {
+    const urlDocumento = await generarPdfYSubirActa(fileName, () =>
+        generarInformeAlumnoPdf({
             alumno: {
                 id: historial.alumno.id,
                 nombreCompleto,
@@ -1107,11 +1113,10 @@ export async function generarPdfInformeAlumno(
                 justificacionesAprobadas: Number(item.justificaciones_aprobadas ?? 0),
             })),
             generadoEn: generatedAt,
-        },
-        fileName
+        })
     );
 
-    return { url_documento: `/actas/${fileName}` };
+    return { url_documento: urlDocumento };
 }
 
 export async function generarPdfConsolidadoRiesgoInhabilitados(
@@ -1132,8 +1137,8 @@ export async function generarPdfConsolidadoRiesgoInhabilitados(
         periodo: periodoLabel,
     });
 
-    await generarConsolidadoRiesgoPdf(
-        {
+    const urlDocumento = await generarPdfYSubirActa(fileName, () =>
+        generarConsolidadoRiesgoPdf({
             periodo: periodoLabelToMesAnio(periodoLabel),
             total: filas.length,
             totalInhabilitados: filas.length,
@@ -1149,11 +1154,10 @@ export async function generarPdfConsolidadoRiesgoInhabilitados(
                 faltasAcumuladas: Number(f.faltas_acumuladas ?? 0),
                 estadoConsolidado: 'INHABILITADO',
             })),
-        },
-        fileName
+        })
     );
 
-    return { url_documento: `/actas/${fileName}` };
+    return { url_documento: urlDocumento };
 }
 
 function clasificarNivelAusentismo(porcentajeAusentismo: number): string {
@@ -1330,8 +1334,8 @@ export async function generarPdfEstadisticasAusentismoFacultadCarrera(
         titulo: 'Estadísticas de Ausentismo',
         periodo: periodoLabel,
     });
-    await generarPdfAusentismoFacultadCarrera(
-        {
+    const urlDocumento = await generarPdfYSubirActa(fileName, () =>
+        generarPdfAusentismoFacultadCarrera({
             periodo: periodoLabelToMesAnio(periodoLabel),
             alcance: alcanceTxt,
             resumen: {
@@ -1343,23 +1347,27 @@ export async function generarPdfEstadisticasAusentismoFacultadCarrera(
                 promedioAsistencia,
             },
             filas: filasAgregadas,
-        },
-        fileName
+        })
     );
 
-    return { url_documento: `/actas/${fileName}` };
+    return { url_documento: urlDocumento };
 }
 
 export async function crearActa(input: CrearActaInput, usuarioId: string) {
     await asegurarCursoExiste(input.cursoId);
 
     const safeTipo = input.tipoActa.trim().toLowerCase().replace(/\s+/g, '_');
-    let documento = input.urlDocumento?.trim() || `/actas/curso-${input.cursoId}-${safeTipo}-${Date.now()}.pdf`;
+    let documento: string;
 
     if (safeTipo === 'pdf_legal') {
         documento = await generarPdfLegal(input.cursoId, input.periodo);
     } else if (safeTipo === 'habilitados_no_habilitados') {
         documento = await generarPdfHabilitadosNoHabilitados(input.cursoId, input.periodo);
+    } else {
+        documento = input.urlDocumento?.trim() ?? '';
+        if (!documento) {
+            throw new Error('Debe indicar urlDocumento para este tipo de acta');
+        }
     }
 
     const { rows } = await pool.query(
@@ -1443,8 +1451,8 @@ const { rows } = await pool.query<{
     });
 
     const semestreCurso = Number(first.semestre) || 1;
-    await generarActaHabilitadosPdf(
-        {
+    return generarPdfYSubirActa(fileName, () =>
+        generarActaHabilitadosPdf({
             periodo: periodoLabel,
             cursoId,
             materia: first.materia,
@@ -1458,11 +1466,8 @@ const { rows } = await pool.query<{
                 habilitados: totalHabilitados,
                 noHabilitados: totalNoHabilitados,
             },
-        },
-        fileName
+        })
     );
-
-    return `/actas/${fileName}`;
 }
 
 async function generarPdfLegal(cursoId: number, periodo?: string) {
@@ -1572,8 +1577,8 @@ async function generarPdfLegal(cursoId: number, periodo?: string) {
         materia: first.materia,
         periodo: periodoLabel,
     });
-    await generarPlanillaLegalPdf(
-        {
+    return generarPdfYSubirActa(fileName, () =>
+        generarPlanillaLegalPdf({
             facultad: first.facultad,
             carrera: first.carrera,
             asignatura: first.materia,
@@ -1588,11 +1593,8 @@ async function generarPdfLegal(cursoId: number, periodo?: string) {
                 marcadorSuperior: (modalidadPorFecha.get(fecha) ?? 'presencial') === 'virtual' ? 'V' : 'P',
             })),
             alumnos,
-        },
-        fileName
+        })
     );
-
-    return `/actas/${fileName}`;
 }
 
 export async function obtenerChecklistCierreMensual(

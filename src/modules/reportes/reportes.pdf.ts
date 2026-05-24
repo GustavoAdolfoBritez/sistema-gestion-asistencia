@@ -1,13 +1,9 @@
-import fs from 'fs';
-import path from 'path';
 import PDFDocument from 'pdfkit';
 import {
   drawInstitutionalHeaderPlanillaLegal,
   PDF_INSTITUTIONAL_HEADER_TOP,
 } from '../../utils/pdf-institutional-header-planilla';
-
-/** Planilla legal PDF: no alterar maquetación ni diseño sin instrucción explícita del usuario. */
-export const ACTAS_OUTPUT_DIR = path.resolve(process.cwd(), 'generated', 'actas');
+import { renderPdfDocumentToBuffer } from '../../utils/pdf-buffer';
 
 interface SesionPdf {
   fecha: string;
@@ -57,10 +53,6 @@ const CONTENT_X = Math.round((PAGE_SIZE[0] - TABLE_W_STATIC) / 2); // 124
 // Y donde empieza la tabla (después del header) — referencia de diseño
 const TABLE_TOP = 164;
 const FOOTER_GAP = 20;
-
-function ensureOutputDir() {
-  fs.mkdirSync(ACTAS_OUTPUT_DIR, { recursive: true });
-}
 
 function formatDocumentNumber(value: string): string {
   const digits = String(value ?? '').replace(/\D/g, '');
@@ -268,31 +260,19 @@ function drawRows(doc: PDFKit.PDFDocument, startY: number, data: PlanillaLegalPd
   }
 }
 
-export async function generarPlanillaLegalPdf(data: PlanillaLegalPdfData, fileName: string) {
-  ensureOutputDir();
-  const filePath = path.join(ACTAS_OUTPUT_DIR, fileName);
-
-  await new Promise<void>((resolve, reject) => {
-    const doc = new PDFDocument({
+export async function generarPlanillaLegalPdf(data: PlanillaLegalPdfData): Promise<Buffer> {
+  return renderPdfDocumentToBuffer(
+    (doc) => {
+      const tableStartY = drawHeader(doc, data);
+      drawRows(doc, tableStartY, data);
+    },
+    {
       size: PAGE_SIZE,
       margin: 0,
       info: {
         Title: `Planilla legal - ${data.asignatura}`,
         Author: 'Sistema de control de asistencia',
       },
-    });
-
-    const stream = fs.createWriteStream(filePath);
-    stream.on('finish', resolve);
-    stream.on('error', reject);
-    doc.on('error', reject);
-    doc.pipe(stream);
-
-    const tableStartY = drawHeader(doc, data);
-    drawRows(doc, tableStartY, data);
-
-    doc.end();
-  });
-
-  return filePath;
+    }
+  );
 }

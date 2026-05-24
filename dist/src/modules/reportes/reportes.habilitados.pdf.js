@@ -1,14 +1,8 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generarActaHabilitadosPdf = generarActaHabilitadosPdf;
-const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
-const pdfkit_1 = __importDefault(require("pdfkit"));
-const reportes_pdf_1 = require("./reportes.pdf");
 const pdf_institutional_header_planilla_1 = require("../../utils/pdf-institutional-header-planilla");
+const pdf_buffer_1 = require("../../utils/pdf-buffer");
 const pdf_kit_brand_1 = require("../../utils/pdf-kit-brand");
 const pdf_report_cover_1 = require("../../utils/pdf-report-cover");
 const ROW_HEIGHT = 22;
@@ -23,9 +17,6 @@ function formatPeriodo(periodo) {
     const [anio, mes] = periodo.split('-').map(Number);
     const mesTxt = new Intl.DateTimeFormat('es-ES', { month: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(anio, (mes || 1) - 1, 1)));
     return `${mesTxt.toUpperCase()} ${anio}`;
-}
-function ensureOutputDir() {
-    fs_1.default.mkdirSync(reportes_pdf_1.ACTAS_OUTPUT_DIR, { recursive: true });
 }
 function drawMetaGrid(doc, marginX, startY, contentWidth, fields) {
     const cols = 3;
@@ -45,25 +36,8 @@ function drawMetaGrid(doc, marginX, startY, contentWidth, fields) {
     }
     return y;
 }
-async function generarActaHabilitadosPdf(data, fileName) {
-    ensureOutputDir();
-    const filePath = path_1.default.join(reportes_pdf_1.ACTAS_OUTPUT_DIR, fileName);
-    await new Promise((resolve, reject) => {
-        const doc = new pdfkit_1.default({
-            size: 'A4',
-            layout: 'landscape',
-            margin: 0,
-            bufferPages: true,
-            info: {
-                Title: `Acta habilitados - ${data.materia}`,
-                Author: 'Sistema de control de asistencia',
-            },
-        });
-        const stream = fs_1.default.createWriteStream(filePath);
-        stream.on('finish', resolve);
-        stream.on('error', reject);
-        doc.on('error', reject);
-        doc.pipe(stream);
+async function generarActaHabilitadosPdf(data) {
+    return (0, pdf_buffer_1.renderPdfDocumentToBuffer)((doc) => {
         const margin = pdf_kit_brand_1.PDF_BRAND_MARGIN;
         const pageW = doc.page.width;
         const pageH = doc.page.height;
@@ -125,7 +99,14 @@ async function generarActaHabilitadosPdf(data, fileName) {
                 pageTotal: range.count,
             });
         }
-        doc.end();
+    }, {
+        size: 'A4',
+        layout: 'landscape',
+        margin: 0,
+        bufferPages: true,
+        info: {
+            Title: `Acta habilitados - ${data.materia}`,
+            Author: 'Sistema de control de asistencia',
+        },
     });
-    return filePath;
 }

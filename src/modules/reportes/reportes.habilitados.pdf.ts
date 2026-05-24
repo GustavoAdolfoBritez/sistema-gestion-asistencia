@@ -1,11 +1,9 @@
-import fs from 'fs';
-import path from 'path';
 import PDFDocument from 'pdfkit';
-import { ACTAS_OUTPUT_DIR } from './reportes.pdf';
 import {
   drawInstitutionalHeaderPlanillaLegal,
   PDF_INSTITUTIONAL_HEADER_TOP_REPORTS,
 } from '../../utils/pdf-institutional-header-planilla';
+import { renderPdfDocumentToBuffer } from '../../utils/pdf-buffer';
 import {
   PDF_BRAND,
   PDF_BRAND_MARGIN,
@@ -62,10 +60,6 @@ function formatPeriodo(periodo: string): string {
   return `${mesTxt.toUpperCase()} ${anio}`;
 }
 
-function ensureOutputDir() {
-  fs.mkdirSync(ACTAS_OUTPUT_DIR, { recursive: true });
-}
-
 function drawMetaGrid(
   doc: PDFKit.PDFDocument,
   marginX: number,
@@ -91,12 +85,86 @@ function drawMetaGrid(
   return y;
 }
 
-export async function generarActaHabilitadosPdf(data: ActaHabilitadosData, fileName: string) {
-  ensureOutputDir();
-  const filePath = path.join(ACTAS_OUTPUT_DIR, fileName);
+export async function generarActaHabilitadosPdf(data: ActaHabilitadosData): Promise<Buffer> {
+  return renderPdfDocumentToBuffer(
+    (doc) => {
+      const margin = PDF_BRAND_MARGIN;
+      const pageW = doc.page.width;
+      const pageH = doc.page.height;
+      const contentW = pageW - margin * 2;
+      const bottomLimit = pageH - margin - PDF_FOOTER_RESERVED;
 
-  await new Promise<void>((resolve, reject) => {
-    const doc = new PDFDocument({
+      const inst = drawInstitutionalHeaderPlanillaLegal(doc, pageW, PDF_INSTITUTIONAL_HEADER_TOP_REPORTS);
+      let y = drawOperativoPdfCoverHeader(doc, margin, contentW, inst.rowFacultadY + 4, {
+        titulo: 'ACTA DE HABILITADOS / NO HABILITADOS',
+        generadoEn: formatGeneradoParaguay(new Date()),
+      });
+
+      y = drawMetaGrid(doc, margin, y, contentW, [
+        { label: 'Periodo', value: formatPeriodo(data.periodo) },
+        { label: 'Facultad', value: data.facultad },
+        { label: 'Carrera', value: data.carrera },
+        { label: 'Semestre Curricular', value: `${Math.trunc(data.semestre)}°` },
+        { label: 'Materia', value: data.materia },
+        { label: 'Docente', value: data.docente },
+      ]);
+
+      y = drawSectionTitle(doc, margin, y, contentW, 'Listado de alumnos');
+
+      const drawTableHeaderAt = (yy: number) =>
+        drawModernTableHeader(doc, margin, yy, COLUMNS, ROW_HEIGHT, 'print');
+
+      y = drawTableHeaderAt(y);
+
+      let idx = 0;
+      for (const alumno of data.alumnos) {
+        if (y + ROW_HEIGHT > bottomLimit) {
+          doc.addPage();
+          y = margin;
+          y = drawTableHeaderAt(y);
+        }
+        const rec: Record<string, string> = {
+          orden: String(alumno.orden),
+          alumno: alumno.alumno,
+          documento: alumno.documento,
+          porcentajeFinal: `${alumno.porcentajeFinal.toFixed(2)}%`,
+          estado: alumno.estado,
+        };
+        drawModernTableRow(doc, margin, y, COLUMNS, rec, ROW_HEIGHT, idx % 2 === 1);
+        y += ROW_HEIGHT;
+        idx += 1;
+      }
+
+      const summaryH = 56;
+      if (y + summaryH > bottomLimit) {
+        doc.addPage();
+        y = margin;
+      } else {
+        y += 14;
+      }
+
+      doc.fillColor(PDF_BRAND.text).font('Helvetica-Bold').fontSize(10);
+      doc.text(
+        `Resumen: Total ${data.resumen.total} | Habilitados ${data.resumen.habilitados} | No habilitados ${data.resumen.noHabilitados}`,
+        margin,
+        y,
+        { width: contentW }
+      );
+      y += 36;
+      doc.font('Helvetica').fontSize(10);
+      doc.text('______________________________', margin, y);
+      doc.text('Firma responsable académico/a', margin, y + 14);
+
+      const range = doc.bufferedPageRange();
+      for (let i = 0; i < range.count; i++) {
+        doc.switchToPage(range.start + i);
+        drawFooter(doc, margin, pageH - margin - 8, contentW, {
+          pageIndex: i,
+          pageTotal: range.count,
+        });
+      }
+    },
+    {
       size: 'A4',
       layout: 'landscape',
       margin: 0,
@@ -105,92 +173,6 @@ export async function generarActaHabilitadosPdf(data: ActaHabilitadosData, fileN
         Title: `Acta habilitados - ${data.materia}`,
         Author: 'Sistema de control de asistencia',
       },
-    });
-
-    const stream = fs.createWriteStream(filePath);
-    stream.on('finish', resolve);
-    stream.on('error', reject);
-    doc.on('error', reject);
-    doc.pipe(stream);
-
-    const margin = PDF_BRAND_MARGIN;
-    const pageW = doc.page.width;
-    const pageH = doc.page.height;
-    const contentW = pageW - margin * 2;
-    const bottomLimit = pageH - margin - PDF_FOOTER_RESERVED;
-
-    const inst = drawInstitutionalHeaderPlanillaLegal(doc, pageW, PDF_INSTITUTIONAL_HEADER_TOP_REPORTS);
-    let y = drawOperativoPdfCoverHeader(doc, margin, contentW, inst.rowFacultadY + 4, {
-      titulo: 'ACTA DE HABILITADOS / NO HABILITADOS',
-      generadoEn: formatGeneradoParaguay(new Date()),
-    });
-
-    y = drawMetaGrid(doc, margin, y, contentW, [
-      { label: 'Periodo', value: formatPeriodo(data.periodo) },
-      { label: 'Facultad', value: data.facultad },
-      { label: 'Carrera', value: data.carrera },
-      { label: 'Semestre Curricular', value: `${Math.trunc(data.semestre)}°` },
-      { label: 'Materia', value: data.materia },
-      { label: 'Docente', value: data.docente },
-    ]);
-
-    y = drawSectionTitle(doc, margin, y, contentW, 'Listado de alumnos');
-
-    const drawTableHeaderAt = (yy: number) =>
-      drawModernTableHeader(doc, margin, yy, COLUMNS, ROW_HEIGHT, 'print');
-
-    y = drawTableHeaderAt(y);
-
-    let idx = 0;
-    for (const alumno of data.alumnos) {
-      if (y + ROW_HEIGHT > bottomLimit) {
-        doc.addPage();
-        y = margin;
-        y = drawTableHeaderAt(y);
-      }
-      const rec: Record<string, string> = {
-        orden: String(alumno.orden),
-        alumno: alumno.alumno,
-        documento: alumno.documento,
-        porcentajeFinal: `${alumno.porcentajeFinal.toFixed(2)}%`,
-        estado: alumno.estado,
-      };
-      drawModernTableRow(doc, margin, y, COLUMNS, rec, ROW_HEIGHT, idx % 2 === 1);
-      y += ROW_HEIGHT;
-      idx += 1;
     }
-
-    const summaryH = 56;
-    if (y + summaryH > bottomLimit) {
-      doc.addPage();
-      y = margin;
-    } else {
-      y += 14;
-    }
-
-    doc.fillColor(PDF_BRAND.text).font('Helvetica-Bold').fontSize(10);
-    doc.text(
-      `Resumen: Total ${data.resumen.total} | Habilitados ${data.resumen.habilitados} | No habilitados ${data.resumen.noHabilitados}`,
-      margin,
-      y,
-      { width: contentW }
-    );
-    y += 36;
-    doc.font('Helvetica').fontSize(10);
-    doc.text('______________________________', margin, y);
-    doc.text('Firma responsable académico/a', margin, y + 14);
-
-    const range = doc.bufferedPageRange();
-    for (let i = 0; i < range.count; i++) {
-      doc.switchToPage(range.start + i);
-      drawFooter(doc, margin, pageH - margin - 8, contentW, {
-        pageIndex: i,
-        pageTotal: range.count,
-      });
-    }
-
-    doc.end();
-  });
-
-  return filePath;
+  );
 }

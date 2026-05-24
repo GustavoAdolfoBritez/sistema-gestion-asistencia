@@ -5,6 +5,7 @@ const auth_service_1 = require("./auth.service");
 const auth_middleware_1 = require("../../middlewares/auth.middleware");
 const auditoria_service_1 = require("../auditoria/auditoria.service");
 const http_errors_1 = require("../../utils/http-errors");
+const logger_1 = require("../../utils/logger");
 const router = (0, express_1.Router)();
 router.post('/auth/login', async (req, res, next) => {
     try {
@@ -20,13 +21,17 @@ router.post('/auth/login', async (req, res, next) => {
         res.json(resultado);
     }
     catch (error) {
+        logger_1.logger.warn({ err: error }, 'Login rechazado o fallido');
         if (error instanceof Error) {
             return (0, http_errors_1.sendJsonError)(res, 401, {
                 mensaje: error.message,
                 codigo: 'auth_login_rechazado'
             });
         }
-        next(error);
+        return (0, http_errors_1.sendJsonError)(res, 500, {
+            mensaje: 'Error interno',
+            codigo: 'auth_login_error'
+        });
     }
 });
 router.get('/auth/me', auth_middleware_1.autenticar, (req, res) => {

@@ -36,7 +36,7 @@ app.use((0, cors_1.default)(corsOptions));
 app.use(request_context_middleware_1.adjuntarRequestContext);
 app.use(express_1.default.json({ limit: '1mb' }));
 app.use((0, morgan_1.default)('dev'));
-//app.use('/actas', express.static(path.resolve(process.cwd(), 'generated', 'actas')));
+// Servido vía Supabase Storage (bucket `actas`); no hay archivos locales en /actas.
 //app.use('/justificativos', express.static(path.resolve(process.cwd(), 'generated', 'justificativos')));
 app.use('/assets', express_1.default.static(path_1.default.resolve(process.cwd(), 'generated', 'assets'), {
     setHeaders: (res) => {

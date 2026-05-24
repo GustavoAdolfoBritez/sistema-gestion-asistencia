@@ -1,11 +1,9 @@
-import fs from 'fs';
-import path from 'path';
 import PDFDocument from 'pdfkit';
-import { ACTAS_OUTPUT_DIR } from './reportes.pdf';
 import {
   drawInstitutionalHeaderPlanillaLegal,
   PDF_INSTITUTIONAL_HEADER_TOP_REPORTS,
 } from '../../utils/pdf-institutional-header-planilla';
+import { renderPdfDocumentToBuffer } from '../../utils/pdf-buffer';
 import {
   PDF_BRAND,
   PDF_BRAND_MARGIN,
@@ -87,31 +85,9 @@ const COLUMNS: ModernTableColumn[] = [
   { key: 'justificacionesAprobadas', label: 'Justif.', width: 56, align: 'center' },
 ];
 
-function ensureOutputDir() {
-  fs.mkdirSync(ACTAS_OUTPUT_DIR, { recursive: true });
-}
-
-export async function generarInformeAlumnoPdf(data: InformeAlumnoPdfData, fileName: string) {
-  ensureOutputDir();
-  const filePath = path.join(ACTAS_OUTPUT_DIR, fileName);
-
-  await new Promise<void>((resolve, reject) => {
-    const doc = new PDFDocument({
-      size: 'A4',
-      layout: 'landscape',
-      margin: 0,
-      bufferPages: true,
-      info: {
-        Title: `Informe alumno - ${data.alumno.nombreCompleto}`,
-        Author: 'Sistema de control de asistencia',
-      },
-    });
-    const stream = fs.createWriteStream(filePath);
-    stream.on('finish', resolve);
-    stream.on('error', reject);
-    doc.on('error', reject);
-    doc.pipe(stream);
-
+export async function generarInformeAlumnoPdf(data: InformeAlumnoPdfData): Promise<Buffer> {
+  return renderPdfDocumentToBuffer(
+    (doc) => {
     const margin = PDF_BRAND_MARGIN;
     const pageW = doc.page.width;
     const pageH = doc.page.height;
@@ -215,16 +191,23 @@ export async function generarInformeAlumnoPdf(data: InformeAlumnoPdfData, fileNa
     }
 
     const range = doc.bufferedPageRange();
-    for (let i = 0; i < range.count; i++) {
-      doc.switchToPage(range.start + i);
-      drawFooter(doc, margin, pageH - margin - 8, contentW, {
-        pageIndex: i,
-        pageTotal: range.count,
-      });
+      for (let i = 0; i < range.count; i++) {
+        doc.switchToPage(range.start + i);
+        drawFooter(doc, margin, pageH - margin - 8, contentW, {
+          pageIndex: i,
+          pageTotal: range.count,
+        });
+      }
+    },
+    {
+      size: 'A4',
+      layout: 'landscape',
+      margin: 0,
+      bufferPages: true,
+      info: {
+        Title: `Informe alumno - ${data.alumno.nombreCompleto}`,
+        Author: 'Sistema de control de asistencia',
+      },
     }
-
-    doc.end();
-  });
-
-  return filePath;
+  );
 }

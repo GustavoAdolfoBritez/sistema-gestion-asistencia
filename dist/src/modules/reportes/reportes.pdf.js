@@ -1,16 +1,8 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ACTAS_OUTPUT_DIR = void 0;
 exports.generarPlanillaLegalPdf = generarPlanillaLegalPdf;
-const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
-const pdfkit_1 = __importDefault(require("pdfkit"));
 const pdf_institutional_header_planilla_1 = require("../../utils/pdf-institutional-header-planilla");
-/** Planilla legal PDF: no alterar maquetación ni diseño sin instrucción explícita del usuario. */
-exports.ACTAS_OUTPUT_DIR = path_1.default.resolve(process.cwd(), 'generated', 'actas');
+const pdf_buffer_1 = require("../../utils/pdf-buffer");
 // Página A4 landscape
 const PAGE_SIZE = [842, 595];
 const MARGIN_TOP = 18;
@@ -30,9 +22,6 @@ const CONTENT_X = Math.round((PAGE_SIZE[0] - TABLE_W_STATIC) / 2); // 124
 // Y donde empieza la tabla (después del header) — referencia de diseño
 const TABLE_TOP = 164;
 const FOOTER_GAP = 20;
-function ensureOutputDir() {
-    fs_1.default.mkdirSync(exports.ACTAS_OUTPUT_DIR, { recursive: true });
-}
 function formatDocumentNumber(value) {
     const digits = String(value ?? '').replace(/\D/g, '');
     if (!digits)
@@ -210,26 +199,16 @@ function drawRows(doc, startY, data) {
         }
     }
 }
-async function generarPlanillaLegalPdf(data, fileName) {
-    ensureOutputDir();
-    const filePath = path_1.default.join(exports.ACTAS_OUTPUT_DIR, fileName);
-    await new Promise((resolve, reject) => {
-        const doc = new pdfkit_1.default({
-            size: PAGE_SIZE,
-            margin: 0,
-            info: {
-                Title: `Planilla legal - ${data.asignatura}`,
-                Author: 'Sistema de control de asistencia',
-            },
-        });
-        const stream = fs_1.default.createWriteStream(filePath);
-        stream.on('finish', resolve);
-        stream.on('error', reject);
-        doc.on('error', reject);
-        doc.pipe(stream);
+async function generarPlanillaLegalPdf(data) {
+    return (0, pdf_buffer_1.renderPdfDocumentToBuffer)((doc) => {
         const tableStartY = drawHeader(doc, data);
         drawRows(doc, tableStartY, data);
-        doc.end();
+    }, {
+        size: PAGE_SIZE,
+        margin: 0,
+        info: {
+            Title: `Planilla legal - ${data.asignatura}`,
+            Author: 'Sistema de control de asistencia',
+        },
     });
-    return filePath;
 }

@@ -1,6 +1,4 @@
 import { Router } from 'express';
-import fs from 'fs';
-import path from 'path';
 import {
     obtenerChecklistCierreMensual,
     cerrarModuloMensual,
@@ -21,7 +19,7 @@ import {
     listarAusentismoAgregadoFacultadCarrera,
     validarCarreraEnAlcanceFacultades
 } from './reportes.service';
-import { ACTAS_OUTPUT_DIR } from './reportes.pdf';
+import { supabase } from '../../config/supabase';
 import { autenticarConPoliticaAlcance, autorizarRoles, normalizarRolComparacion, normalizarRolesDesdePayload } from '../../middlewares/auth.middleware';
 import {
     RBAC,
@@ -647,23 +645,13 @@ router.get('/reportes/actas/descargar/:fileName', async (req, res) => {
     }
 
     const decodedFileName = decodeURIComponent(rawFileName);
-    const safeFileName = path.basename(decodedFileName);
-
-    if (safeFileName !== decodedFileName) {
+    const safeFileName = decodedFileName.replace(/\\/g, '/').split('/').pop() ?? '';
+    if (!safeFileName || decodedFileName.includes('..')) {
         return res.status(400).json({ mensaje: 'fileName inválido' });
     }
 
-    const absoluteBase = path.resolve(ACTAS_OUTPUT_DIR);
-    const absoluteTarget = path.resolve(absoluteBase, safeFileName);
-    if (!absoluteTarget.startsWith(`${absoluteBase}${path.sep}`)) {
-        return res.status(400).json({ mensaje: 'Ruta de archivo inválida' });
-    }
-
-    if (!fs.existsSync(absoluteTarget)) {
-        return res.status(404).json({ mensaje: 'Documento no encontrado' });
-    }
-
-    res.sendFile(absoluteTarget);
+    const { data } = supabase.storage.from('actas').getPublicUrl(safeFileName);
+    return res.redirect(data.publicUrl);
 });
 
 router.post('/reportes/actas', async (req, res, next) => {

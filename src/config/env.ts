@@ -6,6 +6,8 @@ loadEnv();
 const envSchema = z.object({
     PORT: z.coerce.number().default(4000),
     SUPABASE_DB_URL: z.string().min(1, 'Falta la cadena de conexión de Supabase'),
+    SUPABASE_URL: z.string().url('Falta SUPABASE_URL (API de Supabase)'),
+    SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, 'Falta SUPABASE_SERVICE_ROLE_KEY para Storage'),
     JWT_SECRET: z.string().min(16, 'JWT_SECRET debe tener al menos 16 caracteres'),
     JWT_EXP_MIN: z.coerce.number().default(30),
     JWT_REFRESH_SECRET: z.string().min(16, 'JWT_REFRESH_SECRET debe tener al menos 16 caracteres'),
@@ -54,7 +56,15 @@ const NODE_ENV = normalizeNodeEnv(parsed.data.NODE_ENV);
 const corsOrigins = parseCorsOrigins(parsed.data.CORS_ORIGINS);
 const exposeErrorDetails = parseExposeErrorDetails(process.env.EXPOSE_ERROR_DETAILS, NODE_ENV);
 
-const { NODE_ENV: _node, CORS_ORIGINS: _cors, EXPOSE_ERROR_DETAILS: _exp, DB_STATEMENT_TIMEOUT_MS: _stmto, ...rest } = parsed.data;
+const {
+    NODE_ENV: _node,
+    CORS_ORIGINS: _cors,
+    EXPOSE_ERROR_DETAILS: _exp,
+    DB_STATEMENT_TIMEOUT_MS: _stmto,
+    SUPABASE_URL: supabaseUrl,
+    SUPABASE_SERVICE_ROLE_KEY: supabaseServiceRoleKey,
+    ...rest
+} = parsed.data;
 
 export const env = {
     ...rest,
@@ -62,5 +72,7 @@ export const env = {
     corsOrigins,
     exposeErrorDetails,
     isProduction: NODE_ENV === 'production',
-    dbStatementTimeoutMs: parsed.data.DB_STATEMENT_TIMEOUT_MS
+    dbStatementTimeoutMs: parsed.data.DB_STATEMENT_TIMEOUT_MS,
+    supabaseUrl,
+    supabaseServiceRoleKey,
 };

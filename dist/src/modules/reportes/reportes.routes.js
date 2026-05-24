@@ -1,13 +1,8 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
 const reportes_service_1 = require("./reportes.service");
-const reportes_pdf_1 = require("./reportes.pdf");
+const supabase_1 = require("../../config/supabase");
 const auth_middleware_1 = require("../../middlewares/auth.middleware");
 const rbac_1 = require("../../utils/rbac");
 const alumnos_scope_1 = require("../../utils/alumnos-scope");
@@ -564,19 +559,12 @@ router.get('/reportes/actas/descargar/:fileName', async (req, res) => {
         return res.status(400).json({ mensaje: 'fileName es obligatorio' });
     }
     const decodedFileName = decodeURIComponent(rawFileName);
-    const safeFileName = path_1.default.basename(decodedFileName);
-    if (safeFileName !== decodedFileName) {
+    const safeFileName = decodedFileName.replace(/\\/g, '/').split('/').pop() ?? '';
+    if (!safeFileName || decodedFileName.includes('..')) {
         return res.status(400).json({ mensaje: 'fileName inválido' });
     }
-    const absoluteBase = path_1.default.resolve(reportes_pdf_1.ACTAS_OUTPUT_DIR);
-    const absoluteTarget = path_1.default.resolve(absoluteBase, safeFileName);
-    if (!absoluteTarget.startsWith(`${absoluteBase}${path_1.default.sep}`)) {
-        return res.status(400).json({ mensaje: 'Ruta de archivo inválida' });
-    }
-    if (!fs_1.default.existsSync(absoluteTarget)) {
-        return res.status(404).json({ mensaje: 'Documento no encontrado' });
-    }
-    res.sendFile(absoluteTarget);
+    const { data } = supabase_1.supabase.storage.from('actas').getPublicUrl(safeFileName);
+    return res.redirect(data.publicUrl);
 });
 router.post('/reportes/actas', async (req, res, next) => {
     try {
