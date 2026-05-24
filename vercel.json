@@ -12,7 +12,7 @@
       "dest": "dist/src/app.js"
     },
     {
-      "src": "/",
+      "src": "/(.*)",
       "dest": "dist/src/app.js"
     }
   ]
