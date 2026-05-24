@@ -59,21 +59,38 @@ function normalizarNombrePdf(fileName: string): string {
   return trimmed.toLowerCase().endsWith('.pdf') ? trimmed : `${trimmed}.pdf`;
 }
 
-/** Descarga un PDF desde la API (GET o POST) con autenticación. */
-export async function downloadPdfFromApi(
-  path: string,
-  options: RequestInit = {}
-): Promise<{ blob: Blob; fileName: string }> {
-  const url = path.startsWith('/') ? `${API_BASE_URL}${path}` : `${API_BASE_URL}/${path}`;
-  const headers = new Headers(options.headers ?? {});
+function obtenerTokenSesion(): string | null {
+  return TOKEN_KEYS.map((key) => localStorage.getItem(key)).find(Boolean) ?? null;
+}
 
-  const token = TOKEN_KEYS.map((key) => localStorage.getItem(key)).find(Boolean);
-  if (token && !headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${token}`);
+/** URL autenticada para abrir PDF en pestaña nueva (el navegador usa Content-Disposition). */
+export function buildAuthenticatedPdfUrl(path: string): string {
+  const token = obtenerTokenSesion();
+  if (!token) {
+    throw new SessionExpiredError();
   }
+  const base = path.startsWith('/') ? `${API_BASE_URL}${path}` : `${API_BASE_URL}/${path}`;
+  const parsed = new URL(base);
+  parsed.searchParams.set('access_token', token);
+  return parsed.toString();
+}
 
-  const response = await fetch(url, { ...options, headers });
+/** Abre un PDF de la API en pestaña nueva con nombre legible al guardar. */
+export function openPdfEnPestana(path: string): void {
+  try {
+    const url = buildAuthenticatedPdfUrl(path);
+    window.open(url, '_blank', 'noopener,noreferrer');
+  } catch (error) {
+    if (isSessionExpiredError(error)) {
+      notifySessionExpired();
+      showSessionExpiredToast('Tu sesión expiró. Iniciá sesión de nuevo.');
+      return;
+    }
+    throw error;
+  }
+}
 
+async function manejarErrorPdfResponse(response: Response): Promise<never> {
   if (response.status === 401) {
     const payload = await response.json().catch(() => ({}));
     const mensaje =
@@ -84,27 +101,88 @@ export async function downloadPdfFromApi(
     showSessionExpiredToast(mensaje);
     throw new SessionExpiredError(mensaje);
   }
-
   const contentType = response.headers.get('Content-Type') ?? '';
+  if (contentType.includes('application/json')) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload?.mensaje ?? 'No se pudo descargar el PDF');
+  }
+  throw new Error('No se pudo descargar el PDF');
+}
+
+/** Descarga un PDF desde la API (GET o POST) con autenticación. */
+export async function downloadPdfFromApi(
+  path: string,
+  options: RequestInit = {}
+): Promise<{ blob: Blob; fileName: string }> {
+  const url = path.startsWith('/') ? `${API_BASE_URL}${path}` : `${API_BASE_URL}/${path}`;
+  const headers = new Headers(options.headers ?? {});
+
+  const token = obtenerTokenSesion();
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const response = await fetch(url, { ...options, headers });
+
   if (!response.ok) {
-    if (contentType.includes('application/json')) {
-      const payload = await response.json().catch(() => ({}));
-      throw new Error(payload?.mensaje ?? 'No se pudo descargar el PDF');
-    }
-    throw new Error('No se pudo descargar el PDF');
+    return manejarErrorPdfResponse(response);
   }
 
   const blob = await response.blob();
   return { blob, fileName: normalizarNombrePdf(parsePdfFileName(response.headers.get('Content-Disposition'))) };
 }
 
-/** Abre un PDF en pestaña nueva conservando el nombre legible al guardar. */
-export function openPdfBlob(blob: Blob, fileName = 'documento.pdf'): void {
+/** Genera un PDF (POST) y lo abre con nombre legible vía URL directa de regeneración. */
+export async function generarYAbrirPdf(
+  path: string,
+  options: RequestInit = {},
+  abrir = true
+): Promise<void> {
+  const url = path.startsWith('/') ? `${API_BASE_URL}${path}` : `${API_BASE_URL}/${path}`;
+  const headers = new Headers(options.headers ?? {});
+
+  const token = obtenerTokenSesion();
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const response = await fetch(url, { ...options, headers });
+
+  if (!response.ok) {
+    return manejarErrorPdfResponse(response);
+  }
+
+  const actaId = response.headers.get('X-Acta-Id')?.trim();
+  if (actaId && /^\d+$/.test(actaId)) {
+    await response.arrayBuffer();
+    if (abrir) {
+      openPdfEnPestana(`/reportes/actas/${actaId}/pdf`);
+    }
+    return;
+  }
+
+  const blob = await response.blob();
+  if (abrir) {
+    descargarPdfBlob(blob, normalizarNombrePdf(parsePdfFileName(response.headers.get('Content-Disposition'))));
+  }
+}
+
+function descargarPdfBlob(blob: Blob, fileName: string): void {
   const safeName = normalizarNombrePdf(fileName);
-  const file = new File([blob], safeName, { type: blob.type || 'application/pdf' });
-  const objectUrl = URL.createObjectURL(file);
-  window.open(objectUrl, '_blank', 'noopener,noreferrer');
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = objectUrl;
+  anchor.download = safeName;
+  anchor.rel = 'noopener';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+}
+
+/** @deprecated Usar generarYAbrirPdf o openPdfEnPestana para conservar el nombre del archivo. */
+export function openPdfBlob(blob: Blob, fileName = 'documento.pdf'): void {
+  descargarPdfBlob(blob, fileName);
 }
 
 /** Abre un documento: URL pública, legacy o acta regenerable vía API autenticada. */
@@ -116,8 +194,7 @@ export async function abrirDocumento(url: string | null | undefined): Promise<vo
     return;
   }
   if (esUrlActaRegenerable(trimmed)) {
-    const { blob, fileName } = await downloadPdfFromApi(trimmed);
-    openPdfBlob(blob, fileName);
+    openPdfEnPestana(trimmed);
     return;
   }
   window.open(getDocumentoUrl(trimmed), '_blank', 'noopener,noreferrer');

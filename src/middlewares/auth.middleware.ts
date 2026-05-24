@@ -61,17 +61,30 @@ declare global {
     }
 }
 
-export function autenticar(req: Request, res: Response, next: NextFunction): void {
+function extraerTokenAutenticacion(req: Request): string | null {
     const header = req.headers.authorization;
-    if (!header || !header.startsWith('Bearer ')) {
+    if (header?.startsWith('Bearer ')) {
+        return header.substring(7);
+    }
+    // Permite abrir PDFs en pestaña nueva (window.open no envía Authorization).
+    if (req.method === 'GET') {
+        const queryToken = req.query.access_token;
+        if (typeof queryToken === 'string' && queryToken.trim()) {
+            return queryToken.trim();
+        }
+    }
+    return null;
+}
+
+export function autenticar(req: Request, res: Response, next: NextFunction): void {
+    const token = extraerTokenAutenticacion(req);
+    if (!token) {
         sendJsonError(res, 401, {
             mensaje: 'Token no proporcionado',
             codigo: 'auth_token_ausente'
         });
         return;
     }
-
-    const token = header.substring(7);
 
     try {
         const decoded = jwt.verify(token, env.JWT_SECRET) as AuthPayload & { roles?: unknown; role?: unknown };

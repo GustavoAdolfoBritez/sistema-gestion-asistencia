@@ -29,9 +29,9 @@ const corsOptions = env_1.env.corsOrigins.length > 0
             }
             callback(new Error(`Origen no permitido por CORS: ${origin}`));
         },
-        exposedHeaders: ['Content-Disposition'],
+        exposedHeaders: ['Content-Disposition', 'X-Acta-Id'],
     }
-    : { origin: true, exposedHeaders: ['Content-Disposition'] };
+    : { origin: true, exposedHeaders: ['Content-Disposition', 'X-Acta-Id'] };
 app.use((0, helmet_1.default)());
 app.use((0, cors_1.default)(corsOptions));
 app.use(request_context_middleware_1.adjuntarRequestContext);

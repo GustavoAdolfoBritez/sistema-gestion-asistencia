@@ -7,7 +7,7 @@ import { UserAvatar } from '../components/ui/user-avatar';
 import { SkeletonRow } from '../components/ui/skeleton';
 import { AppSelect } from '../components/ui/app-select';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
-import { downloadPdfFromApi, openPdfBlob, apiFetch } from '../utils/api';
+import { generarYAbrirPdf, apiFetch } from '../utils/api';
 import { formatDateOnly } from '../utils/datetime';
 import { appPath } from '../navigation/app-paths';
 import { readStoredUser } from '../utils/session-user';
@@ -624,12 +624,11 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
       if (statusFilter !== 'all') body.estado = statusFilter;
       Object.assign(body, roleFilterToExportBody(roleFilter));
 
-      const { blob, fileName } = await downloadPdfFromApi('/usuarios/export/pdf', {
+      await generarYAbrirPdf('/usuarios/export/pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      openPdfBlob(blob, fileName);
       toast.success('PDF de usuarios generado.');
     } catch (err) {
       const mensaje = err instanceof Error ? err.message : 'No se pudo exportar el listado';

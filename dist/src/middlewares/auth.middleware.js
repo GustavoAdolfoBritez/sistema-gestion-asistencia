@@ -51,16 +51,29 @@ function canonicoRol(rolNormalizado) {
 function normalizarRolComparacion(rol) {
     return canonicoRol(normalizarRol(rol));
 }
-function autenticar(req, res, next) {
+function extraerTokenAutenticacion(req) {
     const header = req.headers.authorization;
-    if (!header || !header.startsWith('Bearer ')) {
+    if (header?.startsWith('Bearer ')) {
+        return header.substring(7);
+    }
+    // Permite abrir PDFs en pestaña nueva (window.open no envía Authorization).
+    if (req.method === 'GET') {
+        const queryToken = req.query.access_token;
+        if (typeof queryToken === 'string' && queryToken.trim()) {
+            return queryToken.trim();
+        }
+    }
+    return null;
+}
+function autenticar(req, res, next) {
+    const token = extraerTokenAutenticacion(req);
+    if (!token) {
         (0, http_errors_1.sendJsonError)(res, 401, {
             mensaje: 'Token no proporcionado',
             codigo: 'auth_token_ausente'
         });
         return;
     }
-    const token = header.substring(7);
     try {
         const decoded = jsonwebtoken_1.default.verify(token, env_1.env.JWT_SECRET);
         const roles = normalizarRolesDesdePayload(decoded.roles ?? decoded.role);

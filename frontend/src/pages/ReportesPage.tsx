@@ -7,7 +7,7 @@ import { calcularContextoSelectorListo, deriveAlcanceVisual } from '../hooks/use
 import { AppSelect, appSelectDarkSurfaceClass } from '../components/ui/app-select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { useMisAlcances } from '../hooks/useMisAlcances';
-import { abrirDocumento, apiFetch, downloadPdfFromApi, openPdfBlob, toastApiError } from '../utils/api';
+import { abrirDocumento, apiFetch, generarYAbrirPdf, toastApiError } from '../utils/api';
 import { formatDateTime24 } from '../utils/datetime';
 import { puedeEjecutarCierreMensual } from '../utils/rbac';
 import { readStoredUser } from '../utils/session-user';
@@ -473,16 +473,18 @@ export function ReportesPage({ onLogout }: Props) {
       return;
     }
     try {
-      const { blob, fileName } = await downloadPdfFromApi('/reportes/actas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cursoId: cursoNum, tipoActa, periodo }),
-      });
+      const abrirPdf = tipoActa === 'pdf_legal' || tipoActa === 'habilitados_no_habilitados';
+      await generarYAbrirPdf(
+        '/reportes/actas',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cursoId: cursoNum, tipoActa, periodo }),
+        },
+        abrirPdf
+      );
       toast.success(`Acta ${tipoActa} generada correctamente`);
       await Promise.all([cargarActas(), cargarChecklist()]);
-      if (tipoActa === 'pdf_legal' || tipoActa === 'habilitados_no_habilitados') {
-        openPdfBlob(blob, fileName);
-      }
     } catch (error) {
       toastApiError(error, 'No se pudo generar el acta');
     }
@@ -558,7 +560,7 @@ export function ReportesPage({ onLogout }: Props) {
     }
     setConsolidadoPdfLoading(true);
     try {
-      const { blob, fileName } = await downloadPdfFromApi('/reportes/consolidado-riesgo/pdf', {
+      await generarYAbrirPdf('/reportes/consolidado-riesgo/pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -575,7 +577,6 @@ export function ReportesPage({ onLogout }: Props) {
           orderBy: consolidadoSort,
         }),
       });
-      openPdfBlob(blob, fileName);
       toast.success('PDF consolidado generado correctamente.');
     } catch (error) {
       toastApiError(error, 'No se pudo generar el PDF consolidado');
@@ -644,7 +645,7 @@ export function ReportesPage({ onLogout }: Props) {
     }
     setAusentismoPdfLoading(true);
     try {
-      const { blob, fileName } = await downloadPdfFromApi('/reportes/estadisticas/ausentismo/pdf', {
+      await generarYAbrirPdf('/reportes/estadisticas/ausentismo/pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -662,7 +663,6 @@ export function ReportesPage({ onLogout }: Props) {
               : undefined,
         }),
       });
-      openPdfBlob(blob, fileName);
       toast.success('PDF de ausentismo generado correctamente.');
       void cargarAusentismoAgregado();
     } catch (error) {

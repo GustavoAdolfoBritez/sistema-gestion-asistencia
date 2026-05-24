@@ -7,7 +7,7 @@ import { AppSelect } from '../components/ui/app-select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { useMisAlcances } from '../hooks/useMisAlcances';
 import { useScopeForm } from '../hooks/useScopeForm';
-import { abrirDocumento, apiFetch, downloadPdfFromApi, openPdfBlob } from '../utils/api';
+import { abrirDocumento, apiFetch, generarYAbrirPdf } from '../utils/api';
 import { readStoredUser } from '../utils/session-user';
 import { esGestionUnicaCarreraAlumnosListado, puedeAprobarJustificaciones } from '../utils/rbac';
 import {
@@ -382,10 +382,9 @@ export function AlumnosAdminPage({ onLogout }: Props) {
     }
     setGenerandoInforme(true);
     try {
-      const { blob, fileName } = await downloadPdfFromApi(`/reportes/alumnos/${selectedAlumnoId}/informe-pdf`, {
+      await generarYAbrirPdf(`/reportes/alumnos/${selectedAlumnoId}/informe-pdf`, {
         method: 'POST',
       });
-      openPdfBlob(blob, fileName);
       toast.success('Informe individual generado correctamente.');
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'No se pudo generar el informe individual';

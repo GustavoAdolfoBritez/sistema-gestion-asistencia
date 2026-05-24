@@ -19,5 +19,6 @@ export function enviarPdfBuffer(res: Response, buffer: Buffer, fileName: string,
     res.setHeader('Content-Disposition', contentDispositionInline(safe));
     res.setHeader('Content-Length', String(buffer.length));
     res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Referrer-Policy', 'no-referrer');
     res.send(buffer);
 }

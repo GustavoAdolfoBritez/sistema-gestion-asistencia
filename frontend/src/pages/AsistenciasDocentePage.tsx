@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { toast } from 'sonner';
 import { AppSidebar } from '../components/AppSidebar';
 import { AppSelect } from '../components/ui/app-select';
-import { API_BASE_URL, abrirDocumento, apiFetch, downloadPdfFromApi, notifySessionExpired, openPdfBlob } from '../utils/api';
+import { API_BASE_URL, abrirDocumento, apiFetch, generarYAbrirPdf, notifySessionExpired } from '../utils/api';
 import {
   contarFaltasDesdeSesiones,
   descripcionEstadoAsistencia,
@@ -632,7 +632,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
 
     setGenerandoPdfLegal(true);
     try {
-      const { blob, fileName } = await downloadPdfFromApi('/reportes/actas', {
+      await generarYAbrirPdf('/reportes/actas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -641,7 +641,6 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
           periodo: mesAnio,
         }),
       });
-      openPdfBlob(blob, fileName);
       toast.success('Planilla legal generada correctamente.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'No se pudo generar la planilla legal');
