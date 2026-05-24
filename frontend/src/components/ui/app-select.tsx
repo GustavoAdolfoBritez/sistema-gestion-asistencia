@@ -31,6 +31,14 @@ export const appSelectListClass =
 const MENU_GAP_PX = 4;
 const VIEWPORT_MARGIN_PX = 8;
 const MENU_PREFERRED_MAX_PX = 320;
+const OPTION_HORIZONTAL_PADDING_PX = 40;
+
+function minWidthForLabels(labels: string[], fontSizePx = 14): number {
+  if (labels.length === 0) return 0;
+  const charWidth = fontSizePx * 0.52;
+  const longestLen = Math.max(...labels.map((l) => l.length));
+  return Math.ceil(longestLen * charWidth) + OPTION_HORIZONTAL_PADDING_PX;
+}
 
 interface MenuPlacement {
   left: number;
@@ -40,7 +48,7 @@ interface MenuPlacement {
   bottom?: number;
 }
 
-function computeMenuPlacement(trigger: DOMRect): MenuPlacement {
+function computeMenuPlacement(trigger: DOMRect, optionLabels: string[] = []): MenuPlacement {
   const spaceBelow = window.innerHeight - trigger.bottom - VIEWPORT_MARGIN_PX;
   const spaceAbove = trigger.top - VIEWPORT_MARGIN_PX;
   const openUp = spaceBelow < 120 && spaceAbove > spaceBelow;
@@ -49,10 +57,11 @@ function computeMenuPlacement(trigger: DOMRect): MenuPlacement {
     MENU_PREFERRED_MAX_PX,
     Math.max(available - MENU_GAP_PX, 96)
   );
+  const width = Math.max(trigger.width, minWidthForLabels(optionLabels));
 
   return {
     left: trigger.left,
-    width: trigger.width,
+    width,
     maxHeight,
     ...(openUp
       ? { bottom: window.innerHeight - trigger.top + MENU_GAP_PX }
@@ -65,7 +74,7 @@ export const appSelectOptionTextClass = 'text-black dark:text-[#e7eef9]';
 
 export function appSelectOptionClass(selected: boolean): string {
   return cn(
-    'w-full px-3 py-2 text-left text-sm leading-snug whitespace-normal break-words disabled:opacity-40 disabled:cursor-not-allowed',
+    'w-full px-3 py-2 text-left text-sm leading-snug whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed',
     appSelectOptionTextClass,
     selected ? 'bg-primary/15 font-medium' : 'hover:bg-slate-100 dark:hover:bg-slate-800/50'
   );
@@ -140,6 +149,19 @@ export function AppSelect({
   const selectedLabel = useMemo(
     () => labelForValue(options, value, allowEmpty, emptyLabel, clearOption),
     [options, value, allowEmpty, emptyLabel, clearOption]
+  );
+
+  const allOptionLabels = useMemo(() => {
+    const labels = options.map((o) => o.label);
+    if (allowEmpty) labels.push(emptyLabel);
+    if (clearOption) labels.push(clearOption.label);
+    return labels;
+  }, [options, allowEmpty, emptyLabel, clearOption]);
+
+  const fontSizePx = size === 'xs' ? 12 : 14;
+  const stableMinWidthPx = useMemo(
+    () => minWidthForLabels(allOptionLabels, fontSizePx),
+    [allOptionLabels, fontSizePx]
   );
 
   const sizeTrigger =
@@ -217,8 +239,9 @@ export function AppSelect({
   const updateMenuPlacement = useCallback(() => {
     const root = rootRef.current;
     if (!root) return;
-    setMenuPlacement(computeMenuPlacement(root.getBoundingClientRect()));
-  }, []);
+    const labels = visibleListOptions.map((o) => o.label);
+    setMenuPlacement(computeMenuPlacement(root.getBoundingClientRect(), labels));
+  }, [visibleListOptions]);
 
   useLayoutEffect(() => {
     if (!open) {
@@ -235,7 +258,11 @@ export function AppSelect({
   }, [open, updateMenuPlacement, visibleListOptions.length]);
 
   return (
-    <div ref={rootRef} className={cn('relative min-w-0', className)}>
+    <div
+      ref={rootRef}
+      className={cn('relative min-w-0', className)}
+      style={stableMinWidthPx > 0 ? { minWidth: stableMinWidthPx } : undefined}
+    >
       <button
         type="button"
         title={title}
@@ -284,8 +311,9 @@ export function AppSelect({
               style={{
                 position: 'fixed',
                 left: menuPlacement.left,
-                width: menuPlacement.width,
                 minWidth: menuPlacement.width,
+                width: 'max-content',
+                maxWidth: 'min(100vw - 2rem, 28rem)',
                 maxHeight: menuPlacement.maxHeight,
                 top: menuPlacement.top,
                 bottom: menuPlacement.bottom,
