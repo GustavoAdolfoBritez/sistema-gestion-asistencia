@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.SQL_ORDEN_MATRICULA_PLANILLA = void 0;
 exports.obtenerAsistenciaSesionMatricula = obtenerAsistenciaSesionMatricula;
 exports.obtenerEstadoJustificacionAuditoria = obtenerEstadoJustificacionAuditoria;
 exports.obtenerPlanilla = obtenerPlanilla;
@@ -24,6 +25,8 @@ const auth_middleware_1 = require("../../middlewares/auth.middleware");
 const rbac_1 = require("../../utils/rbac");
 const alumnos_scope_1 = require("../../utils/alumnos-scope");
 const alumno_nombre_sql_1 = require("../../utils/alumno-nombre-sql");
+/** Orden de filas en planilla: importación primero; legacy sin orden → apellido. */
+exports.SQL_ORDEN_MATRICULA_PLANILLA = 'mat.orden_lista NULLS LAST, al.apellidos NULLS LAST, al.nombres NULLS LAST, al.nombre_apellido NULLS LAST, mat.id';
 const ROLES_APROBADORES_JUSTIFICACIONES_NORMALIZADOS = rbac_1.ROLES_APROBADORES_JUSTIFICACIONES.map((r) => (0, auth_middleware_1.normalizarRolComparacion)(r));
 function rolesIncluyenAprobadorJustificaciones(roles) {
     const usuario = roles.map((r) => (0, auth_middleware_1.normalizarRolComparacion)(String(r)));
@@ -158,6 +161,7 @@ async function obtenerPlanilla(filtro) {
             mat.estado_academico,
             mat.faltas_acumuladas,
             mat.porcentaje_asistencia,
+            mat.orden_lista,
             JSONB_AGG(
                 JSONB_BUILD_OBJECT(
                     'sesion_id', sc.id,
@@ -178,8 +182,8 @@ async function obtenerPlanilla(filtro) {
         JOIN alumnos al ON al.id = mat.alumno_id
         LEFT JOIN asistencias a ON a.sesion_id = sc.id AND a.matricula_id = mat.id
         WHERE ${where}
-        GROUP BY mat.id, al.id, al.numero_documento, mat.estado_academico, mat.faltas_acumuladas, mat.porcentaje_asistencia
-        ORDER BY al.apellidos NULLS LAST, al.nombres NULLS LAST, al.nombre_apellido NULLS LAST;
+        GROUP BY mat.id, al.id, al.numero_documento, mat.estado_academico, mat.faltas_acumuladas, mat.porcentaje_asistencia, mat.orden_lista
+        ORDER BY ${exports.SQL_ORDEN_MATRICULA_PLANILLA};
     `;
     const { rows } = await database_1.pool.query(consulta, valores);
     return rows;
@@ -767,7 +771,7 @@ async function listarAusenciasCurso(cursoId, contexto) {
          WHERE sc.curso_id = $1
            AND a.estado = 'ausente'
            AND COALESCE(a.justificada, FALSE) = FALSE
-         ORDER BY sc.fecha DESC, al.apellidos NULLS LAST, al.nombres NULLS LAST, al.nombre_apellido NULLS LAST`, [cursoId]);
+         ORDER BY sc.fecha DESC, ${exports.SQL_ORDEN_MATRICULA_PLANILLA}`, [cursoId]);
     return rows;
 }
 async function listarAlumnosCurso(cursoId, contexto) {
@@ -778,10 +782,11 @@ async function listarAlumnosCurso(cursoId, contexto) {
             al.numero_documento,
             mat.estado_academico,
             mat.faltas_acumuladas,
-            mat.porcentaje_asistencia
+            mat.porcentaje_asistencia,
+            mat.orden_lista
          FROM matriculas mat
          JOIN alumnos al ON al.id = mat.alumno_id
          WHERE mat.curso_id = $1
-         ORDER BY al.apellidos NULLS LAST, al.nombres NULLS LAST, al.nombre_apellido NULLS LAST`, [cursoId]);
+         ORDER BY ${exports.SQL_ORDEN_MATRICULA_PLANILLA}`, [cursoId]);
     return rows;
 }

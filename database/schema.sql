@@ -235,6 +235,7 @@ CREATE TABLE IF NOT EXISTS matriculas (
     faltas_acumuladas SMALLINT NOT NULL DEFAULT 0,
     justificaciones_aprobadas SMALLINT NOT NULL DEFAULT 0,
     fecha_inscripcion DATE NOT NULL DEFAULT CURRENT_DATE,
+    orden_lista INTEGER,
     UNIQUE (curso_id, alumno_id)
 );
 
@@ -347,6 +348,7 @@ CREATE TABLE IF NOT EXISTS estadisticas_ausentismo (
 -- -----------------------------------------------------------------
 CREATE INDEX IF NOT EXISTS idx_usuarios_email ON usuarios(email);
 CREATE INDEX IF NOT EXISTS idx_matriculas_curso ON matriculas(curso_id);
+CREATE INDEX IF NOT EXISTS idx_matriculas_curso_orden ON matriculas(curso_id, orden_lista);
 CREATE INDEX IF NOT EXISTS idx_matriculas_alumno ON matriculas(alumno_id);
 CREATE INDEX IF NOT EXISTS idx_asistencias_sesion ON asistencias(sesion_id);
 CREATE INDEX IF NOT EXISTS idx_asistencias_matricula ON asistencias(matricula_id);

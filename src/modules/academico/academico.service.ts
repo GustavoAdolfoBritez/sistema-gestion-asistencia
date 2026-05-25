@@ -186,7 +186,7 @@ export async function listarMatriculasDeCurso(cursoId: number) {
          FROM matriculas mt
          JOIN alumnos al ON al.id = mt.alumno_id
          WHERE mt.curso_id = $1
-         ORDER BY nombre_completo`,
+         ORDER BY mt.orden_lista NULLS LAST, al.apellidos NULLS LAST, al.nombres NULLS LAST, al.nombre_apellido NULLS LAST, mt.id`,
         [cursoId]
     );
     return rows;
@@ -291,8 +291,11 @@ export async function matricularAlumno(cursoId: number, alumnoId: string) {
     // Matrícula individual: sin exigir coincidencia de semestre curricular (recursantes, adeudadas, etc.).
 
     const { rows } = await pool.query(
-        `INSERT INTO matriculas (curso_id, alumno_id, estado_academico, porcentaje_asistencia, faltas_acumuladas, justificaciones_aprobadas, fecha_inscripcion)
-         VALUES ($1, $2, 'regular', 0, 0, 0, CURRENT_DATE)
+        `INSERT INTO matriculas (curso_id, alumno_id, estado_academico, porcentaje_asistencia, faltas_acumuladas, justificaciones_aprobadas, fecha_inscripcion, orden_lista)
+         VALUES (
+            $1, $2, 'regular', 0, 0, 0, CURRENT_DATE,
+            (SELECT COALESCE(MAX(orden_lista), 0) + 1 FROM matriculas WHERE curso_id = $1)
+         )
          ON CONFLICT (curso_id, alumno_id) DO NOTHING
          RETURNING id, alumno_id, estado_academico, fecha_inscripcion`,
         [cursoId, alumnoId]
@@ -516,7 +519,8 @@ export async function matricularDesdeLote(cursoId: number, loteId: number) {
             ri.datos->>'nombres'         AS nombres,
             ri.datos->>'apellidos'       AS apellidos
          FROM registros_importacion ri
-         WHERE ri.lote_id = $1`,
+         WHERE ri.lote_id = $1
+         ORDER BY COALESCE(ri.fila, 0), ri.id`,
         [loteId]
     );
 
@@ -529,7 +533,22 @@ export async function matricularDesdeLote(cursoId: number, loteId: number) {
         );
     }
 
-    const documentos = registrosConCI.map((r) => r.numero_documento!);
+    const documentosOrdenados: string[] = [];
+    const ordenPorDocumento = new Map<string, number>();
+    const vistos = new Set<string>();
+    let orden = 0;
+    for (const reg of registrosConCI) {
+        const doc = reg.numero_documento!.trim();
+        if (vistos.has(doc)) {
+            continue;
+        }
+        vistos.add(doc);
+        orden += 1;
+        documentosOrdenados.push(doc);
+        ordenPorDocumento.set(doc, orden);
+    }
+
+    const documentos = documentosOrdenados;
 
     const { rows: yaExistentes } = await pool.query<{ id: string; numero_documento: string }>(
         `SELECT id, numero_documento FROM alumnos WHERE numero_documento = ANY($1::varchar[])`,
@@ -576,9 +595,12 @@ export async function matricularDesdeLote(cursoId: number, loteId: number) {
             );
         }
 
-        const { rows: todosLosAlumnos } = await cliente.query<{ id: string }>(
-            `SELECT id FROM alumnos WHERE numero_documento = ANY($1::varchar[])`,
-            [documentos]
+        const { rows: todosLosAlumnos } = await cliente.query<{ id: string; numero_documento: string }>(
+            `SELECT al.id, al.numero_documento
+             FROM unnest($1::varchar[]) WITH ORDINALITY AS u(doc, ord)
+             JOIN alumnos al ON al.numero_documento = u.doc
+             ORDER BY u.ord`,
+            [documentosOrdenados]
         );
 
         if (!todosLosAlumnos.length) {
@@ -587,6 +609,13 @@ export async function matricularDesdeLote(cursoId: number, loteId: number) {
         }
 
         const alumnoIds = todosLosAlumnos.map((a) => a.id);
+        const ordenPorAlumnoId = new Map<string, number>();
+        for (const al of todosLosAlumnos) {
+            const ord = ordenPorDocumento.get(al.numero_documento);
+            if (ord != null) {
+                ordenPorAlumnoId.set(al.id, ord);
+            }
+        }
 
         const { rows: cursoPlan } = await cliente.query<{ materia_semestre: number; plan_carrera_id: number }>(
             `SELECT m.semestre AS materia_semestre, p.carrera_id AS plan_carrera_id
@@ -637,12 +666,16 @@ export async function matricularDesdeLote(cursoId: number, loteId: number) {
         let saltados = 0;
 
         if (elegibles.length) {
+            const idsOrdenados = elegibles
+                .slice()
+                .sort((a, b) => (ordenPorAlumnoId.get(a) ?? Number.MAX_SAFE_INTEGER) - (ordenPorAlumnoId.get(b) ?? Number.MAX_SAFE_INTEGER));
+            const ordenes = idsOrdenados.map((id) => ordenPorAlumnoId.get(id) ?? 0);
             const { rowCount } = await cliente.query(
-                `INSERT INTO matriculas (curso_id, alumno_id, estado_academico, porcentaje_asistencia, faltas_acumuladas, justificaciones_aprobadas, fecha_inscripcion)
-                 SELECT $1::int, u.aid, 'regular', 0, 0, 0, CURRENT_DATE
-                 FROM unnest($2::uuid[]) AS u(aid)
+                `INSERT INTO matriculas (curso_id, alumno_id, estado_academico, porcentaje_asistencia, faltas_acumuladas, justificaciones_aprobadas, fecha_inscripcion, orden_lista)
+                 SELECT $1::int, u.aid::uuid, 'regular', 0, 0, 0, CURRENT_DATE, u.ord::int
+                 FROM unnest($2::uuid[], $3::int[]) AS u(aid, ord)
                  ON CONFLICT (curso_id, alumno_id) DO NOTHING`,
-                [cursoId, elegibles]
+                [cursoId, idsOrdenados, ordenes]
             );
             insertados = rowCount ?? 0;
             saltados = elegibles.length - insertados;
@@ -1219,8 +1252,8 @@ export async function copiarMatriculasDesdeCurso(
         const totalOrigen = Number(totalOrigenRows[0]?.total ?? 0);
 
         const { rows: insertados } = await cliente.query(
-            `INSERT INTO matriculas (curso_id, alumno_id, estado_academico, porcentaje_asistencia, faltas_acumuladas, justificaciones_aprobadas, fecha_inscripcion)
-             SELECT $1, m.alumno_id, 'regular', 0, 0, 0, CURRENT_DATE
+            `INSERT INTO matriculas (curso_id, alumno_id, estado_academico, porcentaje_asistencia, faltas_acumuladas, justificaciones_aprobadas, fecha_inscripcion, orden_lista)
+             SELECT $1, m.alumno_id, 'regular', 0, 0, 0, CURRENT_DATE, m.orden_lista
              FROM matriculas m
              JOIN alumnos al ON al.id = m.alumno_id
              CROSS JOIN LATERAL (
@@ -1241,6 +1274,7 @@ export async function copiarMatriculasDesdeCurso(
                    OR al.referencia_carrera_id <> dest.cid
                    OR COALESCE(al.semestre_curricular, 1) = dest.ms
                )
+             ORDER BY m.orden_lista NULLS LAST, m.id
               RETURNING id`,
              [cursoDestinoId, cursoOrigenId]
          );

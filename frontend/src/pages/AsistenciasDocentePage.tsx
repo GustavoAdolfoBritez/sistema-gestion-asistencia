@@ -47,6 +47,7 @@ type PlanillaMatrix = Map<
   {
     alumno: string;
     documento: string;
+    ordenLista: number | null;
     faltasAcumuladas: number;
     porcentajeAsistencia: number | null;
     estadoAcademico: string | null;
@@ -390,10 +391,14 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
     return [...base, ...extras].sort((a, b) => a.fecha.localeCompare(b.fecha));
   }, [diasLectivosDelMes, sesionesDelMes, planillaSeleccionada]);
 
-  // Filas de la tabla (alumnos ordenados)
+  // Filas de la tabla (orden de importación / matrícula; fallback alfabético)
   const alumnosOrdenados = useMemo(() => {
-    return [...planillaMatrix.entries()]
-      .sort(([, a], [, b]) => a.alumno.localeCompare(b.alumno));
+    return [...planillaMatrix.entries()].sort(([, a], [, b]) => {
+      const oa = a.ordenLista ?? Number.MAX_SAFE_INTEGER;
+      const ob = b.ordenLista ?? Number.MAX_SAFE_INTEGER;
+      if (oa !== ob) return oa - ob;
+      return a.alumno.localeCompare(b.alumno, 'es');
+    });
   }, [planillaMatrix]);
 
   const planillaNombreMedirRef = useRef<HTMLSpanElement>(null);
@@ -527,6 +532,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
         matrix.set(Number(al.matricula_id), {
           alumno: al.alumno ?? 'Alumno sin nombre',
           documento: al.numero_documento ?? '',
+          ordenLista: al.orden_lista != null ? Number(al.orden_lista) : null,
           faltasAcumuladas: Number(al.faltas_acumuladas) || 0,
           porcentajeAsistencia: al.porcentaje_asistencia != null ? Number(al.porcentaje_asistencia) : null,
           estadoAcademico: al.estado_academico ?? null,
@@ -542,6 +548,9 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
         entry.porcentajeAsistencia = alumno.porcentaje_asistencia != null ? Number(alumno.porcentaje_asistencia) : null;
         if (alumno.estado_academico) entry.estadoAcademico = alumno.estado_academico;
         if (!entry.alumno || entry.alumno === 'Alumno sin nombre') entry.alumno = alumno.alumno;
+        if (entry.ordenLista == null && alumno.orden_lista != null) {
+          entry.ordenLista = Number(alumno.orden_lista);
+        }
         for (const ses of (alumno.sesiones ?? [])) {
           entry.celdas.set(ses.sesion_id, {
             sesionId: ses.sesion_id,
@@ -1432,7 +1441,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                             <td
                               className={`sticky left-0 z-[57] px-1 py-2.5 text-center text-xs w-[36px] min-w-[36px] max-w-[36px] border-l ${celdaBase} ${celdaFila} planilla-celda-indice planilla-celda-texto`}
                             >
-                              <span className="opacity-70">{idx + 1}</span>
+                              <span className="opacity-70">{entry.ordenLista ?? idx + 1}</span>
                             </td>
                             {/* Nombre */}
                             <td
