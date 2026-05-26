@@ -25,12 +25,9 @@ const auth_middleware_1 = require("../../middlewares/auth.middleware");
 const rbac_1 = require("../../utils/rbac");
 const alumnos_scope_1 = require("../../utils/alumnos-scope");
 const alumno_nombre_sql_1 = require("../../utils/alumno-nombre-sql");
-<<<<<<< HEAD
+const metricas_asistencia_1 = require("../../utils/metricas-asistencia");
 /** Orden de filas en planilla: importación primero; legacy sin orden → apellido. */
 exports.SQL_ORDEN_MATRICULA_PLANILLA = 'mat.orden_lista NULLS LAST, al.apellidos NULLS LAST, al.nombres NULLS LAST, al.nombre_apellido NULLS LAST, mat.id';
-=======
-const metricas_asistencia_1 = require("../../utils/metricas-asistencia");
->>>>>>> 7bd820b (Cambios en el calculo de planilla docente)
 const ROLES_APROBADORES_JUSTIFICACIONES_NORMALIZADOS = rbac_1.ROLES_APROBADORES_JUSTIFICACIONES.map((r) => (0, auth_middleware_1.normalizarRolComparacion)(r));
 function rolesIncluyenAprobadorJustificaciones(roles) {
     const usuario = roles.map((r) => (0, auth_middleware_1.normalizarRolComparacion)(String(r)));
@@ -732,10 +729,14 @@ async function cerrarSesionDocente(sesionId, contexto) {
         if (!rows[0]) {
             throw new Error('No se pudo cerrar la jornada');
         }
-        // Quienes ya tenían presente/justificada no disparan el trigger al cerrar (solo se inserta ausente al resto).
-        await (0, metricas_asistencia_1.recalcularMetricasCurso)(cliente, cursoId);
+        const sesionCerrada = rows[0];
         await cliente.query('COMMIT');
-        return rows[0];
+        // Tras commit: la sesión ya es «cerrada»; recalcular con conexión nueva evita métricas en 0
+        // (presente en jornada abierta deja % en 0 hasta que corre recalcular_metricas_asistencia).
+        await (0, metricas_asistencia_1.recalcularMetricasCurso)(database_1.pool, cursoId);
+        const { rows: metricasRows } = await database_1.pool.query(`SELECT id AS matricula_id, porcentaje_asistencia, faltas_acumuladas, estado_academico
+             FROM matriculas WHERE curso_id = $1`, [cursoId]);
+        return { sesion: sesionCerrada, matriculas: metricasRows };
     }
     catch (error) {
         await cliente.query('ROLLBACK');

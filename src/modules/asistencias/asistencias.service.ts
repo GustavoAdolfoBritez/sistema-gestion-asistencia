@@ -1054,11 +1054,25 @@ export async function cerrarSesionDocente(
             throw new Error('No se pudo cerrar la jornada');
         }
 
-        // Quienes ya tenían presente/justificada no disparan el trigger al cerrar (solo se inserta ausente al resto).
-        await recalcularMetricasCurso(cliente, cursoId);
-
+        const sesionCerrada = rows[0];
         await cliente.query('COMMIT');
-        return rows[0];
+
+        // Tras commit: la sesión ya es «cerrada»; recalcular con conexión nueva evita métricas en 0
+        // (presente en jornada abierta deja % en 0 hasta que corre recalcular_metricas_asistencia).
+        await recalcularMetricasCurso(pool, cursoId);
+
+        const { rows: metricasRows } = await pool.query<{
+            matricula_id: number;
+            porcentaje_asistencia: string;
+            faltas_acumuladas: number;
+            estado_academico: string;
+        }>(
+            `SELECT id AS matricula_id, porcentaje_asistencia, faltas_acumuladas, estado_academico
+             FROM matriculas WHERE curso_id = $1`,
+            [cursoId]
+        );
+
+        return { sesion: sesionCerrada, matriculas: metricasRows };
     } catch (error) {
         await cliente.query('ROLLBACK');
         throw error;

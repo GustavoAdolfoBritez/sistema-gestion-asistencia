@@ -745,11 +745,35 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
     setCerrandoSesionId(sesionId);
     try {
       await guardarCambiosLote();
-      const cerrada = await apiFetch<Sesion>(`/asistencias/sesiones/${sesionId}/cierre`, { method: 'POST' });
-      setSesiones((prev) => prev.map((x) => x.id === sesionId ? cerrada : x));
+      const cerrada = await apiFetch<
+        Sesion & {
+          matriculas?: Array<{
+            matricula_id: number;
+            porcentaje_asistencia: string | number;
+            faltas_acumuladas: number;
+            estado_academico: string;
+          }>;
+        }
+      >(`/asistencias/sesiones/${sesionId}/cierre`, { method: 'POST' });
+      const { matriculas, ...sesion } = cerrada;
+      setSesiones((prev) => prev.map((x) => x.id === sesionId ? sesion : x));
       setSesionActivaId((prev) => prev === sesionId ? null : prev);
+      if (matriculas?.length) {
+        setPlanillaMatrix((prev) => {
+          const next = new Map(prev);
+          for (const m of matriculas) {
+            const entry = next.get(Number(m.matricula_id));
+            if (!entry) continue;
+            entry.porcentajeAsistencia =
+              m.porcentaje_asistencia != null ? Number(m.porcentaje_asistencia) : null;
+            entry.faltasAcumuladas = Number(m.faltas_acumuladas) || 0;
+            if (m.estado_academico) entry.estadoAcademico = m.estado_academico;
+          }
+          return next;
+        });
+      }
       toast.success('Lista cerrada. Se actualizó el porcentaje del curso.');
-      void cargarPlanillaMes();
+      await cargarPlanillaMes();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'No se pudo cerrar la jornada');
     } finally {
