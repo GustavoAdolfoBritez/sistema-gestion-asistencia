@@ -7,6 +7,7 @@ import {
     type AlcanceMatriculasFacultad,
 } from '../../utils/alumnos-scope';
 import { SQL_ALUMNO_APELLIDOS_COMA_NOMBRES } from '../../utils/alumno-nombre-sql';
+import { recalcularMetricasCurso } from '../../utils/metricas-asistencia';
 
 /** Orden de filas en planilla: importación primero; legacy sin orden → apellido. */
 export const SQL_ORDEN_MATRICULA_PLANILLA =
@@ -1052,6 +1053,9 @@ export async function cerrarSesionDocente(
         if (!rows[0]) {
             throw new Error('No se pudo cerrar la jornada');
         }
+
+        // Quienes ya tenían presente/justificada no disparan el trigger al cerrar (solo se inserta ausente al resto).
+        await recalcularMetricasCurso(cliente, cursoId);
 
         await cliente.query('COMMIT');
         return rows[0];

@@ -25,8 +25,12 @@ const auth_middleware_1 = require("../../middlewares/auth.middleware");
 const rbac_1 = require("../../utils/rbac");
 const alumnos_scope_1 = require("../../utils/alumnos-scope");
 const alumno_nombre_sql_1 = require("../../utils/alumno-nombre-sql");
+<<<<<<< HEAD
 /** Orden de filas en planilla: importación primero; legacy sin orden → apellido. */
 exports.SQL_ORDEN_MATRICULA_PLANILLA = 'mat.orden_lista NULLS LAST, al.apellidos NULLS LAST, al.nombres NULLS LAST, al.nombre_apellido NULLS LAST, mat.id';
+=======
+const metricas_asistencia_1 = require("../../utils/metricas-asistencia");
+>>>>>>> 7bd820b (Cambios en el calculo de planilla docente)
 const ROLES_APROBADORES_JUSTIFICACIONES_NORMALIZADOS = rbac_1.ROLES_APROBADORES_JUSTIFICACIONES.map((r) => (0, auth_middleware_1.normalizarRolComparacion)(r));
 function rolesIncluyenAprobadorJustificaciones(roles) {
     const usuario = roles.map((r) => (0, auth_middleware_1.normalizarRolComparacion)(String(r)));
@@ -728,6 +732,8 @@ async function cerrarSesionDocente(sesionId, contexto) {
         if (!rows[0]) {
             throw new Error('No se pudo cerrar la jornada');
         }
+        // Quienes ya tenían presente/justificada no disparan el trigger al cerrar (solo se inserta ausente al resto).
+        await (0, metricas_asistencia_1.recalcularMetricasCurso)(cliente, cursoId);
         await cliente.query('COMMIT');
         return rows[0];
     }
