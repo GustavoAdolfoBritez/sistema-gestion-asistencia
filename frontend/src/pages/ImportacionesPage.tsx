@@ -929,7 +929,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
           </header>
 
           <div
-            className="importaciones-root master-detail-root min-h-0 min-w-0 flex-1 overflow-hidden xl:grid xl:grid-cols-[minmax(0,1fr)_min(100%,26.25rem)]"
+            className="importaciones-root master-detail-root min-h-0 min-w-0 flex-1 overflow-hidden"
             data-has-selection={selectedBatchId ? 'true' : 'false'}
           >
             <section className="master-detail-list min-w-0 flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -1251,8 +1251,8 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
             </section>
 
             <aside
-              className={`master-detail-detail relative z-10 flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden border-slate-800 bg-[#132a52] max-xl:min-h-0 xl:h-full xl:max-h-none xl:max-w-[26.25rem] xl:flex-none xl:border-l xl:border-t-0 ${
-                !selectedBatchId ? 'max-xl:hidden' : ''
+              className={`master-detail-detail relative z-10 flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden border-slate-800 bg-[#132a52] lg:h-full lg:max-h-none lg:flex-none lg:border-l lg:border-t-0 ${
+                !selectedBatchId ? 'max-lg:hidden' : ''
               }`}
             >
               <ImportConfirmOverlay
@@ -1263,11 +1263,11 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                 successMessage={confirmSuccessMessage}
                 onDismissError={dismissConfirmError}
               />
-              <div className="flex min-w-0 shrink-0 flex-col gap-3 border-b border-slate-800 bg-[#132a52] px-4 py-3 max-xl:py-4 xl:flex-row xl:items-center xl:justify-between xl:py-[7px]">
+              <div className="import-detalle-toolbar flex min-w-0 shrink-0 flex-col gap-3 border-b border-slate-800 bg-[#132a52] px-4 py-3 max-lg:py-4 lg:flex-row lg:items-center lg:justify-between lg:py-[7px]">
                 {selectedBatchId ? (
                   <button
                     type="button"
-                    className="inline-flex items-center gap-1.5 self-start rounded-lg px-1 py-1 text-sm font-medium text-slate-300 hover:bg-slate-800/60 max-xl:inline-flex xl:hidden"
+                    className="inline-flex min-h-10 items-center gap-1.5 self-start rounded-lg px-2 py-1.5 text-sm font-medium text-slate-300 hover:bg-slate-800/60 lg:hidden"
                     onClick={() => {
                       setSelectedBatchId(null);
                       setBatchDetail(null);
@@ -1281,16 +1281,16 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                 ) : null}
                 <div className="w-full min-w-0 flex-1">
                   <h3 className="text-base font-semibold text-[#f0f4f8] lg:text-sm">Detalle del lote</h3>
-                  <p className="mt-0.5 text-xs leading-relaxed text-slate-400 max-xl:block xl:hidden">
+                  <p className="mt-0.5 text-xs leading-relaxed text-slate-400 lg:hidden">
                     Revisá el archivo y confirmá o descartá el lote
                   </p>
-                  <p className="mt-0.5 hidden text-xs text-slate-400 xl:block">
+                  <p className="mt-0.5 hidden text-xs text-slate-400 lg:block">
                     Selecciona un registro para ver sus datos
                   </p>
                 </div>
-                <div className="flex w-full min-w-0 flex-wrap items-center gap-2 xl:w-auto xl:shrink-0">
+                <div className="grid w-full min-w-0 grid-cols-2 gap-2 max-lg:grid-cols-[1fr_1fr_auto] lg:flex lg:w-auto lg:flex-wrap lg:items-center">
                   <button
-                    className={`btn-modern flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold sm:flex-none xl:min-h-0 ${
+                    className={`btn-modern flex min-h-10 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold max-lg:col-span-1 lg:min-h-0 ${
                       !batchDetail || batchDetail.estado === 'completado' || confirmBusy || discardLoading
                         ? 'border-slate-700 text-slate-500 cursor-not-allowed opacity-60'
                         : 'border-emerald-500 text-emerald-300 hover:bg-emerald-500/10'
@@ -1313,8 +1313,8 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                         : 'Confirmar'}
                   </button>
                   <button
-                    className={`btn-modern flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold sm:flex-none xl:min-h-0 ${
-                      !batchDetail || !loteEsDescartable(batchDetail.estado) || confirmBusy || discardLoading
+                    className={`btn-modern flex min-h-10 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold max-lg:col-span-1 lg:min-h-0 ${
+                        !batchDetail || !loteEsDescartable(batchDetail.estado) || confirmBusy || discardLoading
                         ? 'border-slate-300 text-slate-400 cursor-not-allowed opacity-60 dark:border-slate-700 dark:text-slate-500'
                         : 'btn-modern-danger border-rose-500/50 text-rose-700 hover:bg-rose-50 dark:text-rose-200 dark:hover:bg-rose-500/10'
                     }`}
@@ -1333,7 +1333,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                     Descartar
                   </button>
                   <button
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-[#f0f4f8] disabled:cursor-not-allowed disabled:opacity-40"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-[#f0f4f8] disabled:cursor-not-allowed disabled:opacity-40 max-lg:col-span-2 max-lg:justify-self-end lg:col-span-1"
                     title="Recargar"
                     type="button"
                     disabled={confirmBusy || discardLoading}
@@ -1348,12 +1348,12 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                 </div>
               </div>
 
-              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden max-xl:overflow-y-auto max-xl:overscroll-y-contain max-xl:import-detalle-scroll">
+              <div className="import-detalle-body import-detalle-scroll flex min-h-0 min-w-0 flex-1 flex-col lg:overflow-hidden">
                 {detailLoading ? (
                   <p className="p-4 text-center text-sm text-slate-500">Cargando detalle...</p>
                 ) : batchDetail ? (
-                  <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-                    <div className="shrink-0 space-y-2 border-b border-slate-800 bg-[#132a52] p-4 max-xl:border-b-0 max-xl:rounded-xl max-xl:border max-xl:border-slate-800">
+                  <div className="import-detalle-inner flex min-h-0 min-w-0 flex-1 flex-col lg:overflow-hidden">
+                    <div className="shrink-0 space-y-2 border-b border-slate-800 bg-[#132a52] p-4 max-lg:border-b max-lg:border-slate-800 lg:rounded-none lg:border-b">
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-xs text-slate-500">Archivo</p>
@@ -1430,7 +1430,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                       </div>
                     </div>
 
-                    <div className="import-lote-registros-panel flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#132a52] p-4 max-xl:pt-3 xl:border-t xl:border-slate-800">
+                    <div className="import-lote-registros-panel flex min-h-0 min-w-0 flex-1 flex-col bg-[#132a52] p-4 lg:overflow-hidden lg:border-t lg:border-slate-800">
                       <div className="mb-3 shrink-0 space-y-2.5">
                         <div className="flex flex-wrap items-baseline justify-between gap-2">
                           <p className="text-sm font-medium text-[#f0f4f8]">Registros cargados</p>
@@ -1461,7 +1461,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                         </div>
                       </div>
 
-                      <div className="import-registros-list scroll-region scrollbar-hide min-h-[10rem] min-w-0 flex-1 overflow-y-auto overscroll-y-contain pr-0.5">
+                      <div className="import-registros-list scroll-region scrollbar-hide min-h-[10rem] min-w-0 flex-1 overflow-y-auto overscroll-y-contain pr-0.5 lg:min-h-0">
                         {recordsLoading ? (
                           <p className="py-8 text-center text-sm text-slate-500">Cargando registros…</p>
                         ) : records.length ? (
@@ -1556,7 +1556,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-1 items-center justify-center px-4 text-center text-sm text-slate-500 max-xl:hidden">
+                  <div className="flex flex-1 items-center justify-center px-4 text-center text-sm text-slate-500 max-lg:hidden">
                     Selecciona un lote del historial para ver sus detalles.
                   </div>
                 )}
