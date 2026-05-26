@@ -17,3 +17,5 @@ test_js.js
 test_db.ts
 .idea
 .vscode
+.vercel
+.env*
