@@ -391,6 +391,15 @@
     .academico-mobile-cards-inset {
       padding-bottom: max(var(--app-mobile-bottom-inset, 2.25rem), 3.75rem) !important;
     }
+
+    /**
+     * Importaciones · detalle del lote: Android/Brave suelen tener safe-area-bottom = 0
+     * y la barra del navegador tapa el último registro. Más aire + scroll-padding al final.
+     */
+    .import-detalle-scroll {
+      padding-bottom: max(5rem, env(safe-area-inset-bottom, 0px), var(--app-mobile-bottom-inset, 2.25rem)) !important;
+      scroll-padding-bottom: max(5rem, env(safe-area-inset-bottom, 0px), 3.5rem);
+    }
   }
 
   /**

@@ -1291,7 +1291,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                 </div>
               </div>
 
-              <div className="scroll-region app-scroll-content scrollbar-hide flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-4 space-y-4 max-lg:overflow-y-auto lg:overflow-hidden">
+              <div className="scroll-region app-scroll-content import-detalle-scroll scrollbar-hide flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-4 space-y-4 max-lg:overflow-y-auto lg:overflow-hidden">
                 {detailLoading ? (
                   <p className="text-center text-sm text-slate-500">Cargando detalle...</p>
                 ) : batchDetail ? (
