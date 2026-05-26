@@ -107,9 +107,15 @@
   }
 
   /**
-   * Botones táctiles (móvil/tablet < lg). Escritorio lg+ sin cambios.
+   * ── Convención responsive (4 tiers) ──
+   * T1 mobile:     max-md:     (< 768px)
+   * T2 tablet:     md:max-lg:  (768–1023px)
+   * T3 tablet-lg:  lg:max-xl:  (1024–1279px)
+   * T4 desktop:    xl:         (≥ 1280px)
    */
-  @media (max-width: 1023px) {
+
+  /** Botones táctiles grandes solo en T1 (móvil pequeño). */
+  @media (max-width: 767px) {
     .btn-modern:hover {
       transform: none;
     }
@@ -126,38 +132,251 @@
     }
   }
 
-  /** CTA principal/secundario a ancho completo en móvil */
+  /** CTA a ancho completo solo en T1 */
   .btn-mobile-cta {
-    @apply max-lg:min-h-12 max-lg:w-full max-lg:rounded-xl max-lg:justify-center max-lg:gap-2 max-lg:px-4 max-lg:py-3 max-lg:text-sm;
+    @apply max-md:min-h-12 max-md:w-full max-md:rounded-xl max-md:justify-center max-md:gap-2 max-md:px-4 max-md:py-3 max-md:text-sm;
   }
 
-  /** Par Editar/Eliminar bajo el contenido de una tarjeta */
   .btn-mobile-row {
-    @apply max-lg:flex max-lg:w-full max-lg:gap-2 max-lg:pt-2;
+    @apply max-md:flex max-md:w-full max-md:gap-2 max-md:pt-2;
   }
 
   .btn-mobile-row > .btn-modern,
   .btn-mobile-row > button.btn-modern {
-    @apply max-lg:min-h-10 max-lg:flex-1 max-lg:justify-center max-lg:rounded-xl;
+    @apply max-md:min-h-10 max-md:flex-1 max-md:justify-center max-md:rounded-xl;
   }
 
-  /** Cancelar + Guardar (primario abajo) */
   .btn-mobile-stack {
-    @apply max-lg:flex max-lg:w-full max-lg:flex-col-reverse max-lg:gap-2.5;
+    @apply max-md:flex max-md:w-full max-md:flex-col-reverse max-md:gap-2.5;
   }
 
   .btn-mobile-stack > .btn-modern,
   .btn-mobile-stack > button.btn-modern {
-    @apply max-lg:w-full max-lg:min-h-11 max-lg:justify-center max-lg:rounded-xl;
+    @apply max-md:w-full max-md:min-h-11 max-md:justify-center max-md:rounded-xl;
   }
 
-  /** Pestañas / segmentos de navegación en móvil */
   .btn-mobile-tabs {
-    @apply max-lg:flex max-lg:w-full max-lg:flex-col max-lg:gap-2;
+    @apply max-md:flex max-md:w-full max-md:flex-col max-md:gap-2;
   }
 
   .btn-mobile-tabs > button {
-    @apply max-lg:min-h-11 max-lg:w-full max-lg:justify-center max-lg:rounded-xl max-lg:px-4 max-lg:py-3 max-lg:text-sm max-lg:font-semibold;
+    @apply max-md:min-h-11 max-md:w-full max-md:justify-center max-md:rounded-xl max-md:px-4 max-md:py-3 max-md:text-sm max-md:font-semibold;
+  }
+
+  /** Pestañas inline en tablet (T2+) */
+  @media (min-width: 768px) {
+    .btn-mobile-tabs--inline-md {
+      @apply flex-row flex-wrap gap-2;
+    }
+
+    .btn-mobile-tabs--inline-md > button {
+      @apply min-h-10 w-auto flex-none justify-center rounded-lg px-4 py-2 text-sm;
+    }
+  }
+
+  /** Toolbar: wrap en T2/T3 sin overflow horizontal de página */
+  .layout-toolbar {
+    @apply flex min-w-0 flex-wrap items-center gap-2 sm:gap-3;
+  }
+
+  .layout-toolbar--end {
+    @apply layout-toolbar justify-end;
+  }
+
+  @media (min-width: 1024px) and (max-width: 1279px) {
+    .layout-toolbar--condensed {
+      @apply gap-2;
+    }
+  }
+
+  /**
+   * Master–detail: columna en T1; split en T2+ cuando hay selección.
+   * Uso: <div class="master-detail-root" data-has-selection={bool}>
+   */
+  .master-detail-root {
+    @apply flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden;
+  }
+
+  .master-detail-list,
+  .master-detail-detail {
+    @apply min-h-0 min-w-0;
+  }
+
+  /**
+   * Móvil + tablet vertical (&lt; lg): una pantalla a la vez (lista o detalle).
+   */
+  @media (max-width: 1023px) {
+    .master-detail-root[data-has-selection='true'] .master-detail-list {
+      @apply hidden;
+    }
+
+    .master-detail-root:not([data-has-selection='true']) .master-detail-detail {
+      @apply hidden;
+    }
+  }
+
+  /**
+   * Tablet horizontal y PC (lg+): lista + detalle en paralelo.
+   */
+  @media (min-width: 1024px) {
+    .master-detail-root[data-has-selection='true'] {
+      display: grid;
+      grid-template-columns: minmax(240px, 36%) minmax(0, 1fr);
+      gap: 0;
+    }
+
+    .master-detail-root[data-has-selection='true'] .master-detail-list,
+    .master-detail-root[data-has-selection='true'] .master-detail-detail {
+      display: flex !important;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .master-detail-root[data-has-selection='true'] .master-detail-list {
+      border-right: 1px solid rgb(226 232 240);
+    }
+
+    .dark .master-detail-root[data-has-selection='true'] .master-detail-list {
+      border-right-color: rgb(30 41 59);
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .master-detail-root[data-has-selection='true'] {
+      grid-template-columns: minmax(280px, 32%) minmax(0, 1fr);
+    }
+  }
+
+  /** Alumnos · listado en tablet vertical: el card ocupa alto útil y scrollea dentro. */
+  @media (max-width: 1023px) {
+    .alumnos-list-panel {
+      @apply flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden;
+    }
+
+    .alumnos-list-scroll {
+      @apply min-h-0 flex-1 overflow-y-auto overscroll-y-contain;
+      -webkit-overflow-scrolling: touch;
+    }
+  }
+
+  /** Alumnos · ítems más compactos en tablet horizontal (T3) para ver más filas. */
+  @media (min-width: 1024px) and (max-width: 1279px) {
+    .alumnos-list-item {
+      padding-top: 0.5rem;
+      padding-bottom: 0.5rem;
+    }
+  }
+
+  /** Importaciones · tablet horizontal: una pantalla a ancho completo (el grid global deja el panel al 36%). */
+  @media (min-width: 1024px) and (max-width: 1279px) {
+    .importaciones-root.master-detail-root {
+      display: flex !important;
+      flex-direction: column;
+      grid-template-columns: unset !important;
+    }
+
+    .importaciones-root.master-detail-root[data-has-selection='true'] .master-detail-list {
+      display: none !important;
+    }
+
+    .importaciones-root.master-detail-root:not([data-has-selection='true']) .master-detail-detail {
+      display: none !important;
+    }
+
+    .importaciones-root.master-detail-root .master-detail-list,
+    .importaciones-root.master-detail-root .master-detail-detail {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      flex: 1 1 auto;
+      border-right: none !important;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .importaciones-root.master-detail-root[data-has-selection='true'] {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) min(100%, 26.25rem) !important;
+    }
+  }
+
+  /** Alumnos · tablet horizontal: lista más angosta y detalle con ancho útil (evita grid global 36%). */
+  @media (min-width: 1024px) and (max-width: 1279px) {
+    .alumnos-root.master-detail-root[data-has-selection='true'] {
+      display: grid !important;
+      grid-template-columns: minmax(11rem, 30%) minmax(0, 1fr) !important;
+      gap: 1rem;
+    }
+
+    .alumnos-root.master-detail-root[data-has-selection='true'] .master-detail-list,
+    .alumnos-root.master-detail-root[data-has-selection='true'] .master-detail-detail {
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .alumnos-root.master-detail-root[data-has-selection='true'] {
+      display: grid !important;
+      grid-template-columns: minmax(0, 20rem) minmax(0, 1fr) !important;
+    }
+  }
+
+  /** Auditoría · tablet horizontal: tarjetas + una pantalla a la vez (lista o detalle). */
+  @media (min-width: 1024px) and (max-width: 1279px) {
+    .auditoria-root.master-detail-root {
+      display: flex !important;
+      flex-direction: column;
+      grid-template-columns: unset !important;
+    }
+
+    .auditoria-root.master-detail-root[data-has-selection='true'] .master-detail-list {
+      display: none !important;
+    }
+
+    .auditoria-root.master-detail-root:not([data-has-selection='true']) .master-detail-detail {
+      display: none !important;
+    }
+
+    .auditoria-root.master-detail-root .master-detail-list,
+    .auditoria-root.master-detail-root .master-detail-detail {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      flex: 1 1 auto;
+      border-right: none !important;
+    }
+  }
+
+  /** Scroll horizontal en tablas/planillas T2–T3 */
+  @media (min-width: 768px) and (max-width: 1279px) {
+    .scroll-region-tablet {
+      @apply min-h-0 min-w-0 max-w-full overflow-x-auto overflow-y-visible overscroll-x-contain;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-x pan-y;
+    }
+  }
+
+  /** Botón menú ☰: móvil + tablet vertical (&lt; lg). Tablet horizontal y PC usan sidebar fija. */
+  .app-menu-toggle {
+    @apply shrink-0 lg:hidden;
+  }
+
+  /** Header de página: segunda fila en T3 */
+  .app-page-header-actions {
+    @apply flex min-w-0 flex-wrap items-center gap-2;
+  }
+
+  @media (min-width: 1024px) and (max-width: 1279px) {
+    .app-page-header--stack-lg {
+      @apply flex-col items-stretch gap-3;
+    }
+
+    .app-page-header--stack-lg .app-page-header-actions {
+      @apply w-full justify-start;
+    }
   }
 
   /**
@@ -203,6 +422,30 @@
   }
 
   /**
+   * Panel / inicio: no crear scroll interno en gráficos; la rueda/dedo debe mover la página.
+   */
+  .panel-chart-canvas-wrap {
+    min-width: 0;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: visible;
+    overscroll-behavior-x: contain;
+    overscroll-behavior-y: auto;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .panel-chart-canvas-wrap--h-scroll {
+    touch-action: pan-x pan-y;
+  }
+
+  .panel-chart-canvas-wrap .recharts-responsive-container,
+  .panel-chart-canvas-wrap .recharts-wrapper,
+  .panel-chart-canvas-wrap .recharts-surface {
+    touch-action: inherit;
+  }
+
+  /**
    * Formulario de justificación en móvil: sin estirar el panel ni dejar hueco blanco
    * tras el selector de archivos (iOS/Android).
    */
@@ -244,31 +487,6 @@
     .app-mobile-bottom-bar {
       padding-bottom: var(--app-mobile-bottom-inset) !important;
     }
-
-    /**
-     * Panel / inicio: el dedo debe seguir bajando la página aunque pase por un gráfico.
-     * scroll-region + overscroll-contain bloqueaba el scroll vertical del padre.
-     */
-    .panel-chart-canvas-wrap {
-      min-width: 0;
-      width: 100%;
-      overflow-x: auto;
-      overflow-y: visible;
-      overscroll-behavior-x: contain;
-      overscroll-behavior-y: auto;
-      touch-action: pan-y;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    .panel-chart-canvas-wrap--h-scroll {
-      touch-action: pan-x pan-y;
-    }
-
-    .panel-chart-canvas-wrap .recharts-responsive-container,
-    .panel-chart-canvas-wrap .recharts-wrapper,
-    .panel-chart-canvas-wrap .recharts-surface {
-      touch-action: inherit;
-    }
   }
 
   /**
@@ -281,13 +499,12 @@
   }
 
   /**
-   * Scroll interno solo en lg+. En móvil/tablet no captura la rueda táctil
-   * (el desplazamiento lo maneja el contenedor padre).
+   * Scroll interno desde md+ (tablet/desktop). En T1 el padre scrollea.
    */
   .scroll-region-at-lg {
-    @apply min-h-0 min-w-0 max-w-full max-lg:overflow-visible max-lg:max-h-none;
+    @apply min-h-0 min-w-0 max-w-full max-md:overflow-visible max-md:max-h-none;
   }
-  @media (min-width: 1024px) {
+  @media (min-width: 768px) {
     .scroll-region-at-lg {
       overflow: auto;
       overscroll-behavior: contain;
@@ -296,10 +513,9 @@
   }
 
   /**
-   * Planillas / tablas anchas (solo móvil/tablet): deslizamiento horizontal táctil.
-   * En lg+ se usa .scroll-region estándar sin alterar escritorio.
+   * Planillas / tablas anchas T1–T3: deslizamiento horizontal táctil.
    */
-  @media (max-width: 1023px) {
+  @media (max-width: 1279px) {
     .scroll-region-table {
       @apply min-h-0 min-w-0 max-w-full overflow-x-auto overflow-y-visible overscroll-x-contain;
       -webkit-overflow-scrolling: touch;
@@ -323,7 +539,7 @@
     }
 
     /**
-     * App bar siempre visible: menú ☰ + título no deben perderse al scrollear listas largas.
+     * App bar fija en móvil y tablet vertical: menú ☰ + título al scrollear.
      */
     .app-layout-main > header {
       position: fixed;
@@ -335,13 +551,9 @@
     }
 
     .app-layout-main {
-      /* Reserva espacio para el header fixed (min-h-16 ≈ 4rem). */
       padding-top: 4rem;
     }
 
-    /**
-     * El scroll queda en main/contenido, no en el documento (evita que el header salga de pantalla).
-     */
     html:has(.system-bg.h-screen.overflow-hidden),
     body:has(.system-bg.h-screen.overflow-hidden) {
       overflow: hidden;
@@ -349,13 +561,11 @@
       overscroll-behavior: none;
     }
 
-    /** Viewport móvil estable (Chrome/Android) en pantallas con shell de app. */
     .app-shell-viewport {
       height: 100svh;
       max-height: 100svh;
     }
 
-    /** Área de scroll principal bajo el header sticky + margen sobre barra del celular. */
     .app-scroll-content {
       overscroll-behavior-y: contain;
       touch-action: pan-y;
@@ -363,14 +573,12 @@
     }
   }
 
-  /* Móvil oscuro: fondo #0D1830 para todos los módulos */
   @media (max-width: 1023px) {
     .dark .app-layout-main {
       background-color: #0D1830;
     }
   }
 
-  /* lg+ sin inset extra de barra del sistema */
   @media (min-width: 1024px) {
     .app-scroll-content,
     .app-mobile-bottom-inset,
@@ -379,9 +587,6 @@
     }
   }
 
-  /**
-   * Cualquier .scroll-region móvil hereda el inset si no usa scroll-region-at-lg.
-   */
   @media (max-width: 1023px) {
     .scroll-region:not(.scroll-region-at-lg):not(.app-scroll-content) {
       padding-bottom: var(--app-mobile-bottom-inset, max(env(safe-area-inset-bottom, 0px), 2.25rem));
@@ -410,7 +615,7 @@
     @apply fixed inset-0 z-[45] cursor-pointer bg-slate-950/85 backdrop-blur-[4px] lg:hidden;
   }
 
-  /** Contenido detrás del menú: sin interacción y bordes discretos mientras el drawer está abierto. */
+  /** Contenido detrás del menú drawer (móvil + tablet vertical). */
   @media (max-width: 1023px) {
     html.mobile-sidebar-open .app-layout-main {
       pointer-events: none;
@@ -481,6 +686,50 @@ body {
 html:not(.dark) .app-sidebar-shell {
   background: #ffffff !important;
   border-right: 1px solid #e2e8f0 !important;
+}
+
+/* Panel lateral derecho (Usuarios): mismo fondo que app-sidebar-shell */
+.usuario-detail-panel {
+  background: #ffffff;
+}
+
+.dark .usuario-detail-panel {
+  background: linear-gradient(180deg, #162347 0%, #131e3c 52%, #101a33 100%);
+}
+
+.dark .usuario-detail-panel .usuario-detail-panel-body {
+  background: transparent;
+  border-color: #1c2a50;
+}
+
+.dark .usuario-detail-panel .usuario-detail-panel-header {
+  background-color: rgba(19, 42, 82, 1);
+  border-color: #132a52;
+}
+
+.dark .usuario-detail-panel .usuario-detail-panel-footer {
+  background-color: rgba(19, 42, 82, 1);
+  border-color: #132a52;
+}
+
+html:not(.dark) .usuario-detail-panel .usuario-detail-panel-header {
+  background-color: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+html:not(.dark) .usuario-detail-panel .usuario-detail-panel-body,
+html:not(.dark) .usuario-detail-panel .usuario-detail-panel-footer {
+  background-color: #ffffff;
+  border-color: #e2e8f0;
+}
+
+.dark .usuario-detail-panel .usuario-detail-panel-card {
+  background: transparent;
+  box-shadow: none;
+}
+
+html:not(.dark) .usuario-detail-panel .usuario-detail-panel-card {
+  background-color: #ffffff;
 }
 
 .sidebar-active-chip {

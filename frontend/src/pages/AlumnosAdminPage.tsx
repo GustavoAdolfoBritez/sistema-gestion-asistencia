@@ -650,7 +650,7 @@ export function AlumnosAdminPage({ onLogout }: Props) {
         <main className="app-layout-main">
           <header className="flex-shrink-0 min-h-16 bg-white/95 backdrop-blur-md border-b border-slate-200 flex flex-wrap items-center px-4 sm:px-6 gap-3 py-3 z-10 dark:bg-[#132a52]/90 dark:border-slate-800">
             <button
-              className="lg:hidden shrink-0 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+              className="app-menu-toggle text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
               onClick={() => setSidebarOpen(true)}
               aria-label="Abrir menu"
             >
@@ -663,7 +663,7 @@ export function AlumnosAdminPage({ onLogout }: Props) {
             </div>
           </header>
 
-          <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-5 max-lg:gap-2 max-lg:p-3">
+          <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-5 max-lg:gap-2.5 max-lg:p-3 max-lg:pb-0">
 
             <div className={`relative shrink-0 ${selectedAlumnoId ? 'max-lg:hidden' : ''}`}>
               <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-[20px] max-lg:left-2.5 max-lg:text-[18px]">
@@ -676,7 +676,6 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                 placeholder="CI, nombre o apellido…"
                 value={termino}
                 onChange={(e) => setTermino(e.target.value)}
-                autoFocus
               />
               {loading ? (
                 <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-[20px] animate-spin max-lg:right-2.5 max-lg:text-[18px]">
@@ -698,7 +697,7 @@ export function AlumnosAdminPage({ onLogout }: Props) {
               <div className={`shrink-0 ${selectedAlumnoId ? 'max-lg:hidden' : ''}`}>
                 <button
                   type="button"
-                  className="mb-2 flex w-full items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-left shadow-sm dark:border-slate-800/80 dark:bg-[#0e1e38]/90 dark:shadow-none lg:hidden"
+                  className="mb-2 flex w-full items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-left shadow-sm dark:border-slate-800/80 dark:bg-[#0e1e38]/90 dark:shadow-none max-lg:flex lg:hidden"
                   onClick={() => setFiltrosMovilAbiertos((v) => !v)}
                   aria-expanded={filtrosMovilAbiertos}
                 >
@@ -814,12 +813,13 @@ export function AlumnosAdminPage({ onLogout }: Props) {
             ) : null}
 
             {/* Layout principal */}
-            <div className="grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-4 overflow-hidden max-lg:flex max-lg:flex-col max-lg:gap-0 xl:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
+            <div
+              className="alumnos-root master-detail-root min-h-0 min-w-0 flex-1 gap-4 overflow-hidden max-lg:min-h-0 max-lg:flex-1 xl:grid xl:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]"
+              data-has-selection={selectedAlumnoId ? 'true' : 'false'}
+            >
 
               <aside
-                className={`min-w-0 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-[#0e1e38] dark:shadow-none ${
-                  selectedAlumnoId ? 'max-lg:hidden' : 'max-lg:flex max-lg:min-h-0 max-lg:flex-1'
-                } lg:flex lg:min-h-0 lg:flex-1`}
+                className="alumnos-list-panel master-detail-list min-w-0 flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-[#0e1e38] dark:shadow-none xl:flex-none"
               >
                 {/* Encabezado listado — móvil: título legible; escritorio: sin cambios */}
                 <div className="shrink-0 border-b border-slate-200 px-4 py-3 dark:border-slate-800/60 max-lg:py-2.5 lg:py-2.5">
@@ -853,7 +853,7 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                   </div>
                 </div>
 
-                <div className="scroll-region app-scroll-content flex min-h-0 flex-1 flex-col max-lg:overflow-y-auto">
+                <div className="alumnos-list-scroll scroll-region flex min-h-0 flex-1 flex-col max-lg:pb-[max(1rem,env(safe-area-inset-bottom))]">
                   {resultados.length === 0 && !loading && (
                     <div className="flex h-full flex-col items-center justify-center gap-3 px-4 py-10">
                       <span className="material-symbols-outlined text-[48px] text-slate-300 dark:text-slate-600">
@@ -872,7 +872,7 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                         <li key={item.id}>
                           <button
                             type="button"
-                            className={`flex w-full gap-3 text-left transition-colors max-lg:items-start max-lg:px-4 max-lg:py-3 max-lg:active:bg-slate-50 dark:max-lg:active:bg-slate-800/50 lg:items-start lg:gap-3 lg:border-l-2 lg:px-4 lg:py-3 ${
+                            className={`alumnos-list-item flex w-full gap-3 text-left transition-colors max-lg:items-start max-lg:px-4 max-lg:py-3 max-lg:active:bg-slate-50 dark:max-lg:active:bg-slate-800/50 lg:items-start lg:gap-3 lg:border-l-2 lg:px-4 lg:py-3 ${
                               isSelected
                                 ? 'bg-blue-50 border-blue-500 dark:bg-blue-500/10 max-lg:bg-blue-50/90'
                                 : 'lg:border-transparent lg:hover:border-slate-600 lg:hover:bg-slate-50 dark:lg:hover:bg-slate-800/30'
@@ -944,12 +944,12 @@ export function AlumnosAdminPage({ onLogout }: Props) {
               </aside>
 
               <div
-                className={`min-w-0 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-[#0e1e38] dark:shadow-none ${
-                  selectedAlumnoId ? 'max-lg:flex max-lg:min-h-0 max-lg:flex-1' : 'max-lg:hidden'
-                } lg:flex lg:min-h-0 lg:flex-1`}
+                className={`master-detail-detail min-w-0 flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-[#0e1e38] dark:shadow-none max-lg:min-h-0 max-lg:flex-1 xl:flex-1 ${
+                  selectedAlumnoId ? '' : 'max-xl:hidden'
+                }`}
               >
                 {selectedAlumnoId ? (
-                  <div className="flex shrink-0 items-center gap-2 border-b border-slate-200 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-[#0c1a32]/50 lg:hidden">
+                  <div className="flex shrink-0 items-center gap-2 border-b border-slate-200 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-[#0c1a32]/50 max-lg:flex lg:hidden">
                     <button
                       type="button"
                       className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-200/80 dark:text-slate-200 dark:hover:bg-slate-800/60"
@@ -967,7 +967,7 @@ export function AlumnosAdminPage({ onLogout }: Props) {
 
                 {/* Estado vacío (solo escritorio; en móvil no hay panel sin selección) */}
                 {!fichaLoading && !ficha && (
-                  <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 max-lg:hidden">
+                  <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 max-xl:hidden">
                     <div className="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center dark:bg-blue-500/10">
                       <span className="material-symbols-outlined text-blue-600 text-[36px] dark:text-blue-400">person_pin</span>
                     </div>
@@ -989,9 +989,9 @@ export function AlumnosAdminPage({ onLogout }: Props) {
 
                 {!fichaLoading && ficha && (
                   <>
-                  <div className="scroll-region app-scroll-content flex min-h-0 flex-1 flex-col overflow-y-auto lg:overflow-hidden">
+                  <div className="scroll-region app-scroll-content flex min-h-0 flex-1 flex-col overflow-y-auto xl:overflow-hidden">
 
-                    <div className="shrink-0 flex flex-col gap-3 border-b border-slate-200 px-3 py-3 dark:border-slate-800 max-lg:gap-2 sm:px-5 sm:py-4 lg:flex-row lg:items-center lg:gap-4">
+                    <div className="shrink-0 flex flex-col gap-3 border-b border-slate-200 px-3 py-3 dark:border-slate-800 max-lg:gap-2 sm:px-5 sm:py-4 xl:flex-row xl:items-center xl:gap-4">
                       <div className="flex min-w-0 items-start gap-3 lg:items-center lg:gap-4">
                         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-blue-200 bg-blue-100 text-sm font-bold text-blue-800 dark:border-blue-500/30 dark:bg-blue-500/15 dark:text-blue-300 max-lg:h-10 max-lg:w-10 lg:h-12 lg:w-12 lg:text-base">
                           {getInitialsAlumno(ficha.alumno)}
@@ -1027,7 +1027,7 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                       </button>
                     </div>
 
-                    <div className="grid shrink-0 grid-cols-2 gap-2 border-b border-slate-200 px-3 py-3 dark:border-slate-800 max-lg:gap-2 sm:gap-3 sm:px-5 sm:py-4 lg:grid-cols-4">
+                    <div className="grid shrink-0 grid-cols-2 gap-2 border-b border-slate-200 px-3 py-3 dark:border-slate-800 max-lg:gap-2 sm:gap-3 sm:px-5 sm:py-4 xl:grid-cols-4">
                       {[
                         { label: 'Matrículas', value: ficha.resumen.totalMatriculas, icon: 'school', color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100 dark:bg-blue-500/10' },
                         { label: 'Activas', value: ficha.resumen.activas, icon: 'check_circle', color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100 dark:bg-emerald-500/10' },
@@ -1109,10 +1109,10 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                       </div>
                     </div>
 
-                    {/* Trayectoria: tarjetas en móvil, tabla en escritorio */}
-                    <div className="flex min-h-0 flex-1 flex-col max-lg:flex-none">
-                      <div className="min-h-0 flex-1 max-lg:flex-none lg:scroll-region lg:overflow-y-auto">
-                        <ul className="divide-y divide-slate-200 dark:divide-slate-800/70 lg:hidden">
+                    {/* Trayectoria: tarjetas hasta xl; tabla con scroll interno solo en PC ancho */}
+                    <div className="flex min-h-0 flex-col max-xl:flex-none xl:min-h-0 xl:flex-1 xl:overflow-hidden">
+                      <div className="max-xl:flex-none xl:min-h-0 xl:flex-1 xl:scroll-region xl:overflow-y-auto xl:overscroll-y-contain">
+                        <ul className="divide-y divide-slate-200 dark:divide-slate-800/70 xl:hidden">
                           {trayectoriaFiltrada.map((item) => {
                             const sinRegistros = !tieneAsistenciaRegistrada(item.sesiones_registradas);
                             const pct = Number(item.porcentaje_asistencia ?? 0);
@@ -1179,7 +1179,7 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                           ) : null}
                         </ul>
 
-                        <table className="hidden w-full min-w-0 text-sm lg:table">
+                        <table className="hidden w-full min-w-0 text-sm xl:table">
                           <thead className="sticky top-0 z-[1] border-b border-slate-200 bg-slate-100 text-xs uppercase text-slate-600 dark:border-slate-800 dark:bg-[#0b1827] dark:text-slate-400">
                             <tr>
                               <th className="px-4 py-2.5 text-left font-medium">Materia</th>

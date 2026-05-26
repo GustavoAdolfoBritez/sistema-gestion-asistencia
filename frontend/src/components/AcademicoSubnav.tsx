@@ -8,20 +8,20 @@ const tabActive = 'border-primary/80 text-primary dark:text-[#e7eef9] bg-primary
 
 export function AcademicoSubnav() {
   return (
-    <nav className="flex flex-nowrap items-center gap-2" aria-label="Secciones académicas">
+    <nav className="flex max-w-full flex-nowrap items-center gap-2 overflow-x-auto pb-0.5 max-md:scrollbar-hide md:overflow-visible" aria-label="Secciones académicas">
       <NavLink
         to="/app/academico"
         end
         className={({ isActive }) => `${tabBase} ${isActive ? tabActive : tabInactive}`}
       >
-        <span className="material-symbols-outlined text-base max-lg:hidden">auto_stories</span>
+        <span className="material-symbols-outlined text-base max-md:hidden">auto_stories</span>
         Períodos y cursos
       </NavLink>
       <NavLink
         to="/app/academico/promocion"
         className={({ isActive }) => `${tabBase} ${isActive ? tabActive : tabInactive}`}
       >
-        <span className="material-symbols-outlined text-base max-lg:hidden">upgrade</span>
+        <span className="material-symbols-outlined text-base max-md:hidden">upgrade</span>
         Promoción de semestre
       </NavLink>
     </nav>

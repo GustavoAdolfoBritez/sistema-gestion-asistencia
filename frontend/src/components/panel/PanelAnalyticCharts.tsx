@@ -1,4 +1,4 @@
-import { memo, useEffect, useState, type ReactNode } from 'react';
+import { memo, useEffect, useState, type ReactNode, type WheelEvent } from 'react';
 import {
   Area,
   Bar,
@@ -38,6 +38,24 @@ function usePanelChartMobile(): boolean {
     return () => mq.removeEventListener('change', onChange);
   }, []);
   return mobile;
+}
+
+/** Recharts captura la rueda del mouse; reenvía el scroll vertical al contenedor de la página. */
+function forwardPanelChartWheel(event: WheelEvent<HTMLDivElement>) {
+  if (Math.abs(event.deltaY) < Math.abs(event.deltaX)) return;
+
+  const wrap = event.currentTarget;
+  const canScrollUp = wrap.scrollTop > 0;
+  const canScrollDown = wrap.scrollTop + wrap.clientHeight < wrap.scrollHeight - 1;
+  if ((event.deltaY > 0 && canScrollDown) || (event.deltaY < 0 && canScrollUp)) {
+    return;
+  }
+
+  const scrollParent = wrap.closest('.app-scroll-content') as HTMLElement | null;
+  if (!scrollParent) return;
+
+  scrollParent.scrollTop += event.deltaY;
+  event.preventDefault();
 }
 
 type PanelChartShellProps = {
@@ -102,12 +120,11 @@ function PanelChartShell({
         </div>
       ) : (
         <div
-          className={
-            isMobile
-              ? `panel-chart-canvas-wrap${mobileChartMinWidth ? ' panel-chart-canvas-wrap--h-scroll' : ''}`
-              : 'scroll-region min-w-0 w-full'
-          }
+          className={`panel-chart-canvas-wrap min-w-0 w-full${
+            isMobile && mobileChartMinWidth ? ' panel-chart-canvas-wrap--h-scroll' : ''
+          }`}
           style={{ height: chartHeight }}
+          onWheelCapture={forwardPanelChartWheel}
         >
           <div
             className="h-full w-full"

@@ -623,7 +623,7 @@ export function AuditoriaPage({ onLogout }: Props) {
         <main className="app-layout-main">
           <header className="flex-shrink-0 min-h-16 bg-[#132a52]/90 backdrop-blur-md border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3 z-10">
             <div className="flex min-w-0 items-center gap-3">
-              <button className="lg:hidden shrink-0 text-slate-400" onClick={() => setSidebarOpen((prev) => !prev)} aria-label="Abrir menú">
+              <button className="app-menu-toggle text-slate-400" onClick={() => setSidebarOpen((prev) => !prev)} aria-label="Abrir menú">
                 <span className="material-symbols-outlined">menu</span>
               </button>
               <span className="material-symbols-outlined shrink-0 text-[#6b8bc3]">policy</span>
@@ -637,12 +637,12 @@ export function AuditoriaPage({ onLogout }: Props) {
 
           <section
             className={`flex min-h-0 flex-1 flex-col gap-5 p-4 sm:p-6 lg:min-h-0 lg:overflow-y-auto lg:scroll-region ${
-              seleccionado ? 'max-lg:overflow-hidden' : 'scroll-region app-scroll-content overflow-y-auto'
+              seleccionado ? 'max-xl:overflow-hidden' : 'scroll-region app-scroll-content overflow-y-auto'
             }`}
           >
             <div
               className={`min-w-0 flex flex-col gap-3 rounded-xl border border-slate-800 bg-[#132a52] p-4 ${
-                seleccionado ? 'max-lg:hidden' : ''
+                seleccionado ? 'max-xl:hidden' : ''
               }`}
             >
               {/* Fila 1: selectores */}
@@ -785,17 +785,12 @@ export function AuditoriaPage({ onLogout }: Props) {
             </div>
 
             <div
-              className={`flex min-h-0 flex-col gap-5 lg:gap-5 ${
-                seleccionado ? 'max-lg:flex-1 max-lg:overflow-hidden' : ''
-              }`}
+              className="auditoria-root master-detail-root flex min-h-0 flex-1 flex-col gap-5 lg:gap-5"
+              data-has-selection={seleccionado ? 'true' : 'false'}
             >
-            <div
-              className={`min-w-0 rounded-xl border border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-[#132a52] ${
-                seleccionado ? 'max-lg:hidden' : ''
-              }`}
-            >
-              <div className="min-w-0 max-lg:max-h-none max-lg:overflow-visible lg:scroll-region lg:max-h-[45vh]">
-                <ul className="flex flex-col gap-2.5 p-3 lg:hidden">
+            <div className="master-detail-list flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-[#132a52] max-xl:min-h-0 max-xl:flex-1">
+              <div className="auditoria-eventos-scroll min-w-0 min-h-0 flex-1 overflow-y-auto overscroll-y-contain xl:max-h-[min(45vh,28rem)]">
+                <ul className="flex flex-col gap-2.5 p-3 pb-4 xl:hidden">
                   {loading ? (
                     <li className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-[#132a52] dark:text-slate-400">
                       Cargando eventos…
@@ -815,7 +810,9 @@ export function AuditoriaPage({ onLogout }: Props) {
                   )}
                 </ul>
 
-                <table className="hidden w-full table-auto text-sm lg:table">
+                <div className="hidden min-w-0 xl:block">
+                <div className="min-w-0 overflow-x-auto overscroll-x-contain">
+                <table className="w-full min-w-[52rem] table-auto text-sm">
                   <colgroup>
                     <col className="w-[1%]" />
                     <col className="w-[1%]" />
@@ -872,19 +869,21 @@ export function AuditoriaPage({ onLogout }: Props) {
                     ) : null}
                   </tbody>
                 </table>
+                </div>
+                </div>
               </div>
             </div>
 
             <div
-              className={`rounded-xl border border-slate-200 bg-slate-50/90 dark:border-slate-800 dark:bg-[#132a52] lg:bg-white lg:p-4 ${
-                seleccionado ? 'max-lg:flex max-lg:min-h-0 max-lg:flex-1 max-lg:flex-col max-lg:overflow-hidden max-lg:p-3' : 'max-lg:hidden p-4'
+              className={`master-detail-detail rounded-xl border border-slate-200 bg-slate-50/90 p-4 dark:border-slate-800 dark:bg-[#132a52] max-xl:min-h-0 max-xl:flex-1 xl:bg-white xl:p-4 ${
+                seleccionado ? 'flex min-h-0 flex-1 flex-col overflow-hidden max-xl:p-3' : 'hidden'
               }`}
             >
               {seleccionado ? (
                 <button
                   type="button"
                   onClick={() => setSeleccionado(null)}
-                  className="mb-3 flex w-full shrink-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:bg-slate-800 lg:hidden"
+                  className="mb-3 flex w-full shrink-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:bg-slate-800 max-xl:flex xl:hidden"
                 >
                   <span className="material-symbols-outlined text-[18px]">arrow_back</span>
                   Volver al listado
@@ -903,14 +902,14 @@ export function AuditoriaPage({ onLogout }: Props) {
                 ) : null}
               </div>
               {!seleccionado ? (
-                <p className="text-sm text-slate-500 dark:text-slate-400 max-lg:hidden">
+                <p className="text-sm text-slate-500 dark:text-slate-400 max-xl:hidden">
                   Selecciona un evento para ver más información.
                 </p>
               ) : (
                 <div className="scroll-region app-scroll-content min-h-0 flex-1 overflow-y-auto text-sm">
-                  <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-2">
+                  <div className="grid w-full grid-cols-1 gap-4 xl:grid-cols-2">
                     <div className="w-full min-w-0 text-slate-700 dark:text-slate-300">
-                      <div className="w-full space-y-2 lg:hidden">
+                      <div className="w-full space-y-2 xl:hidden">
                         <DetalleEventoEncabezadoMovil evento={seleccionado} />
                         <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white/80 dark:border-slate-700/60 dark:bg-slate-900/25">
                           <DetalleCampoMovil
@@ -949,7 +948,7 @@ export function AuditoriaPage({ onLogout }: Props) {
                           />
                         </div>
                       </div>
-                      <div className="hidden space-y-1 lg:block">
+                      <div className="hidden space-y-1 xl:block">
                         <p>
                           <strong>Qué se hizo:</strong> {construirResumenCambio(seleccionado)}
                         </p>
@@ -976,7 +975,7 @@ export function AuditoriaPage({ onLogout }: Props) {
                         </p>
                       </div>
                     </div>
-                    <div className="w-full min-w-0 space-y-2 max-lg:mt-0">
+                    <div className="w-full min-w-0 space-y-2 max-xl:mt-0">
                       {mostrarDatosTecnicos ? (
                         <div
                           ref={panelDatosTecnicosRef}

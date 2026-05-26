@@ -1562,7 +1562,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
             <div className="flex flex-wrap items-center justify-between gap-3 min-h-10 min-w-0">
               <div className="flex min-w-0 flex-1 items-center gap-3">
                 <button
-                  className="lg:hidden text-slate-600 hover:text-black dark:text-slate-400 dark:hover:text-slate-200"
+                  className="app-menu-toggle text-slate-600 hover:text-black dark:text-slate-400 dark:hover:text-slate-200"
                   onClick={() => setSidebarOpen(true)}
                   aria-label="Abrir menú"
                 >
@@ -1595,7 +1595,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
               {!contextoSelectorListo ? (
                 <ScopeSelectorSkeleton soloCarrera={alcanceListo && alcanceVisualAcademico === 'carrera'} />
               ) : (
-                <div className={`grid min-w-0 grid-cols-1 gap-4 ${alcanceVisualAcademico === 'carrera' ? '' : 'xl:grid-cols-2'}`}>
+                <div className={`grid min-w-0 grid-cols-1 gap-4 ${alcanceVisualAcademico === 'carrera' ? '' : 'md:grid-cols-2 xl:grid-cols-2'}`}>
                   {alcanceVisualAcademico === 'carrera' ? null : (
                     <ScopeSelector
                       label="Facultad"
@@ -1860,7 +1860,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
               </div>
             </div>
 
-            <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-2">
+            <div className="grid min-w-0 grid-cols-1 gap-4 2xl:grid-cols-2">
               <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 space-y-4 text-black shadow-sm dark:border-slate-800 dark:bg-[#132a52] dark:text-[#e7eef9] dark:shadow-none">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="min-w-0">
@@ -1869,7 +1869,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                   </div>
                   <span className="material-symbols-outlined text-primary shrink-0">library_add</span>
                 </div>
-                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-2">
                   <label className="flex flex-col gap-1 text-sm col-span-2">
                     <span className="text-slate-600 text-xs dark:text-slate-400">Semestre del plan</span>
                     <AppSelect
@@ -2096,7 +2096,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
             </div>
 
             <div className="space-y-4 min-w-0">
-            <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-2">
+            <div className="grid min-w-0 grid-cols-1 gap-4 2xl:grid-cols-2">
               <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 space-y-4 text-black shadow-sm dark:border-slate-800 dark:bg-[#132a52] dark:text-[#e7eef9] dark:shadow-none">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="min-w-0">
@@ -2105,7 +2105,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                   </div>
                   <span className="material-symbols-outlined text-primary shrink-0">add_circle</span>
                 </div>
-                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3">
                   <label className="flex min-w-0 flex-col gap-1 text-sm">
                     <span className="text-slate-600 text-xs dark:text-slate-400">Semestre</span>
                     <AppSelect
@@ -2146,7 +2146,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                       triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                     />
                   </label>
-                  <div className="flex min-w-0 flex-col gap-1 text-sm relative lg:col-span-2">
+                  <div className="flex min-w-0 flex-col gap-1 text-sm relative">
                     <span className="text-slate-600 text-xs dark:text-slate-400">Docente</span>
                     <div className="relative">
                       <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 material-symbols-outlined text-[16px]">
@@ -2602,7 +2602,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                       </p>
                     ) : (
                       <>
-                        <ul className="divide-y divide-slate-200 dark:divide-slate-800 lg:hidden">
+                        <ul className="divide-y divide-slate-200 dark:divide-slate-800 md:hidden">
                           {planillaSeleccionada.map((m, idx) => (
                             <li
                               key={m.id}

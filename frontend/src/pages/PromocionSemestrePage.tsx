@@ -388,7 +388,7 @@ export function PromocionSemestrePage({ onLogout }: Props) {
               <div className="flex items-center gap-3 min-w-0">
                 <button
                   type="button"
-                  className="lg:hidden text-slate-400 shrink-0"
+                  className="app-menu-toggle text-slate-400 shrink-0"
                   onClick={() => setSidebarOpen(true)}
                   aria-label="Abrir menú"
                 >
@@ -498,7 +498,7 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                       type="button"
                       disabled={!puedeEjecutarMasiva}
                       onClick={() => setConfirmMasivaOpen(true)}
-                      className="btn-modern btn-modern-success btn-mobile-cta shrink-0 px-3 py-1.5 text-sm font-medium max-lg:w-full"
+                      className="btn-modern btn-modern-success btn-mobile-cta shrink-0 px-3 py-1.5 text-sm font-medium max-md:w-full md:w-auto"
                     >
                       Promocionar todo (facultad)
                     </button>
@@ -695,7 +695,7 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                       <button
                         type="button"
                         onClick={restaurarTodos}
-                        className="btn-modern btn-modern-ghost btn-mobile-cta inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium max-lg:w-full"
+                        className="btn-modern btn-modern-ghost btn-mobile-cta inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium max-md:w-full md:w-auto"
                       >
                         <span className="material-symbols-outlined text-[18px]" aria-hidden>
                           group_add
@@ -706,7 +706,7 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                         type="button"
                         disabled={!puedePromocionar || cantIncluidos === 0}
                         onClick={() => setConfirmOpen(true)}
-                        className="btn-modern btn-modern-success btn-mobile-cta inline-flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-semibold max-lg:w-full max-lg:py-3"
+                        className="btn-modern btn-modern-success btn-mobile-cta inline-flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-semibold max-md:w-full max-md:py-3 md:w-auto"
                       >
                         <span className="material-symbols-outlined text-[18px]" aria-hidden>
                           upgrade

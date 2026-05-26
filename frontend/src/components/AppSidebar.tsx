@@ -68,21 +68,21 @@ export function AppSidebar({ sidebarOpen, onLogout, onClose }: AppSidebarProps) 
 
   const { isDark, toggle } = useTheme();
 
+  /** Drawer móvil + tablet vertical (&lt; lg). Escritorio y tablet horizontal (lg+) sin overlay. */
   useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1024px)');
+    const mqDesktop = window.matchMedia('(min-width: 1024px)');
     const sync = () => {
-      const mobile = !mq.matches;
-      if (sidebarOpen && mobile) {
+      if (sidebarOpen && !mqDesktop.matches) {
         document.documentElement.classList.add('mobile-sidebar-open');
       } else {
         document.documentElement.classList.remove('mobile-sidebar-open');
       }
     };
     sync();
-    mq.addEventListener('change', sync);
+    mqDesktop.addEventListener('change', sync);
     return () => {
       document.documentElement.classList.remove('mobile-sidebar-open');
-      mq.removeEventListener('change', sync);
+      mqDesktop.removeEventListener('change', sync);
     };
   }, [sidebarOpen]);
 

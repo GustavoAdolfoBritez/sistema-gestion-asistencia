@@ -1524,7 +1524,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
             <div className="flex min-w-0 flex-1 items-center gap-3">
               <button
                 type="button"
-                className="lg:hidden shrink-0 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg p-1 transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                className="app-menu-toggle text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg p-1 transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 onClick={() => setSidebarOpen((open) => !open)}
                 aria-label={sidebarOpen ? 'Cerrar menú' : 'Abrir menú'}
                 aria-expanded={sidebarOpen}
@@ -1550,7 +1550,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
           </header>
 
           <section className="justif-movil-scroll-section app-scroll-content flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-6 max-lg:overflow-y-auto max-lg:bg-background-light dark:max-lg:bg-[#0d1830]">
-            <div className="btn-mobile-tabs flex w-full flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-[#132a52] sm:w-auto">
+            <div className="btn-mobile-tabs btn-mobile-tabs--inline-md flex w-full flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-[#132a52] sm:w-auto md:inline-flex">
               <button
                 type="button"
                 onClick={() => setSubView('planilla')}
@@ -1583,7 +1583,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
             {/* Barra + KPI: scroll propio en móvil para no competir con la planilla */}
             <div className="relative flex min-w-0 shrink-0 flex-col gap-4">
             <div className="min-w-0 space-y-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-[#132a52]">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between min-w-0">
+              <div className="layout-toolbar flex flex-col gap-4 md:flex-row md:items-start md:justify-between min-w-0">
                 <div className="min-w-0 flex-1">
                   <p className="text-xs uppercase text-slate-400">Planilla de asistencia</p>
                   <h2 className="text-lg font-semibold leading-snug break-words">{planillaSeleccionada?.materia ?? 'Selecciona un curso'}</h2>
@@ -1595,7 +1595,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                     </p>
                   ) : null}
                 </div>
-                <div className="relative z-10 flex w-full min-w-0 flex-col gap-2 lg:w-auto lg:flex-row lg:flex-wrap lg:items-center lg:justify-end">
+                <div className="layout-toolbar relative z-10 flex w-full min-w-0 flex-col gap-2 md:flex-row md:flex-wrap md:items-center md:justify-end lg:w-auto">
                   {/* Selector de curso */}
                   <AppSelect
                     className="w-full min-w-0 lg:min-w-[12rem] lg:w-auto"
@@ -1664,7 +1664,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
               ) : null}
 
               {/* Nueva sesión */}
-              <div className="flex min-w-0 flex-col gap-2 border-t border-slate-200 pt-1 dark:border-slate-800/60 lg:flex-row lg:flex-wrap lg:items-center">
+              <div className="layout-toolbar flex min-w-0 flex-col gap-2 border-t border-slate-200 pt-1 dark:border-slate-800/60 md:flex-row md:flex-wrap md:items-center">
                 <span className="shrink-0 text-xs text-slate-600 dark:text-slate-500">Nueva sesión:</span>
                 <input
                   type="date"
@@ -1804,7 +1804,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
             </div>
 
             {/* KPI + leyenda — móvil compacto */}
-            <div className="space-y-2 lg:hidden">
+            <div className="space-y-2 md:hidden">
               <div className="grid grid-cols-2 gap-2">
                 {PLANILLA_KPI_ITEMS.map((k) => {
                   const value =
@@ -1866,7 +1866,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
             </div>
 
             {/* KPI + leyenda — escritorio */}
-            <div className="hidden flex-wrap gap-2 lg:flex">
+            <div className="hidden flex-wrap gap-2 md:flex">
               {[
                 { label: 'Matrículas', value: planillaMatrix.size, color: PLANILLA_KPI_ITEMS[0].color },
                 { label: 'Sesiones del mes', value: sesionesDelMes.length, color: PLANILLA_KPI_ITEMS[1].color },
@@ -1937,7 +1937,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
               ) : (
                 <>
                   {/* Planilla móvil — tarjetas por alumno */}
-                  <div className="app-mobile-bottom-bar space-y-3 px-3 pt-3 pb-3 lg:hidden">
+                  <div className="app-mobile-bottom-bar space-y-3 px-3 pt-3 pb-3 md:hidden">
                     {sesionMovilLista ? (
                       <div className="space-y-3">
                         <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 dark:border-slate-700 dark:bg-[#0f1a30] dark:text-slate-500">
@@ -2076,7 +2076,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                   </div>
 
                   {/* Planilla escritorio — tablas */}
-                  <div className="hidden min-h-0 flex-1 flex-col overflow-hidden lg:flex">
+                  <div className="scroll-region-tablet hidden min-h-0 flex-1 flex-col overflow-hidden md:flex">
               {!sesionesDelMes.length ? (
                 <div className="w-full min-w-0 lg:scroll-region lg:min-h-0 lg:flex-1">
                   <table className="text-sm border-collapse w-full min-w-max">
@@ -2706,7 +2706,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
               {/* Bandeja de revisión — en móvil no se monta con el formulario abierto (evita hueco blanco) */}
               {(!viewportEsMovil || !mostrarFormJustif) ? (
               <div className={JUSTIF_PANEL_CLASS}>
-                <div className={`${JUSTIF_PANEL_HEADER_CLASS} max-lg:flex-col max-lg:items-stretch`}>
+                <div className={`${JUSTIF_PANEL_HEADER_CLASS} max-md:flex-col max-md:items-stretch`}>
                   <div className="min-w-0">
                     <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Historial</p>
                     <h3 className="text-lg font-semibold text-slate-900 dark:text-[#f0f4f8]">
@@ -2739,7 +2739,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                   </div>
                 </div>
                 {/* Historial — tarjetas en móvil */}
-                <ul className="divide-y divide-slate-200 dark:divide-slate-800 lg:hidden">
+                <ul className="divide-y divide-slate-200 dark:divide-slate-800 md:hidden">
                   {justificacionesLoading ? (
                     <li className="flex items-center justify-center gap-2 px-4 py-10 text-sm text-slate-500">
                       <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
@@ -2860,7 +2860,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                 </ul>
 
                 {/* Historial — tabla en escritorio (sin cambios) */}
-                <div className="scroll-region-at-lg hidden lg:block lg:max-h-[420px]">
+                <div className="scroll-region-at-lg scroll-region-tablet hidden md:block lg:max-h-[420px]">
                   <table className="min-w-full text-sm">
                     <thead className={JUSTIF_TABLE_HEAD_CLASS}>
                       <tr>

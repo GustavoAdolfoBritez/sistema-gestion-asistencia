@@ -497,7 +497,7 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
           <header className="flex-shrink-0 min-h-16 bg-[#132a52]/90 backdrop-blur-md border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3 z-10">
             <div className="flex min-w-0 items-center gap-3">
               <button
-                className="lg:hidden shrink-0 text-slate-400"
+                className="app-menu-toggle text-slate-400"
                 onClick={() => setSidebarOpen(true)}
                 aria-label="Abrir menu"
               >
@@ -516,7 +516,7 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
               <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 max-lg:mb-1.5">
                 Resumen general
               </p>
-              <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
+              <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
                 {esVistaInstitucional ? (
                   <KpiCard
                     label="Usuarios activos"
@@ -918,7 +918,7 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">
                 Alertas de asistencia{filtroCarreraId || filtroFacultadId ? ' · filtrado' : ''}
               </p>
-              <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
+              <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
                 {puedeAprobar ? (
                   <KpiCard
                     label="Solicitudes pend."
@@ -957,7 +957,7 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
                   </span>
                 ) : null}
               </p>
-              <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-2">
+              <div className="grid min-w-0 grid-cols-1 gap-5 2xl:grid-cols-2">
                 <PanelFunnelRetencionChart
                   statsLoading={statsLoading}
                   data={funnelRetencionData}
@@ -972,7 +972,7 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
                   isDark={isDark}
                 />
                 {alcanceVisualPanel !== 'carrera' ? (
-                  <div className="xl:col-span-2">
+                  <div className="2xl:col-span-2">
                     <PanelCarreraInhabilitadosChart
                       statsLoading={statsLoading}
                       data={carreraInhabilitadosData}
@@ -981,7 +981,7 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
                     />
                   </div>
                 ) : null}
-                <div className="xl:col-span-2">
+                <div className="2xl:col-span-2">
                   <PanelAsistenciaAlertasChart
                     statsLoading={statsLoading}
                     data={asistenciaAlertasMesData}

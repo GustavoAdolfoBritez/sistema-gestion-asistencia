@@ -189,10 +189,27 @@ function mapBatchDetail(row: Record<string, any>): ImportBatchDetail {
 }
 
 function mapRecord(row: Record<string, any>): ImportRecord {
+  let datos: Record<string, unknown> = {};
+  const rawDatos = row.datos;
+  if (rawDatos != null) {
+    if (typeof rawDatos === 'string') {
+      try {
+        const parsed = JSON.parse(rawDatos) as unknown;
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          datos = parsed as Record<string, unknown>;
+        }
+      } catch {
+        datos = {};
+      }
+    } else if (typeof rawDatos === 'object' && !Array.isArray(rawDatos)) {
+      datos = rawDatos as Record<string, unknown>;
+    }
+  }
+
   return {
     id: row.id,
     fila: row.fila ?? null,
-    datos: row.datos ?? {},
+    datos,
     valido: row.valido ?? null,
     mensajeError: row.mensaje_error ?? null,
   };
@@ -857,7 +874,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
         <main className="app-layout-main">
           <header className="flex-shrink-0 min-h-16 bg-[#132a52]/90 backdrop-blur-md border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3 z-10">
             <div className="flex min-w-0 flex-1 items-center gap-3">
-              <button className="lg:hidden shrink-0 text-slate-400" onClick={() => setSidebarOpen((prev) => !prev)} aria-label="Abrir menú">
+              <button className="app-menu-toggle text-slate-400" onClick={() => setSidebarOpen((prev) => !prev)} aria-label="Abrir menú">
                 <span className="material-symbols-outlined">menu</span>
               </button>
               <span className="material-symbols-outlined shrink-0 text-[#6b8bc3]">upload_file</span>
@@ -868,12 +885,11 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
             </div>
           </header>
 
-          <div className="grid min-h-0 min-w-0 flex-1 grid-cols-1 overflow-hidden max-lg:flex max-lg:flex-col lg:grid-cols-[minmax(0,1fr)_min(100%,26.25rem)]">
-            <section
-              className={`min-w-0 flex flex-col overflow-hidden ${
-                selectedBatchId ? 'max-lg:hidden' : 'max-lg:flex max-lg:min-h-0 max-lg:flex-1'
-              }`}
-            >
+          <div
+            className="importaciones-root master-detail-root min-h-0 min-w-0 flex-1 overflow-hidden xl:grid xl:grid-cols-[minmax(0,1fr)_min(100%,26.25rem)]"
+            data-has-selection={selectedBatchId ? 'true' : 'false'}
+          >
+            <section className="master-detail-list min-w-0 flex min-h-0 flex-1 flex-col overflow-hidden">
               <div className="scroll-region app-scroll-content scrollbar-hide min-w-0 flex-1 space-y-8 p-4 sm:p-6 max-lg:space-y-5 max-lg:p-3">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3 max-lg:grid-cols-2 max-lg:gap-2">
                 <div className="rounded-xl border border-slate-800 bg-[#132a52] p-5 max-lg:p-3.5">
@@ -1192,11 +1208,9 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
             </section>
 
             <aside
-              className={`relative z-10 flex min-w-0 w-full flex-col overflow-hidden border-slate-800 bg-[#132a52] ${
-                selectedBatchId
-                  ? 'max-lg:flex max-lg:min-h-0 max-lg:flex-1 max-lg:border-t-0'
-                  : 'max-lg:hidden'
-              } lg:flex lg:h-full lg:max-h-none lg:border-l lg:border-t-0`}
+              className={`master-detail-detail relative z-10 flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden border-slate-800 bg-[#132a52] max-xl:min-h-0 xl:h-full xl:max-h-none xl:max-w-[26.25rem] xl:flex-none xl:border-l xl:border-t-0 ${
+                !selectedBatchId ? 'max-xl:hidden' : ''
+              }`}
             >
               <ImportConfirmOverlay
                 phase={confirmPhase}
@@ -1206,11 +1220,11 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                 successMessage={confirmSuccessMessage}
                 onDismissError={dismissConfirmError}
               />
-              <div className="flex min-w-0 shrink-0 flex-col gap-3 border-b border-slate-800 bg-[#132a52] px-4 py-2 sm:flex-row sm:items-center sm:justify-between sm:py-[7px] max-lg:gap-2 max-lg:py-3">
+              <div className="flex min-w-0 shrink-0 flex-col gap-3 border-b border-slate-800 bg-[#132a52] px-4 py-3 max-xl:py-4 xl:flex-row xl:items-center xl:justify-between xl:py-[7px]">
                 {selectedBatchId ? (
                   <button
                     type="button"
-                    className="inline-flex items-center gap-1.5 self-start rounded-lg px-1 py-1 text-sm font-medium text-slate-300 hover:bg-slate-800/60 lg:hidden"
+                    className="inline-flex items-center gap-1.5 self-start rounded-lg px-1 py-1 text-sm font-medium text-slate-300 hover:bg-slate-800/60 max-xl:inline-flex xl:hidden"
                     onClick={() => {
                       setSelectedBatchId(null);
                       setBatchDetail(null);
@@ -1222,61 +1236,61 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                     Volver
                   </button>
                 ) : null}
-                <div className="min-w-0">
-                  <h3 className="font-semibold text-[#f0f4f8]">Detalle del lote</h3>
-                  <p className="text-xs text-slate-400 max-lg:hidden lg:block">
+                <div className="w-full min-w-0 flex-1">
+                  <h3 className="text-base font-semibold text-[#f0f4f8] lg:text-sm">Detalle del lote</h3>
+                  <p className="mt-0.5 text-xs leading-relaxed text-slate-400 max-xl:block xl:hidden">
+                    Revisá el archivo y confirmá o descartá el lote
+                  </p>
+                  <p className="mt-0.5 hidden text-xs text-slate-400 xl:block">
                     Selecciona un registro para ver sus datos
                   </p>
-                  <p className="text-xs text-slate-400 lg:hidden">Revisá el archivo y confirmá o descartá el lote</p>
                 </div>
-                <div className="flex shrink-0 flex-wrap items-center gap-2 max-lg:w-full">
-                  <div className="btn-mobile-stack flex w-full flex-col gap-2 sm:w-auto max-lg:flex-col-reverse">
-                    <button
-                      className={`btn-modern btn-mobile-cta flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-semibold border ${
-                        !batchDetail || batchDetail.estado === 'completado' || confirmBusy || discardLoading
-                          ? 'border-slate-700 text-slate-500 cursor-not-allowed opacity-60'
-                          : 'border-emerald-500 text-emerald-300 hover:bg-emerald-500/10'
-                      }`}
-                      type="button"
-                      onClick={handleConfirmBatch}
-                      disabled={!batchDetail || batchDetail.estado === 'completado' || confirmBusy || discardLoading}
-                    >
-                      <span
-                        className={`material-symbols-outlined text-[18px] ${confirmPhase === 'confirming' || confirmPhase === 'syncing' ? 'animate-spin' : ''}`}
-                      >
-                        {confirmPhase === 'confirming' || confirmPhase === 'syncing'
-                          ? 'progress_activity'
-                          : 'task_alt'}
-                      </span>
-                      {confirmPhase === 'confirming'
-                        ? 'Confirmando…'
-                        : confirmPhase === 'syncing'
-                          ? 'Actualizando…'
-                          : 'Confirmar'}
-                    </button>
-                    <button
-                      className={`btn-modern btn-mobile-cta flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-semibold border ${
-                        !batchDetail || !loteEsDescartable(batchDetail.estado) || confirmBusy || discardLoading
-                          ? 'border-slate-300 text-slate-400 cursor-not-allowed opacity-60 dark:border-slate-700 dark:text-slate-500'
-                          : 'btn-modern-danger border-rose-500/50 text-rose-700 hover:bg-rose-50 dark:text-rose-200 dark:hover:bg-rose-500/10'
-                      }`}
-                      type="button"
-                      title="Quitar la carga del historial"
-                      disabled={!batchDetail || !loteEsDescartable(batchDetail.estado) || confirmBusy || discardLoading}
-                      onClick={() => {
-                        if (!selectedBatchId || !batchDetail || !loteEsDescartable(batchDetail.estado)) {
-                          toast.error('Solo podés descartar lotes pendientes o con errores.');
-                          return;
-                        }
-                        setDiscardDialogLoteId(selectedBatchId);
-                      }}
-                    >
-                      <span className="material-symbols-outlined text-[18px]">delete_forever</span>
-                      Descartar
-                    </button>
-                  </div>
+                <div className="flex w-full min-w-0 flex-wrap items-center gap-2 xl:w-auto xl:shrink-0">
                   <button
-                    className="p-1.5 text-slate-400 hover:text-[#f0f4f8] hover:bg-slate-800 rounded self-center disabled:opacity-40 disabled:cursor-not-allowed"
+                    className={`btn-modern flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold sm:flex-none xl:min-h-0 ${
+                      !batchDetail || batchDetail.estado === 'completado' || confirmBusy || discardLoading
+                        ? 'border-slate-700 text-slate-500 cursor-not-allowed opacity-60'
+                        : 'border-emerald-500 text-emerald-300 hover:bg-emerald-500/10'
+                    }`}
+                    type="button"
+                    onClick={handleConfirmBatch}
+                    disabled={!batchDetail || batchDetail.estado === 'completado' || confirmBusy || discardLoading}
+                  >
+                    <span
+                      className={`material-symbols-outlined text-[18px] ${confirmPhase === 'confirming' || confirmPhase === 'syncing' ? 'animate-spin' : ''}`}
+                    >
+                      {confirmPhase === 'confirming' || confirmPhase === 'syncing'
+                        ? 'progress_activity'
+                        : 'task_alt'}
+                    </span>
+                    {confirmPhase === 'confirming'
+                      ? 'Confirmando…'
+                      : confirmPhase === 'syncing'
+                        ? 'Actualizando…'
+                        : 'Confirmar'}
+                  </button>
+                  <button
+                    className={`btn-modern flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold sm:flex-none xl:min-h-0 ${
+                      !batchDetail || !loteEsDescartable(batchDetail.estado) || confirmBusy || discardLoading
+                        ? 'border-slate-300 text-slate-400 cursor-not-allowed opacity-60 dark:border-slate-700 dark:text-slate-500'
+                        : 'btn-modern-danger border-rose-500/50 text-rose-700 hover:bg-rose-50 dark:text-rose-200 dark:hover:bg-rose-500/10'
+                    }`}
+                    type="button"
+                    title="Quitar la carga del historial"
+                    disabled={!batchDetail || !loteEsDescartable(batchDetail.estado) || confirmBusy || discardLoading}
+                    onClick={() => {
+                      if (!selectedBatchId || !batchDetail || !loteEsDescartable(batchDetail.estado)) {
+                        toast.error('Solo podés descartar lotes pendientes o con errores.');
+                        return;
+                      }
+                      setDiscardDialogLoteId(selectedBatchId);
+                    }}
+                  >
+                    <span className="material-symbols-outlined text-[18px]">delete_forever</span>
+                    Descartar
+                  </button>
+                  <button
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-[#f0f4f8] disabled:cursor-not-allowed disabled:opacity-40"
                     title="Recargar"
                     type="button"
                     disabled={confirmBusy || discardLoading}
@@ -1291,7 +1305,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                 </div>
               </div>
 
-              <div className="scroll-region app-scroll-content import-detalle-scroll scrollbar-hide flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-4 space-y-4 max-lg:overflow-y-auto lg:overflow-hidden">
+              <div className="scroll-region app-scroll-content import-detalle-scroll scrollbar-hide flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-4 space-y-4 max-xl:overscroll-y-contain xl:overflow-hidden">
                 {detailLoading ? (
                   <p className="text-center text-sm text-slate-500">Cargando detalle...</p>
                 ) : batchDetail ? (
@@ -1315,7 +1329,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                           );
                         })()}
                       </div>
-                      <div className="rounded-lg border border-slate-800 bg-[#0a1424] p-2 text-xs text-slate-400 max-lg:space-y-2.5 max-lg:p-3 lg:grid lg:grid-cols-1 lg:gap-1">
+                      <div className="rounded-lg border border-slate-800 bg-[#0a1424] p-3 text-xs text-slate-400 max-lg:grid max-lg:grid-cols-1 max-lg:gap-2.5 lg:grid lg:grid-cols-1 lg:gap-1">
                         <div className="max-lg:flex max-lg:flex-col max-lg:gap-0.5">
                           <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500 lg:hidden">
                             Facultad destino
@@ -1373,7 +1387,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                       </div>
                     </div>
 
-                    <div className="flex min-h-0 flex-1 flex-col gap-3 rounded-xl border border-slate-800 bg-[#132a52] p-4 max-lg:flex-none max-lg:min-h-0 lg:overflow-hidden">
+                    <div className="flex shrink-0 flex-col gap-3 rounded-xl border border-slate-800 bg-[#132a52] p-4 xl:min-h-0 xl:flex-1 xl:overflow-hidden">
                       <div className="flex shrink-0 flex-col gap-2.5">
                         <div>
                           <p className="text-sm text-[#f0f4f8] font-medium">Registros cargados</p>
@@ -1399,11 +1413,11 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                         </div>
                       </div>
 
-                      <div className="flex min-h-0 flex-1 flex-col max-lg:flex-none lg:overflow-hidden">
+                      <div className="flex flex-col max-xl:gap-3 xl:min-h-0 xl:flex-1 xl:overflow-hidden">
                       {recordsLoading ? (
                         <p className="text-center text-sm text-slate-500 py-4">Cargando registros...</p>
                       ) : records.length ? (
-                        <div className="scroll-region-at-lg flex min-h-0 flex-1 flex-col gap-3 pr-1 -mr-0.5 max-lg:overflow-visible max-lg:flex-none lg:app-scroll-content">
+                        <div className="flex flex-col gap-3 xl:scroll-region xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:overscroll-y-contain">
                           {records.map((registro) => {
                             const { entries, truncated, total } = recordPreviewEntries(registro);
                             const invalid = registro.valido === false;
@@ -1473,7 +1487,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                     </div>
                   </>
                 ) : (
-                  <div className="flex flex-1 items-center justify-center px-4 text-center text-sm text-slate-500 max-lg:hidden">
+                  <div className="flex flex-1 items-center justify-center px-4 text-center text-sm text-slate-500 max-xl:hidden">
                     Selecciona un lote del historial para ver sus detalles.
                   </div>
                 )}

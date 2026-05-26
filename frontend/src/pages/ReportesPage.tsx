@@ -753,6 +753,19 @@ export function ReportesPage({ onLogout }: Props) {
     return map[tipo] ?? tipo.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
   }
 
+  function tipoActaIcon(tipo: string): string {
+    const map: Record<string, string> = {
+      habilitados_no_habilitados: 'how_to_reg',
+      pdf_legal: 'picture_as_pdf',
+      consolidado_riesgo: 'warning',
+      estadisticas_ausentismo: 'bar_chart',
+      informe_alumno: 'person',
+      listado_usuarios: 'group',
+      reporte_auditoria: 'policy',
+    };
+    return map[tipo] ?? 'description';
+  }
+
   const consolidadoView = useMemo(() => consolidado, [consolidado]);
 
   const tabBtnInactive =
@@ -868,7 +881,7 @@ export function ReportesPage({ onLogout }: Props) {
 
         <main className="app-layout-main">
           <header className="flex-shrink-0 min-h-16 bg-[#132a52]/90 backdrop-blur-md border-b border-slate-800 flex flex-wrap items-center gap-3 px-4 sm:px-6 py-3 z-10">
-            <button className="lg:hidden shrink-0 text-slate-400" onClick={() => setSidebarOpen(true)} aria-label="Abrir menu">
+            <button className="app-menu-toggle text-slate-400" onClick={() => setSidebarOpen(true)} aria-label="Abrir menu">
               <span className="material-symbols-outlined">menu</span>
             </button>
             <span className="material-symbols-outlined shrink-0 text-[#6b8bc3]">description</span>
@@ -880,7 +893,7 @@ export function ReportesPage({ onLogout }: Props) {
 
           <section className="scroll-region app-scroll-content flex-1 min-h-0 min-w-0 p-4 sm:p-6 space-y-5">
 
-            <div className="btn-mobile-tabs flex flex-wrap items-center gap-2 rounded-2xl border border-[#2d466d]/70 bg-[#132a52] p-2">
+            <div className="btn-mobile-tabs btn-mobile-tabs--inline-md flex flex-wrap items-center gap-2 rounded-2xl border border-[#2d466d]/70 bg-[#132a52] p-2 md:inline-flex">
               <button
                 type="button"
                 className={`rounded-lg border px-3 py-1.5 text-sm lg:py-1.5 ${tabBtnClass('cierre')}`}
@@ -1147,67 +1160,125 @@ export function ReportesPage({ onLogout }: Props) {
               {/* Derecha: actas y habilitados */}
               <div className="space-y-4">
 
-                <div className="rounded-2xl border border-[#2d466d]/70 bg-[#132a52] p-5">
-                  <div className="flex items-center justify-between mb-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#2d466d]/70 dark:bg-[#132a52] dark:shadow-none max-lg:p-3">
+                  <div className="mb-3 flex items-center justify-between gap-2 max-lg:mb-2">
                     <p className="text-xs font-semibold uppercase tracking-widest text-slate-600 dark:text-[#eff3ff]">Actas generadas</p>
-                    <span className="text-xs bg-[#0c1a3b] border border-slate-800 px-2 py-0.5 rounded-full text-slate-400">{actas.length}</span>
+                    <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-slate-600 dark:border-slate-800 dark:bg-[#0c1a3b] dark:text-slate-400">
+                      {actas.length}
+                    </span>
                   </div>
-                  <div className="scroll-region-at-lg space-y-2 lg:max-h-[300px]">
-                    {actas.length ? actas.map((a) => (
-                      <div key={a.id} className="flex flex-col gap-2 rounded-xl border border-slate-800 bg-[#0c1a3b] p-3 max-lg:items-stretch lg:flex-row lg:items-start lg:justify-between">
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium">{tipoActaLabel(a.tipo_acta)}</p>
-                          <p className="truncate text-xs text-slate-400">{a.materia}</p>
-                          <p className="text-xs text-slate-500">{formatDateTime24(a.generado_en, { locale: 'es-AR' })}</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => void abrirDocumento(a.url_documento).catch((err) => toastApiError(err, 'No se pudo abrir el documento'))}
-                          className="btn-modern btn-modern-info btn-mobile-cta shrink-0 gap-1.5 lg:hidden"
-                          title="Abrir documento (datos actuales)"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">open_in_new</span>
-                          Abrir
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void abrirDocumento(a.url_documento).catch((err) => toastApiError(err, 'No se pudo abrir el documento'))}
-                          className="hidden shrink-0 rounded-lg bg-cyan-500/10 p-1.5 text-cyan-400 hover:bg-cyan-500/20 lg:inline-flex"
-                          title="Abrir documento (datos actuales)"
-                        >
-                          <span className="material-symbols-outlined text-[16px]">open_in_new</span>
-                        </button>
-                      </div>
-                    )) : (
+                  <div className="lg:scroll-region-at-lg lg:max-h-[300px]">
+                    {actas.length ? (
+                      <ul className="divide-y divide-slate-200 dark:divide-slate-800/70 max-lg:-mx-0.5 lg:space-y-2 lg:divide-y-0">
+                        {actas.map((a) => (
+                          <li
+                            key={a.id}
+                            className="max-lg:py-0 lg:rounded-xl lg:border lg:border-slate-800 lg:bg-[#0c1a3b] lg:p-3"
+                          >
+                            <div className="flex items-center gap-3 py-2.5 max-lg:py-2.5 lg:items-start lg:justify-between">
+                              <div className="flex min-w-0 flex-1 items-center gap-2.5 max-lg:gap-2 lg:items-start lg:gap-3">
+                                <div
+                                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-cyan-200/80 bg-cyan-50 text-cyan-700 dark:border-cyan-500/25 dark:bg-cyan-500/10 dark:text-cyan-300 max-lg:h-8 max-lg:w-8"
+                                  aria-hidden
+                                >
+                                  <span className="material-symbols-outlined text-[18px] max-lg:text-[17px]">
+                                    {tipoActaIcon(a.tipo_acta)}
+                                  </span>
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="line-clamp-2 text-sm font-medium leading-snug text-slate-900 dark:text-[#f0f4f8] lg:truncate lg:line-clamp-none">
+                                    {tipoActaLabel(a.tipo_acta)}
+                                  </p>
+                                  <p className="mt-0.5 truncate text-xs text-slate-600 dark:text-slate-400">{a.materia}</p>
+                                  <p className="mt-0.5 text-[11px] tabular-nums text-slate-500 dark:text-slate-500">
+                                    {formatDateTime24(a.generado_en, { locale: 'es-AR' })}
+                                  </p>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  void abrirDocumento(a.url_documento).catch((err) =>
+                                    toastApiError(err, 'No se pudo abrir el documento')
+                                  )
+                                }
+                                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-cyan-700 transition-colors hover:bg-slate-100 active:bg-slate-200 dark:border-slate-700 dark:bg-[#0c1a3b] dark:text-cyan-400 dark:hover:bg-slate-800/80 max-lg:h-9 max-lg:w-9 lg:hidden"
+                                title="Abrir documento"
+                                aria-label={`Abrir ${tipoActaLabel(a.tipo_acta)}`}
+                              >
+                                <span className="material-symbols-outlined text-[20px]">open_in_new</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  void abrirDocumento(a.url_documento).catch((err) =>
+                                    toastApiError(err, 'No se pudo abrir el documento')
+                                  )
+                                }
+                                className="hidden shrink-0 rounded-lg bg-cyan-500/10 p-1.5 text-cyan-400 hover:bg-cyan-500/20 lg:inline-flex"
+                                title="Abrir documento"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+                              </button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
                       <div className="flex flex-col items-center justify-center py-8 text-slate-500">
-                        <span className="material-symbols-outlined text-3xl mb-1 opacity-40">article</span>
+                        <span className="material-symbols-outlined mb-1 text-3xl opacity-40">article</span>
                         <p className="text-sm">Sin actas generadas.</p>
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-[#2d466d]/70 bg-[#132a52] p-5">
-                  <div className="flex items-center justify-between mb-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#2d466d]/70 dark:bg-[#132a52] dark:shadow-none max-lg:p-3">
+                  <div className="mb-3 flex items-center justify-between gap-2 max-lg:mb-2">
                     <p className="text-xs font-semibold uppercase tracking-widest text-slate-600 dark:text-[#eff3ff]">Habilitados a examen</p>
-                    <span className="text-xs bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full text-emerald-300">{habilitadosCount}</span>
+                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-semibold tabular-nums text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
+                      {habilitadosCount}
+                    </span>
                   </div>
-                  <div className="scroll-region-at-lg space-y-2 lg:max-h-[300px]">
+                  <div className="lg:scroll-region-at-lg lg:max-h-[300px]">
                     {habilitados.filter((h) => h.habilitado).length ? (
-                      habilitados.filter((h) => h.habilitado).map((h) => (
-                        <div key={h.matricula_id} className="flex items-center justify-between gap-2 rounded-xl bg-[#0c1a3b] border border-slate-800 px-3 py-2.5">
-                          <div>
-                            <p className="text-sm font-medium">{h.alumno}</p>
-                            <p className="text-xs text-slate-500">Matrícula #{h.matricula_id}</p>
-                          </div>
-                          <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${h.porcentaje_final >= 75 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-amber-500/10 border-amber-500/30 text-amber-300'}`}>
-                            {h.porcentaje_final}%
-                          </span>
-                        </div>
-                      ))
+                      <ul className="divide-y divide-slate-200 dark:divide-slate-800/70 max-lg:-mx-0.5 lg:space-y-2 lg:divide-y-0">
+                        {habilitados
+                          .filter((h) => h.habilitado)
+                          .map((h) => (
+                            <li
+                              key={h.matricula_id}
+                              className="max-lg:py-0 lg:rounded-xl lg:border lg:border-slate-800 lg:bg-[#0c1a3b] lg:px-3 lg:py-2.5"
+                            >
+                              <div className="flex items-center justify-between gap-2 py-2.5 max-lg:py-2 lg:py-0">
+                                <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                                  <div
+                                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
+                                    aria-hidden
+                                  >
+                                    <span className="material-symbols-outlined text-[17px]">person</span>
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="truncate text-sm font-medium text-slate-900 dark:text-[#f0f4f8]">{h.alumno}</p>
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-500">Matrícula #{h.matricula_id}</p>
+                                  </div>
+                                </div>
+                                <span
+                                  className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold tabular-nums ${
+                                    h.porcentaje_final >= 75
+                                      ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300'
+                                      : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300'
+                                  }`}
+                                >
+                                  {h.porcentaje_final}%
+                                </span>
+                              </div>
+                            </li>
+                          ))}
+                      </ul>
                     ) : (
                       <div className="flex flex-col items-center justify-center py-8 text-slate-500">
-                        <span className="material-symbols-outlined text-3xl mb-1 opacity-40">how_to_reg</span>
+                        <span className="material-symbols-outlined mb-1 text-3xl opacity-40">how_to_reg</span>
                         <p className="text-sm">{cursoValido ? 'Sin habilitados.' : 'Consultá un curso.'}</p>
                       </div>
                     )}
@@ -1275,12 +1346,12 @@ export function ReportesPage({ onLogout }: Props) {
                   />
                 </div>
 
-                <div className="scroll-region-at-lg rounded-xl border border-slate-300 dark:border-slate-800 lg:max-h-[min(70dvh,520px)]">
+                <div className="rounded-xl border border-slate-300 dark:border-slate-800 lg:scroll-region-at-lg lg:max-h-[min(70dvh,520px)]">
                   {consolidadoLoading ? (
                     <p className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">Cargando inhabilitados…</p>
                   ) : (
                     <>
-                      <ul className="divide-y divide-slate-200 dark:divide-slate-800/60 lg:hidden">
+                      <ul className="divide-y divide-slate-200 dark:divide-slate-800/60 md:hidden">
                         {consolidadoView.length === 0 ? (
                           <li className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
                             {!consolidadoFiltrosListos
@@ -1486,12 +1557,12 @@ export function ReportesPage({ onLogout }: Props) {
                   </div>
                 ) : null}
 
-                <div className="scroll-region-at-lg rounded-xl border border-slate-800 lg:max-h-[min(70dvh,480px)]">
+                <div className="rounded-xl border border-slate-800 lg:scroll-region-at-lg lg:max-h-[min(70dvh,480px)]">
                   {ausentismoDatosLoading ? (
                     <p className="px-4 py-10 text-center text-sm text-slate-500">Cargando estadísticas…</p>
                   ) : (
                     <>
-                      <ul className="divide-y divide-slate-800/60 lg:hidden">
+                      <ul className="divide-y divide-slate-800/60 md:hidden">
                         {ausentismoDatos.length === 0 ? (
                           <li className="px-4 py-10 text-center text-sm text-slate-500">
                             {!ausentismoPeriodoListo || !ausentismoAlcanceListo

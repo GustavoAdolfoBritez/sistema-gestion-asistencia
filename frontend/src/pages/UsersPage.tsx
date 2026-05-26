@@ -18,21 +18,38 @@ const SCOPE_CARRERA_CHOICE_CLASS =
   'scope-radio-dot size-5 rounded-full border-slate-600 text-primary focus:ring-primary';
 
 const USUARIO_PANEL_CARD_CLASS =
-  'rounded-2xl border border-slate-200 bg-white shadow-sm max-lg:shadow-md dark:border-slate-700/80 dark:bg-[#0e1e38] dark:max-lg:shadow-none';
+  'usuario-detail-panel-card rounded-2xl border border-slate-200 bg-white shadow-sm max-lg:shadow-md dark:border-[#1c2a50] dark:bg-transparent dark:max-lg:shadow-none';
 
 const USUARIO_PANEL_HERO_CLASS =
-  'overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-sky-50/70 p-2.5 shadow-sm dark:border-slate-700 dark:from-[#152d55] dark:via-[#132a52] dark:to-[#0f2244]';
+  'overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-sky-50/70 p-2.5 shadow-sm dark:border-[#1c2a50] dark:from-[#162347] dark:via-[#131e3c] dark:to-[#101a33]';
 
 /** Campos de formulario (móvil y escritorio, claro/oscuro). */
 const USUARIO_INP =
   'w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 dark:border-slate-700 dark:bg-[#0b2147] dark:text-[#e7eef9] dark:placeholder:text-slate-500 dark:shadow-none';
 
-const USUARIO_LABEL = 'block space-y-1.5 text-xs font-medium text-slate-600 dark:text-slate-400';
+const USUARIO_LABEL = 'block space-y-1.5 text-xs font-medium text-slate-600 dark:text-white';
+
+const USUARIO_SECTION_HEADING =
+  'text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-white';
+
+const USUARIO_ROLE_IDLE =
+  'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-[#0b2147]/80 dark:hover:border-slate-600';
+
+const USUARIO_ROLE_ACTIVE =
+  'border-primary/30 bg-primary/5 dark:border-primary/50 dark:bg-primary/15';
 
 const USUARIO_SCOPE_IDLE =
   'border-slate-200 bg-slate-50 hover:border-slate-300 dark:border-slate-700 dark:bg-surface-darker dark:hover:border-slate-600';
 
 const USUARIO_SCOPE_ACTIVE = 'border-primary/50 bg-primary/5 dark:border-primary/60 dark:bg-primary/10';
+
+/** Panel lateral derecho: mismo fondo que AppSidebar (ver .usuario-detail-panel en index.css). */
+const USUARIO_DETAIL_SHELL = 'usuario-detail-panel';
+const USUARIO_DETAIL_HEADER =
+  'usuario-detail-panel-header border-b border-slate-200 bg-slate-50 dark:border-[#132a52] dark:bg-[#132a52]';
+const USUARIO_DETAIL_BODY = 'usuario-detail-panel-body bg-white';
+const USUARIO_DETAIL_FOOTER =
+  'usuario-detail-panel-footer border-t border-slate-200 bg-white dark:border-[#132a52] dark:bg-[#132a52]';
 
 function UsuarioCampoLecturaMovil({ etiqueta, valor }: { etiqueta: string; valor: ReactNode }) {
   return (
@@ -54,9 +71,9 @@ function UsuarioFormCardMovil({
 }) {
   return (
     <section
-      className={`${USUARIO_PANEL_CARD_CLASS} overflow-hidden lg:rounded-none lg:border-0 lg:bg-transparent lg:shadow-none`}
+      className={`${USUARIO_PANEL_CARD_CLASS} overflow-hidden lg:rounded-none lg:border-0 lg:bg-transparent lg:shadow-none dark:lg:border-b dark:lg:border-[#1c2a50] dark:lg:pb-6 dark:lg:last:border-b-0`}
     >
-      <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-700/60 lg:hidden">
+      <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-4 py-3 dark:border-[#1c2a50] lg:hidden">
         <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
           {titulo}
         </p>
@@ -335,6 +352,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
   const [deletingUser, setDeletingUser] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [toggleAccessConfirmOpen, setToggleAccessConfirmOpen] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [puedeEliminarUsuario] = useState(() => puedeEliminarUsuariosSesion(readStoredUser()?.roles));
   const [editScopeFacultadIds, setEditScopeFacultadIds] = useState<number[]>([]);
@@ -616,9 +634,16 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
     }
   };
 
-  const handleDisable = () => {
-    if (!draft || !isEditing) return;
-    setDraft({ ...draft, estado: draft.estado === 'inactivo' ? 'activo' : 'inactivo' });
+  const handleToggleAccessClick = () => {
+    if (!selectedUser) return;
+    setToggleAccessConfirmOpen(true);
+  };
+
+  const doToggleAccess = async () => {
+    if (!selectedUser) return;
+    setToggleAccessConfirmOpen(false);
+    const nextEstado: EstadoUsuario = selectedUser.estado === 'inactivo' ? 'activo' : 'inactivo';
+    await handleChangeUserStatus(selectedUser, nextEstado);
   };
 
   const handleResetPassword = async () => {
@@ -674,8 +699,14 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
         method: 'PATCH',
         body: JSON.stringify({ estado }),
       });
-      await loadUsers();
-      toast.success(`Estado actualizado a ${estado}`);
+      await loadUsers(user.id);
+      toast.success(
+        estado === 'activo'
+          ? `Acceso reactivado para ${formatName(user)}`
+          : estado === 'inactivo'
+            ? `Acceso deshabilitado para ${formatName(user)}`
+            : `Estado actualizado a ${etiquetaEstadoUsuario(estado)}`,
+      );
     } catch (err) {
       const mensaje = err instanceof Error ? err.message : 'No se pudo actualizar el estado';
       toast.error(mensaje);
@@ -774,7 +805,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
             <div className="flex min-w-0 flex-1 items-center gap-3 max-lg:gap-2">
               <button
                 type="button"
-                className="shrink-0 rounded-lg p-1 text-slate-600 hover:text-slate-900 lg:hidden dark:text-slate-400 dark:hover:text-slate-200"
+                className="app-menu-toggle rounded-lg p-1 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
                 onClick={() => setSidebarOpen(true)}
                 aria-label="Abrir menú"
               >
@@ -804,7 +835,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
               </button>
             </div>
           </header>
-          <div className="lg:hidden shrink-0 px-4 pt-3 pb-0">
+          <div className="shrink-0 px-4 pt-3 pb-0 lg:hidden">
             <button
               type="button"
               onClick={() => {
@@ -820,14 +851,10 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
             </button>
           </div>
 
-          <div
-            className={`grid min-h-0 min-w-0 flex-1 grid-cols-1 overflow-hidden max-lg:flex max-lg:flex-col ${
-              panelDetalleAbierto ? 'lg:grid-cols-[minmax(0,1fr)_min(100%,28.125rem)]' : ''
-            }`}
-          >
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:flex-row">
             <section
-              className={`min-w-0 flex min-h-0 flex-col overflow-hidden ${
-                panelDetalleAbierto ? 'max-lg:hidden' : 'max-lg:flex max-lg:min-h-0 max-lg:flex-1'
+              className={`min-w-0 flex min-h-0 flex-1 flex-col overflow-hidden ${
+                panelDetalleAbierto ? 'max-lg:hidden' : ''
               }`}
             >
               <div className="shrink-0 space-y-4 p-4 max-lg:space-y-2.5 max-lg:p-3 sm:p-6 sm:space-y-6">
@@ -1201,8 +1228,10 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
             </section>
 
             {selectedUser ? (
-              <div className="z-10 flex h-full w-full min-w-0 max-h-[min(55dvh,100%)] flex-col border-t border-slate-200 bg-white shadow-xl max-lg:flex-1 max-lg:max-h-none max-lg:min-h-0 max-lg:overflow-hidden dark:border-slate-800 dark:bg-[#0e1e38] lg:max-h-none lg:border-t-0 lg:border-l">
-                <div className="shrink-0 border-b border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800/80 dark:bg-[#132a52] lg:hidden">
+              <div
+                className={`master-detail-detail z-10 flex h-full w-full min-w-0 max-h-[min(55dvh,100%)] flex-col border-t border-slate-200 shadow-xl max-md:flex-1 max-md:max-h-none max-md:min-h-0 max-md:overflow-hidden dark:border-[#1c2a50] lg:max-h-none lg:w-[450px] lg:shrink-0 lg:border-t-0 lg:border-l ${USUARIO_DETAIL_SHELL}`}
+              >
+                <div className={`shrink-0 px-3 py-2.5 md:hidden ${USUARIO_DETAIL_HEADER}`}>
                   <button
                     type="button"
                     onClick={cerrarPanelDetalle}
@@ -1213,11 +1242,15 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                   </button>
                 </div>
 
-                <div className="hidden shrink-0 border-b border-slate-800 bg-[#132a52] p-4 sm:p-6 lg:block">
+                <div className={`hidden shrink-0 p-4 sm:p-6 lg:block ${USUARIO_DETAIL_HEADER}`}>
                   <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Perfil y permisos</p>
-                      <h3 className="text-lg font-semibold text-[#f0f4f8]">{formatName(draft ?? selectedUser)}</h3>
+                      <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-[#9fb3d4]">
+                        Perfil y permisos
+                      </p>
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-[#f0f4f8]">
+                        {formatName(draft ?? selectedUser)}
+                      </h3>
                       <p className="text-sm font-medium text-primary">
                         {etiquetasRoles(selectedUser.roles).join(' · ') || 'Sin rol'}
                       </p>
@@ -1226,8 +1259,10 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                       <button
                         type="button"
                         onClick={isEditing ? handleCancelEditing : handleStartEditing}
-                        className={`flex size-10 items-center justify-center rounded-lg border border-slate-700 ${
-                          isEditing ? 'border-primary/40 bg-primary/10 text-primary' : 'text-[#9fb3d4] hover:text-[#f0f4f8]'
+                        className={`flex size-10 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 ${
+                          isEditing
+                            ? 'border-primary/40 bg-primary/10 text-primary'
+                            : 'text-slate-500 hover:text-slate-900 dark:text-[#9fb3d4] dark:hover:text-[#f0f4f8]'
                         }`}
                       >
                         <span className="material-symbols-outlined text-[20px]">edit</span>
@@ -1235,7 +1270,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                       <button
                         type="button"
                         onClick={cerrarPanelDetalle}
-                        className="flex size-10 items-center justify-center rounded-lg border border-slate-700 text-slate-400 hover:text-[#f0f4f8]"
+                        className="flex size-10 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:text-slate-900 dark:border-slate-700 dark:text-slate-400 dark:hover:text-[#f0f4f8]"
                       >
                         <span className="material-symbols-outlined text-[22px]">close</span>
                       </button>
@@ -1245,7 +1280,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                     <div className="relative flex size-16 items-center justify-center rounded-2xl border border-primary/30 bg-primary/20">
                       <span className="material-symbols-outlined text-3xl text-primary">person</span>
                       <div
-                        className={`absolute -bottom-1 -right-1 size-4 rounded-full border-2 border-surface-dark ${
+                        className={`absolute -bottom-1 -right-1 size-4 rounded-full border-2 border-white dark:border-[#131e3c] ${
                           selectedUser.estado === 'activo' ? 'bg-emerald-500' : 'bg-amber-500'
                         }`}
                       />
@@ -1263,7 +1298,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                       <div className="relative shrink-0">
                         <UserAvatar nombres={selectedUser.nombres} apellidos={selectedUser.apellidos} size="md" />
                         <div
-                          className={`absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border border-white dark:border-[#132a52] ${
+                          className={`absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border border-white dark:border-[#131e3c] ${
                             selectedUser.estado === 'activo' ? 'bg-emerald-500' : 'bg-amber-500'
                           }`}
                         />
@@ -1290,7 +1325,9 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                   </div>
                 </div>
 
-                <div className="scroll-region app-scroll-content flex-1 space-y-5 p-3 scrollbar-hide sm:space-y-8 sm:p-6">
+                <div
+                  className={`scroll-region app-scroll-content flex-1 space-y-5 p-3 scrollbar-hide sm:space-y-8 sm:p-6 ${USUARIO_DETAIL_BODY}`}
+                >
 
                     <UsuarioFormCardMovil
                       titulo="Información básica"
@@ -1327,7 +1364,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                         </div>
                       ) : null}
                       <div
-                        className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${
+                        className={`grid grid-cols-1 gap-4 ${
                           isEditing ? '' : 'hidden lg:grid'
                         }`}
                       >
@@ -1427,8 +1464,8 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                             key={role.value}
                             className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${
                               draft?.roles.includes(role.value)
-                                ? 'border-primary/30 bg-primary/5 dark:border-primary/30'
-                                : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-[#132a52]'
+                                ? USUARIO_ROLE_ACTIVE
+                                : USUARIO_ROLE_IDLE
                             } ${isEditing ? 'cursor-pointer' : 'opacity-70 cursor-not-allowed'}`}
                           >
                             <input
@@ -1455,7 +1492,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                                 <span className="material-symbols-outlined text-base text-slate-400">{role.icon}</span>
                                 {role.label}
                               </p>
-                              <p className="text-xs text-slate-600 dark:text-slate-500">{role.description}</p>
+                              <p className="text-xs text-slate-600 dark:text-slate-400">{role.description}</p>
                             </div>
                           </label>
                         ))}
@@ -1601,12 +1638,12 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                       <div className="btn-mobile-stack flex flex-col gap-2 max-lg:gap-2.5">
                         <button
                           type="button"
-                          onClick={handleDisable}
-                          disabled={!isEditing}
-                          className="btn-modern btn-modern-danger btn-modern-sm btn-mobile-cta w-full justify-between lg:justify-between"
+                          onClick={handleToggleAccessClick}
+                          disabled={!selectedUser || togglingUserId === selectedUser.id}
+                          className="btn-modern btn-modern-danger btn-modern-sm btn-mobile-cta w-full justify-between lg:justify-between disabled:opacity-50"
                         >
                           <span className="text-xs font-semibold">
-                            {draft?.estado === 'inactivo' ? 'Reactivar acceso' : 'Deshabilitar acceso'}
+                            {selectedUser?.estado === 'inactivo' ? 'Reactivar acceso' : 'Deshabilitar acceso'}
                           </span>
                           <span className="material-symbols-outlined text-[18px]">lock</span>
                         </button>
@@ -1625,7 +1662,9 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                     </UsuarioFormCardMovil>
               </div>
 
-                <div className="app-mobile-bottom-bar shrink-0 border-t border-slate-200 bg-white/95 p-4 backdrop-blur-md max-lg:sticky max-lg:bottom-0 max-lg:z-10 max-lg:px-3 max-lg:py-3 sm:p-6 dark:border-slate-800 dark:bg-[#132a52]/95">
+                <div
+                  className={`app-mobile-bottom-bar shrink-0 p-4 max-lg:sticky max-lg:bottom-0 max-lg:z-10 max-lg:px-3 max-lg:py-3 sm:p-6 ${USUARIO_DETAIL_FOOTER}`}
+                >
                   {isEditing ? (
                     <div className="btn-mobile-stack flex gap-2 max-lg:items-stretch lg:grid lg:grid-cols-2 lg:gap-3">
                       <button
@@ -1675,7 +1714,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                       type="button"
                       onClick={handleDeleteUser}
                       disabled={deletingUser}
-                      className="mt-2 w-full rounded-lg py-2 text-center text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50 hover:text-rose-700 disabled:opacity-50 max-lg:mt-2.5 dark:text-rose-400 dark:hover:bg-rose-500/10 dark:hover:text-rose-300 lg:btn-modern lg:btn-modern-danger lg:mt-3 lg:rounded-md lg:py-2.5"
+                      className="btn-modern btn-modern-danger btn-modern-sm btn-mobile-cta mt-2 w-full disabled:opacity-50 max-lg:mt-2.5 lg:mt-3"
                     >
                       {deletingUser ? 'Eliminando usuario…' : 'Eliminar usuario'}
                     </button>
@@ -1683,8 +1722,10 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                 </div>
               </div>
             ) : isCreateOpen ? (
-              <div className="z-10 flex h-full w-full min-w-0 max-h-[min(55dvh,100%)] flex-col border-t border-slate-200 bg-white shadow-xl max-lg:flex-1 max-lg:max-h-none max-lg:min-h-0 max-lg:overflow-hidden dark:border-slate-800 dark:bg-[#0e1e38] lg:max-h-none lg:border-t-0 lg:border-l">
-                <div className="shrink-0 border-b border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800/80 dark:bg-[#132a52] lg:hidden">
+              <div
+                className={`master-detail-detail z-10 flex h-full w-full min-w-0 max-h-[min(55dvh,100%)] flex-col border-t border-slate-200 shadow-xl max-md:flex-1 max-md:max-h-none max-md:min-h-0 max-md:overflow-hidden dark:border-[#1c2a50] lg:max-h-none lg:w-[450px] lg:shrink-0 lg:border-t-0 lg:border-l ${USUARIO_DETAIL_SHELL}`}
+              >
+                <div className={`shrink-0 px-3 py-2.5 lg:hidden ${USUARIO_DETAIL_HEADER}`}>
                   <button
                     type="button"
                     onClick={cerrarPanelDetalle}
@@ -1727,6 +1768,22 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
         confirmLabel="Generar contraseña"
         variant="warning"
         loading={resettingPassword}
+      />
+      <ConfirmDialog
+        open={toggleAccessConfirmOpen}
+        onCancel={() => setToggleAccessConfirmOpen(false)}
+        onConfirm={() => { void doToggleAccess(); }}
+        title={selectedUser?.estado === 'inactivo' ? 'Reactivar acceso' : 'Deshabilitar acceso'}
+        description={
+          selectedUser
+            ? selectedUser.estado === 'inactivo'
+              ? `¿Reactivar el acceso de ${formatName(selectedUser)}? Podrá volver a iniciar sesión.`
+              : `¿Deshabilitar el acceso de ${formatName(selectedUser)}? No podrá iniciar sesión hasta que lo reactives.`
+            : ''
+        }
+        confirmLabel={selectedUser?.estado === 'inactivo' ? 'Reactivar' : 'Deshabilitar'}
+        variant={selectedUser?.estado === 'inactivo' ? 'default' : 'danger'}
+        loading={selectedUser ? togglingUserId === selectedUser.id : false}
       />
     </div>
   );
@@ -1842,13 +1899,15 @@ function CreateUserModal({ onClose, onSubmit, saving, existingUsers: _existingUs
   };
 
   return (
-    <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col bg-white max-lg:max-h-none max-lg:border-0 max-lg:shadow-none dark:bg-surface-dark lg:z-10 lg:max-h-none lg:border-t-0 lg:border-l lg:shadow-xl">
+    <div
+      className={`flex h-full min-h-0 w-full min-w-0 flex-1 flex-col max-lg:max-h-none max-lg:border-0 max-lg:shadow-none lg:z-10 lg:max-h-none lg:border-t-0 lg:border-l lg:shadow-xl ${USUARIO_DETAIL_SHELL}`}
+    >
       <form onSubmit={handleSubmit} className="flex h-full min-h-0 min-w-0 flex-col">
-        <div className="hidden shrink-0 border-b border-slate-800 bg-[#132a52] p-4 sm:p-6 lg:block">
+        <div className={`hidden shrink-0 p-4 sm:p-6 lg:block ${USUARIO_DETAIL_HEADER}`}>
           <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Perfil y permisos</p>
-              <h3 className="text-lg font-semibold text-[#f0f4f8]">
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-[#9fb3d4]">Perfil y permisos</p>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-[#f0f4f8]">
                 {`${form.nombres} ${form.apellidos}`.trim() || 'Nuevo usuario'}
               </h3>
               <p className="text-sm font-medium text-primary">{etiquetaRol(form.roles[0] ?? '') || 'Sin rol'}</p>
@@ -1856,7 +1915,7 @@ function CreateUserModal({ onClose, onSubmit, saving, existingUsers: _existingUs
             <button
               type="button"
               onClick={onClose}
-              className="btn-modern btn-modern-ghost size-10 text-slate-400 hover:text-[#f0f4f8]"
+              className="btn-modern btn-modern-ghost size-10 border border-slate-200 text-slate-500 hover:text-slate-900 dark:border-slate-700 dark:text-slate-400 dark:hover:text-[#f0f4f8]"
             >
               <span className="material-symbols-outlined text-[22px]">close</span>
             </button>
@@ -1864,11 +1923,11 @@ function CreateUserModal({ onClose, onSubmit, saving, existingUsers: _existingUs
           <div className="flex items-center gap-4">
             <div className="relative flex size-16 items-center justify-center rounded-2xl border border-primary/30 bg-primary/20">
               <span className="material-symbols-outlined text-3xl text-primary">person</span>
-              <div className="absolute -bottom-1 -right-1 size-4 rounded-full border-2 border-surface-dark bg-emerald-500" />
+              <div className="absolute -bottom-1 -right-1 size-4 rounded-full border-2 border-white bg-emerald-500 dark:border-[#131e3c]" />
             </div>
             <div className="flex flex-col">
-              <p className="text-sm text-slate-400">{form.email || 'Sin correo'}</p>
-              <p className="mt-1 font-mono text-[11px] text-slate-500">UUID · pendiente de creación</p>
+              <p className="text-sm text-slate-400 dark:text-[#c9d7ed]">{form.email || 'Sin correo'}</p>
+              <p className="mt-1 font-mono text-[11px] text-slate-500 dark:text-slate-400">UUID · pendiente de creación</p>
             </div>
           </div>
         </div>
@@ -1902,13 +1961,13 @@ function CreateUserModal({ onClose, onSubmit, saving, existingUsers: _existingUs
 
         <div
           ref={scrollContainerRef}
-          className="scroll-region app-scroll-content flex-1 space-y-5 p-3 scrollbar-hide sm:space-y-8 sm:p-6"
+          className={`scroll-region app-scroll-content flex-1 space-y-5 p-3 scrollbar-hide sm:space-y-8 sm:p-6 ${USUARIO_DETAIL_BODY}`}
         >
           <UsuarioFormCardMovil titulo="Información básica">
-            <label className="hidden text-xs font-bold uppercase tracking-widest text-slate-400 lg:block">
+            <label className={`hidden lg:block ${USUARIO_SECTION_HEADING}`}>
               Información básica
             </label>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4">
               <label className={USUARIO_LABEL}>
                 <span>Nombres</span>
                 <input
@@ -1987,15 +2046,13 @@ function CreateUserModal({ onClose, onSubmit, saving, existingUsers: _existingUs
               </button>
             }
           >
-            <label className="hidden text-xs font-bold uppercase tracking-widest text-slate-400 lg:block">Roles</label>
+            <label className={`hidden lg:block ${USUARIO_SECTION_HEADING}`}>Roles</label>
             <div className="space-y-2">
               {ROLE_OPTIONS.map((role) => (
                 <label
                   key={role.value}
                   className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 ${
-                    form.roles.includes(role.value)
-                      ? 'border-primary/30 bg-primary/5'
-                      : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-[#132a52]'
+                    form.roles.includes(role.value) ? USUARIO_ROLE_ACTIVE : USUARIO_ROLE_IDLE
                   }`}
                 >
                   <input
@@ -2010,7 +2067,7 @@ function CreateUserModal({ onClose, onSubmit, saving, existingUsers: _existingUs
                       <span className="material-symbols-outlined text-base text-slate-400">{role.icon}</span>
                       {role.label}
                     </p>
-                    <p className="text-xs text-slate-600 dark:text-slate-500">{role.description}</p>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">{role.description}</p>
                   </div>
                 </label>
               ))}
@@ -2020,12 +2077,12 @@ function CreateUserModal({ onClose, onSubmit, saving, existingUsers: _existingUs
           {necesitaScope && (
             <UsuarioFormCardMovil titulo="Alcance de visibilidad">
               <div ref={scopeRef}>
-              <label className="hidden text-xs font-bold uppercase tracking-widest text-slate-400 lg:block">
+              <label className={`hidden lg:block ${USUARIO_SECTION_HEADING}`}>
                 Alcance de visibilidad
               </label>
 
               <div className="space-y-2">
-                <p className="text-xs text-slate-500">Facultad</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Facultad</p>
                 {facultades.map(f => {
                   const checked = scopeFacultadIds.includes(f.id);
                   const icon = f.nombre.toLowerCase().includes('tecnolog') ? 'computer'
@@ -2058,7 +2115,7 @@ function CreateUserModal({ onClose, onSubmit, saving, existingUsers: _existingUs
 
               {esCoordinador && scopeFacultadIds.length > 0 && (
                 <div ref={carreraRef} className="space-y-2 pt-2">
-                  <p className="text-xs text-slate-500">Carreras</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Carreras</p>
                   {carreras.map(c => {
                     const checked = scopeCarreraIds.includes(c.id);
                     return (
@@ -2086,7 +2143,9 @@ function CreateUserModal({ onClose, onSubmit, saving, existingUsers: _existingUs
           )}
         </div>
 
-        <div className="app-mobile-bottom-bar shrink-0 border-t border-slate-200 bg-white/95 p-4 backdrop-blur-md max-lg:sticky max-lg:bottom-0 max-lg:z-10 max-lg:px-3 max-lg:py-3 sm:p-6 dark:border-slate-800 dark:bg-[#132a52]/95">
+        <div
+          className={`app-mobile-bottom-bar shrink-0 p-4 max-lg:sticky max-lg:bottom-0 max-lg:z-10 max-lg:px-3 max-lg:py-3 sm:p-6 ${USUARIO_DETAIL_FOOTER}`}
+        >
           <div className="btn-mobile-stack flex gap-2 lg:grid lg:grid-cols-2 lg:gap-3">
             <button
               type="button"
