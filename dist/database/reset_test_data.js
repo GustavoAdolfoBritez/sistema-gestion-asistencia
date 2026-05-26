@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const pg_1 = require("pg");
 const pool = new pg_1.Pool({
-    connectionString: 'postgresql://postgres.kgfykhhbkfyiunmnrkaq:gzI8qlDtSdlX3fC1@aws-1-us-east-1.pooler.supabase.com:5432/postgres'
+    connectionString: ''
 });
 async function main() {
     console.log('=== ESTADO ACTUAL ===');

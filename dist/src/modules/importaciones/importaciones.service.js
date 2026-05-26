@@ -78,7 +78,7 @@ const LOTE_DESTINOS = {
     },
     matriculas: {
         tabla: 'matriculas',
-        campos: ['curso_id', 'alumno_id', 'estado_academico', 'porcentaje_asistencia', 'faltas_acumuladas', 'justificaciones_aprobadas', 'fecha_inscripcion'],
+        campos: ['curso_id', 'alumno_id', 'estado_academico', 'porcentaje_asistencia', 'faltas_acumuladas', 'justificaciones_aprobadas', 'fecha_inscripcion', 'orden_lista'],
         requeridos: ['curso_id', 'alumno_id'],
         conflictTarget: '(curso_id, alumno_id)',
         alias: {
@@ -807,6 +807,18 @@ async function insertarRegistrosFilaPorFila(cliente, config, filas, columnas) {
     }
     return { insertados, errores };
 }
+function asignarOrdenListaImportacionMatriculas(filas) {
+    const contadorPorCurso = new Map();
+    for (const fila of filas) {
+        const cursoId = Number(fila.payload.curso_id);
+        if (!Number.isFinite(cursoId) || cursoId <= 0) {
+            continue;
+        }
+        const siguiente = (contadorPorCurso.get(cursoId) ?? 0) + 1;
+        contadorPorCurso.set(cursoId, siguiente);
+        fila.payload.orden_lista = siguiente;
+    }
+}
 function tipoSqlColumna(col) {
     const mapa = {
         facultad_id: 'integer',
@@ -823,7 +835,8 @@ function tipoSqlColumna(col) {
         referencia_carrera_id: 'integer',
         semestre_curricular: 'integer',
         cohorte_anio: 'integer',
-        fecha_inscripcion: 'date'
+        fecha_inscripcion: 'date',
+        orden_lista: 'integer'
     };
     return mapa[col] ?? 'text';
 }
@@ -1024,7 +1037,7 @@ async function procesarLoteDestino(loteId, config, tipoLote) {
         const semestreCurricularDesdeLote = semParsed != null && Number.isFinite(semParsed) && semParsed >= 1 && semParsed <= 10
             ? Math.trunc(semParsed)
             : null;
-        const { rows } = await cliente.query(`SELECT id, datos FROM registros_importacion WHERE lote_id = $1 ORDER BY id`, [loteId]);
+        const { rows } = await cliente.query(`SELECT id, datos FROM registros_importacion WHERE lote_id = $1 ORDER BY COALESCE(fila, 0), id`, [loteId]);
         if (!rows.length) {
             throw new Error('El lote no contiene registros para procesar');
         }
@@ -1127,6 +1140,7 @@ async function procesarLoteDestino(loteId, config, tipoLote) {
                 validasConCurso.push(f);
             }
             if (validasConCurso.length) {
+                asignarOrdenListaImportacionMatriculas(validasConCurso);
                 const result = await batchInsertarRegistros(cliente, config, validasConCurso);
                 procesados += result.insertados;
                 todosErrores.push(...result.errores);

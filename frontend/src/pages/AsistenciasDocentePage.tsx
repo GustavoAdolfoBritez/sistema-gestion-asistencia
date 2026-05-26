@@ -47,6 +47,7 @@ type PlanillaMatrix = Map<
   {
     alumno: string;
     documento: string;
+    ordenLista: number | null;
     faltasAcumuladas: number;
     porcentajeAsistencia: number | null;
     estadoAcademico: string | null;
@@ -905,10 +906,14 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
     return [...base, ...extras].sort((a, b) => a.fecha.localeCompare(b.fecha));
   }, [diasLectivosDelMes, sesionesDelMes, planillaSeleccionada]);
 
-  // Filas de la tabla (alumnos ordenados)
+  // Filas de la tabla (orden de importación / matrícula; fallback alfabético)
   const alumnosOrdenados = useMemo(() => {
-    return [...planillaMatrix.entries()]
-      .sort(([, a], [, b]) => a.alumno.localeCompare(b.alumno));
+    return [...planillaMatrix.entries()].sort(([, a], [, b]) => {
+      const oa = a.ordenLista ?? Number.MAX_SAFE_INTEGER;
+      const ob = b.ordenLista ?? Number.MAX_SAFE_INTEGER;
+      if (oa !== ob) return oa - ob;
+      return a.alumno.localeCompare(b.alumno, 'es');
+    });
   }, [planillaMatrix]);
 
   const sesionActiva = useMemo(() => {
@@ -1057,6 +1062,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
         matrix.set(Number(al.matricula_id), {
           alumno: al.alumno ?? 'Alumno sin nombre',
           documento: al.numero_documento ?? '',
+          ordenLista: al.orden_lista != null ? Number(al.orden_lista) : null,
           faltasAcumuladas: Number(al.faltas_acumuladas) || 0,
           porcentajeAsistencia: al.porcentaje_asistencia != null ? Number(al.porcentaje_asistencia) : null,
           estadoAcademico: al.estado_academico ?? null,
@@ -1072,6 +1078,9 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
         entry.porcentajeAsistencia = alumno.porcentaje_asistencia != null ? Number(alumno.porcentaje_asistencia) : null;
         if (alumno.estado_academico) entry.estadoAcademico = alumno.estado_academico;
         if (!entry.alumno || entry.alumno === 'Alumno sin nombre') entry.alumno = alumno.alumno;
+        if (entry.ordenLista == null && alumno.orden_lista != null) {
+          entry.ordenLista = Number(alumno.orden_lista);
+        }
         for (const ses of (alumno.sesiones ?? [])) {
           entry.celdas.set(ses.sesion_id, {
             sesionId: ses.sesion_id,
@@ -1296,12 +1305,36 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
     setCerrandoSesionId(sesionId);
     try {
       await guardarCambiosLote();
-      const cerrada = await apiFetch<Sesion>(`/asistencias/sesiones/${sesionId}/cierre`, { method: 'POST' });
-      setSesiones((prev) => prev.map((x) => x.id === sesionId ? cerrada : x));
+      const cerrada = await apiFetch<
+        Sesion & {
+          matriculas?: Array<{
+            matricula_id: number;
+            porcentaje_asistencia: string | number;
+            faltas_acumuladas: number;
+            estado_academico: string;
+          }>;
+        }
+      >(`/asistencias/sesiones/${sesionId}/cierre`, { method: 'POST' });
+      const { matriculas, ...sesion } = cerrada;
+      setSesiones((prev) => prev.map((x) => x.id === sesionId ? sesion : x));
       listaAbiertaSyncKeyRef.current = null;
       setSesionActivaId((prev) => prev === sesionId ? null : prev);
+      if (matriculas?.length) {
+        setPlanillaMatrix((prev) => {
+          const next = new Map(prev);
+          for (const m of matriculas) {
+            const entry = next.get(Number(m.matricula_id));
+            if (!entry) continue;
+            entry.porcentajeAsistencia =
+              m.porcentaje_asistencia != null ? Number(m.porcentaje_asistencia) : null;
+            entry.faltasAcumuladas = Number(m.faltas_acumuladas) || 0;
+            if (m.estado_academico) entry.estadoAcademico = m.estado_academico;
+          }
+          return next;
+        });
+      }
       toast.success('Lista cerrada. Se actualizó el porcentaje del curso.');
-      void cargarPlanillaMes();
+      await cargarPlanillaMes();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'No se pudo cerrar la jornada');
     } finally {
@@ -2237,7 +2270,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                             <td
                               className={`sticky left-0 z-[57] px-1 py-2.5 text-center text-xs w-[36px] min-w-[36px] max-w-[36px] border-l ${celdaBase} ${celdaFila} planilla-celda-indice planilla-celda-texto`}
                             >
-                              <span className="opacity-70">{idx + 1}</span>
+                              <span className="opacity-70">{entry.ordenLista ?? idx + 1}</span>
                             </td>
                             {/* Nombre */}
                             <td

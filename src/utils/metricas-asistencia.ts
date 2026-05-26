@@ -12,10 +12,11 @@ export async function recalcularMetricasMatricula(
 
 /** Recalcula métricas de todas las matrículas de un curso. */
 export async function recalcularMetricasCurso(client: DbClient, cursoId: number): Promise<void> {
-    await client.query(
-        `SELECT recalcular_metricas_asistencia(m.id)
-         FROM matriculas m
-         WHERE m.curso_id = $1`,
+    const { rows } = await client.query<{ id: number }>(
+        `SELECT id FROM matriculas WHERE curso_id = $1`,
         [cursoId]
     );
+    for (const row of rows) {
+        await recalcularMetricasMatricula(client, row.id);
+    }
 }

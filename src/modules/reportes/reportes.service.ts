@@ -1570,7 +1570,7 @@ async function buildPdfLegalBuffer(cursoId: number, periodo?: string): Promise<P
          LEFT JOIN sesiones_clase sc ON sc.curso_id = c.id AND sc.fecha >= $2 AND sc.fecha < $3
          LEFT JOIN asistencias a ON a.sesion_id = sc.id AND a.matricula_id = mat.id
          WHERE c.id = $1
-         ORDER BY alumno ASC, sc.fecha ASC NULLS LAST`,
+         ORDER BY mat.orden_lista NULLS LAST, alumno ASC, sc.fecha ASC NULLS LAST`,
         [cursoId, inicio, fin]
     );
 

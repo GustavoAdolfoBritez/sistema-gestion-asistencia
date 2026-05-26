@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
 
 const pool = new Pool({
-    connectionString: 'postgresql://postgres.kgfykhhbkfyiunmnrkaq:gzI8qlDtSdlX3fC1@aws-1-us-east-1.pooler.supabase.com:5432/postgres'
+    connectionString: ''
 });
 
 async function main() {

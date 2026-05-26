@@ -1097,7 +1097,7 @@ async function buildPdfLegalBuffer(cursoId, periodo) {
          LEFT JOIN sesiones_clase sc ON sc.curso_id = c.id AND sc.fecha >= $2 AND sc.fecha < $3
          LEFT JOIN asistencias a ON a.sesion_id = sc.id AND a.matricula_id = mat.id
          WHERE c.id = $1
-         ORDER BY alumno ASC, sc.fecha ASC NULLS LAST`, [cursoId, inicio, fin]);
+         ORDER BY mat.orden_lista NULLS LAST, alumno ASC, sc.fecha ASC NULLS LAST`, [cursoId, inicio, fin]);
     if (!rows.length) {
         throw new Error('No hay matriculas cargadas para generar el PDF legal');
     }

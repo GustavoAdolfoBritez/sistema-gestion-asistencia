@@ -225,7 +225,7 @@ router.post(
             }
 
             const contexto = obtenerContexto(req);
-            const sesion = await cerrarSesionDocente(sesionId, contexto);
+            const { sesion, matriculas } = await cerrarSesionDocente(sesionId, contexto);
 
             await registrarEventoAuditoriaSegura({
                 modulo: 'asistencias',
@@ -237,7 +237,7 @@ router.post(
                 contexto: contextoAuditoria
             });
 
-            res.json(sesion);
+            res.json({ ...sesion, matriculas });
         } catch (error) {
             if (error instanceof Error) {
                 return res.status(400).json({ mensaje: error.message });

@@ -98,7 +98,7 @@ async function listarMatriculasDeCurso(cursoId) {
          FROM matriculas mt
          JOIN alumnos al ON al.id = mt.alumno_id
          WHERE mt.curso_id = $1
-         ORDER BY nombre_completo`, [cursoId]);
+         ORDER BY mt.orden_lista NULLS LAST, al.apellidos NULLS LAST, al.nombres NULLS LAST, al.nombre_apellido NULLS LAST, mt.id`, [cursoId]);
     return rows;
 }
 /** Cuando la carrera de referencia coincide con la del plan del curso, el semestre curricular del alumno debe coincidir con el semestre de la materia. */
@@ -164,8 +164,11 @@ async function matricularAlumno(cursoId, alumnoId) {
         throw new Error('Alumno no encontrado');
     }
     // Matrícula individual: sin exigir coincidencia de semestre curricular (recursantes, adeudadas, etc.).
-    const { rows } = await database_1.pool.query(`INSERT INTO matriculas (curso_id, alumno_id, estado_academico, porcentaje_asistencia, faltas_acumuladas, justificaciones_aprobadas, fecha_inscripcion)
-         VALUES ($1, $2, 'regular', 0, 0, 0, CURRENT_DATE)
+    const { rows } = await database_1.pool.query(`INSERT INTO matriculas (curso_id, alumno_id, estado_academico, porcentaje_asistencia, faltas_acumuladas, justificaciones_aprobadas, fecha_inscripcion, orden_lista)
+         VALUES (
+            $1, $2, 'regular', 0, 0, 0, CURRENT_DATE,
+            (SELECT COALESCE(MAX(orden_lista), 0) + 1 FROM matriculas WHERE curso_id = $1)
+         )
          ON CONFLICT (curso_id, alumno_id) DO NOTHING
          RETURNING id, alumno_id, estado_academico, fecha_inscripcion`, [cursoId, alumnoId]);
     if (!rows[0]) {
@@ -323,14 +326,29 @@ async function matricularDesdeLote(cursoId, loteId) {
             ri.datos->>'nombres'         AS nombres,
             ri.datos->>'apellidos'       AS apellidos
          FROM registros_importacion ri
-         WHERE ri.lote_id = $1`, [loteId]);
+         WHERE ri.lote_id = $1
+         ORDER BY COALESCE(ri.fila, 0), ri.id`, [loteId]);
     if (!registros.length)
         throw new Error('El lote no tiene registros');
     const registrosConCI = registros.filter((r) => r.numero_documento);
     if (!registrosConCI.length) {
         throw new Error('El lote no tiene números de documento (CI). Asegurate de que el Excel incluya una columna "numero_documento", "CI" o "cédula de identidad civil".');
     }
-    const documentos = registrosConCI.map((r) => r.numero_documento);
+    const documentosOrdenados = [];
+    const ordenPorDocumento = new Map();
+    const vistos = new Set();
+    let orden = 0;
+    for (const reg of registrosConCI) {
+        const doc = reg.numero_documento.trim();
+        if (vistos.has(doc)) {
+            continue;
+        }
+        vistos.add(doc);
+        orden += 1;
+        documentosOrdenados.push(doc);
+        ordenPorDocumento.set(doc, orden);
+    }
+    const documentos = documentosOrdenados;
     const { rows: yaExistentes } = await database_1.pool.query(`SELECT id, numero_documento FROM alumnos WHERE numero_documento = ANY($1::varchar[])`, [documentos]);
     const docsExistentes = new Set(yaExistentes.map((a) => a.numero_documento));
     const cliente = await database_1.pool.connect();
@@ -364,12 +382,22 @@ async function matricularDesdeLote(cursoId, loteId) {
                      apellidos = COALESCE(EXCLUDED.apellidos, alumnos.apellidos),
                      nombres   = COALESCE(EXCLUDED.nombres,   alumnos.nombres)`, [fDocs, fNombres, fApellidos, alumnosFaltantes.map((r) => (r.nombres ?? '').trim() || null)]);
         }
-        const { rows: todosLosAlumnos } = await cliente.query(`SELECT id FROM alumnos WHERE numero_documento = ANY($1::varchar[])`, [documentos]);
+        const { rows: todosLosAlumnos } = await cliente.query(`SELECT al.id, al.numero_documento
+             FROM unnest($1::varchar[]) WITH ORDINALITY AS u(doc, ord)
+             JOIN alumnos al ON al.numero_documento = u.doc
+             ORDER BY u.ord`, [documentosOrdenados]);
         if (!todosLosAlumnos.length) {
             await cliente.query('ROLLBACK');
             throw new Error('No se pudieron registrar los alumnos del lote. Verificá los datos del Excel.');
         }
         const alumnoIds = todosLosAlumnos.map((a) => a.id);
+        const ordenPorAlumnoId = new Map();
+        for (const al of todosLosAlumnos) {
+            const ord = ordenPorDocumento.get(al.numero_documento);
+            if (ord != null) {
+                ordenPorAlumnoId.set(al.id, ord);
+            }
+        }
         const { rows: cursoPlan } = await cliente.query(`SELECT m.semestre AS materia_semestre, p.carrera_id AS plan_carrera_id
              FROM cursos c
              JOIN modulos_academicos mo ON mo.id = c.modulo_id
@@ -404,10 +432,14 @@ async function matricularDesdeLote(cursoId, loteId) {
         let insertados = 0;
         let saltados = 0;
         if (elegibles.length) {
-            const { rowCount } = await cliente.query(`INSERT INTO matriculas (curso_id, alumno_id, estado_academico, porcentaje_asistencia, faltas_acumuladas, justificaciones_aprobadas, fecha_inscripcion)
-                 SELECT $1::int, u.aid, 'regular', 0, 0, 0, CURRENT_DATE
-                 FROM unnest($2::uuid[]) AS u(aid)
-                 ON CONFLICT (curso_id, alumno_id) DO NOTHING`, [cursoId, elegibles]);
+            const idsOrdenados = elegibles
+                .slice()
+                .sort((a, b) => (ordenPorAlumnoId.get(a) ?? Number.MAX_SAFE_INTEGER) - (ordenPorAlumnoId.get(b) ?? Number.MAX_SAFE_INTEGER));
+            const ordenes = idsOrdenados.map((id) => ordenPorAlumnoId.get(id) ?? 0);
+            const { rowCount } = await cliente.query(`INSERT INTO matriculas (curso_id, alumno_id, estado_academico, porcentaje_asistencia, faltas_acumuladas, justificaciones_aprobadas, fecha_inscripcion, orden_lista)
+                 SELECT $1::int, u.aid::uuid, 'regular', 0, 0, 0, CURRENT_DATE, u.ord::int
+                 FROM unnest($2::uuid[], $3::int[]) AS u(aid, ord)
+                 ON CONFLICT (curso_id, alumno_id) DO NOTHING`, [cursoId, idsOrdenados, ordenes]);
             insertados = rowCount ?? 0;
             saltados = elegibles.length - insertados;
         }
@@ -835,8 +867,8 @@ async function copiarMatriculasDesdeCurso(cursoDestinoId, cursoOrigenId) {
         }
         const { rows: totalOrigenRows } = await cliente.query(`SELECT COUNT(*) AS total FROM matriculas WHERE curso_id = $1`, [cursoOrigenId]);
         const totalOrigen = Number(totalOrigenRows[0]?.total ?? 0);
-        const { rows: insertados } = await cliente.query(`INSERT INTO matriculas (curso_id, alumno_id, estado_academico, porcentaje_asistencia, faltas_acumuladas, justificaciones_aprobadas, fecha_inscripcion)
-             SELECT $1, m.alumno_id, 'regular', 0, 0, 0, CURRENT_DATE
+        const { rows: insertados } = await cliente.query(`INSERT INTO matriculas (curso_id, alumno_id, estado_academico, porcentaje_asistencia, faltas_acumuladas, justificaciones_aprobadas, fecha_inscripcion, orden_lista)
+             SELECT $1, m.alumno_id, 'regular', 0, 0, 0, CURRENT_DATE, m.orden_lista
              FROM matriculas m
              JOIN alumnos al ON al.id = m.alumno_id
              CROSS JOIN LATERAL (
@@ -857,6 +889,7 @@ async function copiarMatriculasDesdeCurso(cursoDestinoId, cursoOrigenId) {
                    OR al.referencia_carrera_id <> dest.cid
                    OR COALESCE(al.semestre_curricular, 1) = dest.ms
                )
+             ORDER BY m.orden_lista NULLS LAST, m.id
               RETURNING id`, [cursoDestinoId, cursoOrigenId]);
         await cliente.query('COMMIT');
         return {

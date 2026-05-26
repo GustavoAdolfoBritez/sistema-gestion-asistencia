@@ -141,7 +141,7 @@ const LOTE_DESTINOS: Record<string, LoteDestinoConfig> = {
     },
     matriculas: {
         tabla: 'matriculas',
-        campos: ['curso_id', 'alumno_id', 'estado_academico', 'porcentaje_asistencia', 'faltas_acumuladas', 'justificaciones_aprobadas', 'fecha_inscripcion'],
+        campos: ['curso_id', 'alumno_id', 'estado_academico', 'porcentaje_asistencia', 'faltas_acumuladas', 'justificaciones_aprobadas', 'fecha_inscripcion', 'orden_lista'],
         requeridos: ['curso_id', 'alumno_id'],
         conflictTarget: '(curso_id, alumno_id)',
         alias: {
@@ -1089,6 +1089,19 @@ async function insertarRegistrosFilaPorFila(
     return { insertados, errores };
 }
 
+function asignarOrdenListaImportacionMatriculas(filas: FilaProcesada[]): void {
+    const contadorPorCurso = new Map<number, number>();
+    for (const fila of filas) {
+        const cursoId = Number(fila.payload.curso_id);
+        if (!Number.isFinite(cursoId) || cursoId <= 0) {
+            continue;
+        }
+        const siguiente = (contadorPorCurso.get(cursoId) ?? 0) + 1;
+        contadorPorCurso.set(cursoId, siguiente);
+        fila.payload.orden_lista = siguiente;
+    }
+}
+
 function tipoSqlColumna(col: string): string {
     const mapa: Record<string, string> = {
         facultad_id: 'integer',
@@ -1105,7 +1118,8 @@ function tipoSqlColumna(col: string): string {
         referencia_carrera_id: 'integer',
         semestre_curricular: 'integer',
         cohorte_anio: 'integer',
-        fecha_inscripcion: 'date'
+        fecha_inscripcion: 'date',
+        orden_lista: 'integer'
     };
     return mapa[col] ?? 'text';
 }
@@ -1350,7 +1364,7 @@ async function procesarLoteDestino(loteId: number, config: LoteDestinoConfig, ti
             id: number;
             datos: Record<string, unknown> | null;
         }>(
-            `SELECT id, datos FROM registros_importacion WHERE lote_id = $1 ORDER BY id`,
+            `SELECT id, datos FROM registros_importacion WHERE lote_id = $1 ORDER BY COALESCE(fila, 0), id`,
             [loteId]
         );
 
@@ -1462,6 +1476,7 @@ async function procesarLoteDestino(loteId: number, config: LoteDestinoConfig, ti
             }
 
             if (validasConCurso.length) {
+                asignarOrdenListaImportacionMatriculas(validasConCurso);
                 const result = await batchInsertarRegistros(cliente, config, validasConCurso);
                 procesados += result.insertados;
                 todosErrores.push(...result.errores);

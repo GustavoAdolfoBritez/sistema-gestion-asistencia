@@ -7,6 +7,11 @@ import {
     type AlcanceMatriculasFacultad,
 } from '../../utils/alumnos-scope';
 import { SQL_ALUMNO_APELLIDOS_COMA_NOMBRES } from '../../utils/alumno-nombre-sql';
+import { recalcularMetricasCurso } from '../../utils/metricas-asistencia';
+
+/** Orden de filas en planilla: importación primero; legacy sin orden → apellido. */
+export const SQL_ORDEN_MATRICULA_PLANILLA =
+    'mat.orden_lista NULLS LAST, al.apellidos NULLS LAST, al.nombres NULLS LAST, al.nombre_apellido NULLS LAST, mat.id';
 
 const ROLES_APROBADORES_JUSTIFICACIONES_NORMALIZADOS = ROLES_APROBADORES_JUSTIFICACIONES.map((r) =>
     normalizarRolComparacion(r)
@@ -280,6 +285,7 @@ export async function obtenerPlanilla(filtro: PlanillaFiltro) {
             mat.estado_academico,
             mat.faltas_acumuladas,
             mat.porcentaje_asistencia,
+            mat.orden_lista,
             JSONB_AGG(
                 JSONB_BUILD_OBJECT(
                     'sesion_id', sc.id,
@@ -300,8 +306,8 @@ export async function obtenerPlanilla(filtro: PlanillaFiltro) {
         JOIN alumnos al ON al.id = mat.alumno_id
         LEFT JOIN asistencias a ON a.sesion_id = sc.id AND a.matricula_id = mat.id
         WHERE ${where}
-        GROUP BY mat.id, al.id, al.numero_documento, mat.estado_academico, mat.faltas_acumuladas, mat.porcentaje_asistencia
-        ORDER BY al.apellidos NULLS LAST, al.nombres NULLS LAST, al.nombre_apellido NULLS LAST;
+        GROUP BY mat.id, al.id, al.numero_documento, mat.estado_academico, mat.faltas_acumuladas, mat.porcentaje_asistencia, mat.orden_lista
+        ORDER BY ${SQL_ORDEN_MATRICULA_PLANILLA};
     `;
 
     const { rows } = await pool.query(consulta, valores);
@@ -1048,8 +1054,25 @@ export async function cerrarSesionDocente(
             throw new Error('No se pudo cerrar la jornada');
         }
 
+        const sesionCerrada = rows[0];
         await cliente.query('COMMIT');
-        return rows[0];
+
+        // Tras commit: la sesión ya es «cerrada»; recalcular con conexión nueva evita métricas en 0
+        // (presente en jornada abierta deja % en 0 hasta que corre recalcular_metricas_asistencia).
+        await recalcularMetricasCurso(pool, cursoId);
+
+        const { rows: metricasRows } = await pool.query<{
+            matricula_id: number;
+            porcentaje_asistencia: string;
+            faltas_acumuladas: number;
+            estado_academico: string;
+        }>(
+            `SELECT id AS matricula_id, porcentaje_asistencia, faltas_acumuladas, estado_academico
+             FROM matriculas WHERE curso_id = $1`,
+            [cursoId]
+        );
+
+        return { sesion: sesionCerrada, matriculas: metricasRows };
     } catch (error) {
         await cliente.query('ROLLBACK');
         throw error;
@@ -1103,7 +1126,7 @@ export async function listarAusenciasCurso(cursoId: number, contexto: GestionCon
          WHERE sc.curso_id = $1
            AND a.estado = 'ausente'
            AND COALESCE(a.justificada, FALSE) = FALSE
-         ORDER BY sc.fecha DESC, al.apellidos NULLS LAST, al.nombres NULLS LAST, al.nombre_apellido NULLS LAST`,
+         ORDER BY sc.fecha DESC, ${SQL_ORDEN_MATRICULA_PLANILLA}`,
         [cursoId]
     );
 
@@ -1120,11 +1143,12 @@ export async function listarAlumnosCurso(cursoId: number, contexto: GestionConte
             al.numero_documento,
             mat.estado_academico,
             mat.faltas_acumuladas,
-            mat.porcentaje_asistencia
+            mat.porcentaje_asistencia,
+            mat.orden_lista
          FROM matriculas mat
          JOIN alumnos al ON al.id = mat.alumno_id
          WHERE mat.curso_id = $1
-         ORDER BY al.apellidos NULLS LAST, al.nombres NULLS LAST, al.nombre_apellido NULLS LAST`,
+         ORDER BY ${SQL_ORDEN_MATRICULA_PLANILLA}`,
         [cursoId]
     );
 

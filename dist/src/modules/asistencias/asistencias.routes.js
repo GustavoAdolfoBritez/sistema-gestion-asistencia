@@ -152,7 +152,7 @@ router.post('/asistencias/sesiones/:sesionId/cierre', ...auth_middleware_1.auten
             return res.status(400).json({ mensaje: 'sesionId inválido' });
         }
         const contexto = obtenerContexto(req);
-        const sesion = await (0, asistencias_service_1.cerrarSesionDocente)(sesionId, contexto);
+        const { sesion, matriculas } = await (0, asistencias_service_1.cerrarSesionDocente)(sesionId, contexto);
         await (0, auditoria_service_1.registrarEventoAuditoriaSegura)({
             modulo: 'asistencias',
             accion: 'cerrar_sesion',
@@ -162,7 +162,7 @@ router.post('/asistencias/sesiones/:sesionId/cierre', ...auth_middleware_1.auten
             despues: sesion,
             contexto: contextoAuditoria
         });
-        res.json(sesion);
+        res.json({ ...sesion, matriculas });
     }
     catch (error) {
         if (error instanceof Error) {
