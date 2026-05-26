@@ -219,8 +219,50 @@ function formatRecordFieldLabel(key: string) {
   return key.replace(/_/g, ' ');
 }
 
+const RECORD_PREVIEW_SKIP_KEYS = new Set([
+  'destino_facultad',
+  'destino_carrera',
+  'semestre',
+]);
+
+function recordFieldEntries(record: ImportRecord): Array<[string, unknown]> {
+  return Object.entries(record.datos ?? {}).filter(([key]) => {
+    if (key.startsWith('_planilla')) return false;
+    if (RECORD_PREVIEW_SKIP_KEYS.has(key.toLowerCase())) return false;
+    return true;
+  });
+}
+
+function recordAlumnoTitulo(record: ImportRecord): string {
+  const d = record.datos ?? {};
+  const pick = (...keys: string[]) => {
+    for (const k of keys) {
+      const v = d[k];
+      if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();
+    }
+    const lower = keys.map((k) => k.toLowerCase());
+    for (const [key, val] of Object.entries(d)) {
+      if (!lower.includes(key.toLowerCase())) continue;
+      if (val !== undefined && val !== null && String(val).trim() !== '') return String(val).trim();
+    }
+    return '';
+  };
+  const nombreApellido = pick('nombre_apellido', 'nombre_a', 'alumno', 'nombre completo');
+  const apellidos = pick('apellidos', 'apellido');
+  const nombres = pick('nombres', 'nombre');
+  const doc = pick('numero_documento', 'ci', 'documento', 'nro_documento');
+  const nombre =
+    nombreApellido ||
+    [apellidos, nombres].filter(Boolean).join(', ') ||
+    [nombres, apellidos].filter(Boolean).join(' ');
+  if (nombre && doc) return `${nombre} · CI ${doc}`;
+  if (nombre) return nombre;
+  if (doc) return `CI ${doc}`;
+  return '';
+}
+
 function recordPreviewEntries(record: ImportRecord, max = 12) {
-  const raw = Object.entries(record.datos ?? {}).filter(([key]) => !key.startsWith('_planilla'));
+  const raw = recordFieldEntries(record);
   if (!raw.length) {
     return { entries: [] as Array<{ key: string; label: string; value: string }>, truncated: false, total: 0 };
   }
@@ -488,6 +530,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
       setRecordsLoading(true);
       try {
         const params = new URLSearchParams();
+        params.set('limit', '500');
         if (filter !== 'all') {
           params.set('valido', filter === 'valid' ? 'true' : 'false');
         }
@@ -1305,12 +1348,12 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                 </div>
               </div>
 
-              <div className="scroll-region app-scroll-content import-detalle-scroll scrollbar-hide flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-4 space-y-4 max-xl:overscroll-y-contain xl:overflow-hidden">
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden max-xl:overflow-y-auto max-xl:overscroll-y-contain max-xl:import-detalle-scroll">
                 {detailLoading ? (
-                  <p className="text-center text-sm text-slate-500">Cargando detalle...</p>
+                  <p className="p-4 text-center text-sm text-slate-500">Cargando detalle...</p>
                 ) : batchDetail ? (
-                  <>
-                    <div className="shrink-0 bg-[#132a52] border border-slate-800 rounded-xl p-4 space-y-2">
+                  <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                    <div className="shrink-0 space-y-2 border-b border-slate-800 bg-[#132a52] p-4 max-xl:border-b-0 max-xl:rounded-xl max-xl:border max-xl:border-slate-800">
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-xs text-slate-500">Archivo</p>
@@ -1387,24 +1430,29 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                       </div>
                     </div>
 
-                    <div className="flex shrink-0 flex-col gap-3 rounded-xl border border-slate-800 bg-[#132a52] p-4 xl:min-h-0 xl:flex-1 xl:overflow-hidden">
-                      <div className="flex shrink-0 flex-col gap-2.5">
-                        <div>
-                          <p className="text-sm text-[#f0f4f8] font-medium">Registros cargados</p>
-                          <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                            Vista previa de cada fila del Excel (campos detectados en el archivo).
-                          </p>
+                    <div className="import-lote-registros-panel flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#132a52] p-4 max-xl:pt-3 xl:border-t xl:border-slate-800">
+                      <div className="mb-3 shrink-0 space-y-2.5">
+                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <p className="text-sm font-medium text-[#f0f4f8]">Registros cargados</p>
+                          <span className="text-[11px] tabular-nums text-slate-500">
+                            {recordsLoading
+                              ? '…'
+                              : `${records.length}${batchDetail.totalRegistros ? ` / ${batchDetail.totalRegistros}` : ''}`}
+                          </span>
                         </div>
+                        <p className="text-[11px] leading-snug text-slate-500">
+                          Vista previa de cada fila del Excel (campos detectados en el archivo).
+                        </p>
                         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filtrar registros">
                           {recordFilterOptions.map((option) => (
                             <button
                               key={option.id}
                               type="button"
                               onClick={() => setRecordFilter(option.id)}
-                              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border ${
+                              className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium ${
                                 recordFilter === option.id
-                                  ? 'border-primary text-primary bg-primary/10'
-                                  : 'border-slate-700 text-slate-400 hover:text-[#f0f4f8] hover:border-slate-600'
+                                  ? 'border-primary bg-primary/10 text-primary'
+                                  : 'border-slate-300 text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:text-slate-400 dark:hover:border-slate-600 dark:hover:text-[#f0f4f8]'
                               }`}
                             >
                               {option.label}
@@ -1413,79 +1461,100 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                         </div>
                       </div>
 
-                      <div className="flex flex-col max-xl:gap-3 xl:min-h-0 xl:flex-1 xl:overflow-hidden">
-                      {recordsLoading ? (
-                        <p className="text-center text-sm text-slate-500 py-4">Cargando registros...</p>
-                      ) : records.length ? (
-                        <div className="flex flex-col gap-3 xl:scroll-region xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:overscroll-y-contain">
-                          {records.map((registro) => {
-                            const { entries, truncated, total } = recordPreviewEntries(registro);
-                            const invalid = registro.valido === false;
-                            return (
-                              <div
-                                key={registro.id}
-                                className={`rounded-lg border overflow-hidden ${
-                                  invalid
-                                    ? 'border-rose-300 bg-rose-50 dark:border-rose-400/35 dark:bg-rose-950/20'
-                                    : 'border-slate-200 bg-white dark:border-slate-700/90 dark:bg-[#0a1424]/80'
-                                }`}
-                              >
-                                <div
-                                  className={`flex items-center justify-between gap-2 px-3 py-2 ${
+                      <div className="import-registros-list scroll-region scrollbar-hide min-h-[10rem] min-w-0 flex-1 overflow-y-auto overscroll-y-contain pr-0.5">
+                        {recordsLoading ? (
+                          <p className="py-8 text-center text-sm text-slate-500">Cargando registros…</p>
+                        ) : records.length ? (
+                          <ul className="flex flex-col gap-3 pb-1">
+                            {records.map((registro) => {
+                              const { entries, truncated, total } = recordPreviewEntries(registro);
+                              const invalid = registro.valido === false;
+                              const titulo = recordAlumnoTitulo(registro);
+                              return (
+                                <li
+                                  key={registro.id ?? `fila-${registro.fila}`}
+                                  className={`import-lote-registro-card overflow-hidden rounded-lg border shadow-sm ${
                                     invalid
-                                      ? 'bg-rose-100 border-b border-rose-200 dark:bg-rose-500/10 dark:border-rose-400/25'
-                                      : 'bg-slate-100 border-b border-slate-200 dark:bg-slate-900/40 dark:border-slate-700/60'
+                                      ? 'border-rose-300 bg-rose-50 dark:border-rose-400/35 dark:bg-rose-950/25'
+                                      : 'border-slate-200 bg-white dark:border-slate-600 dark:bg-[#0f1f3d]'
                                   }`}
                                 >
-                                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                                    <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-slate-500">table_rows</span>
-                                    Fila {registro.fila ?? '—'}
-                                  </span>
-                                  {invalid ? (
-                                    <span className="text-[11px] text-rose-600 dark:text-rose-200 font-semibold shrink-0">Revisar</span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-0.5 text-[11px] text-emerald-600 dark:text-emerald-300 font-semibold shrink-0">
-                                      <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                                      Válido
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="px-3 py-2.5">
-                                  {!entries.length ? (
-                                    <p className="text-xs text-slate-500">Sin datos en esta fila.</p>
-                                  ) : (
-                                    <dl className="space-y-2">
-                                      {entries.map(({ key, label, value }) => (
-                                        <div key={key} className="grid grid-cols-1 gap-0.5">
-                                          <dt className="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500 leading-tight" title={key}>
-                                            {label}
-                                          </dt>
-                                          <dd className="text-xs text-slate-800 dark:text-[#e7eef9] leading-snug break-words">{value}</dd>
-                                        </div>
-                                      ))}
-                                    </dl>
-                                  )}
-                                  {truncated ? (
-                                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700/50">
-                                      Mostrando {entries.length} de {total} campos.
-                                    </p>
-                                  ) : null}
-                                  {registro.mensajeError ? (
-                                    <p className="text-[11px] text-rose-600 dark:text-rose-200 mt-2 pt-2 border-t border-rose-200 dark:border-rose-400/20 leading-snug">
-                                      {registro.mensajeError}
-                                    </p>
-                                  ) : null}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <p className="text-center text-sm text-slate-500 py-4">No hay registros con el filtro seleccionado.</p>
-                      )}
+                                  <div
+                                    className={`flex flex-col gap-1 border-b px-3 py-2 sm:flex-row sm:items-start sm:justify-between sm:gap-2 ${
+                                      invalid
+                                        ? 'border-rose-200 bg-rose-100 dark:border-rose-400/25 dark:bg-rose-500/15'
+                                        : 'border-slate-200 bg-slate-50 dark:border-slate-600 dark:bg-slate-900/50'
+                                    }`}
+                                  >
+                                    <div className="min-w-0">
+                                      <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                                        <span className="material-symbols-outlined text-[16px] text-slate-400">
+                                          table_rows
+                                        </span>
+                                        Fila {registro.fila ?? '—'}
+                                      </span>
+                                      {titulo ? (
+                                        <p className="mt-1 break-words text-xs font-medium leading-snug text-slate-800 dark:text-[#e7eef9]">
+                                          {titulo}
+                                        </p>
+                                      ) : null}
+                                    </div>
+                                    {invalid ? (
+                                      <span className="shrink-0 text-[11px] font-semibold text-rose-700 dark:text-rose-200">
+                                        Revisar
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                                        <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                                        Válido
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="px-3 py-2.5">
+                                    {!entries.length ? (
+                                      <p className="text-xs text-slate-600 dark:text-slate-400">
+                                        Sin campos visibles en esta fila.
+                                      </p>
+                                    ) : (
+                                      <dl className="space-y-2">
+                                        {entries.map(({ key, label, value }) => (
+                                          <div key={key} className="grid grid-cols-1 gap-0.5">
+                                            <dt
+                                              className="text-[10px] uppercase leading-tight tracking-wide text-slate-500 dark:text-slate-400"
+                                              title={key}
+                                            >
+                                              {label}
+                                            </dt>
+                                            <dd className="break-words text-xs leading-snug text-slate-900 dark:text-[#e7eef9]">
+                                              {value}
+                                            </dd>
+                                          </div>
+                                        ))}
+                                      </dl>
+                                    )}
+                                    {truncated ? (
+                                      <p className="mt-2 border-t border-slate-200 pt-2 text-[10px] text-slate-500 dark:border-slate-600">
+                                        Mostrando {entries.length} de {total} campos.
+                                      </p>
+                                    ) : null}
+                                    {registro.mensajeError ? (
+                                      <p className="mt-2 border-t border-rose-200 pt-2 text-[11px] leading-snug text-rose-700 dark:border-rose-400/25 dark:text-rose-200">
+                                        {registro.mensajeError}
+                                      </p>
+                                    ) : null}
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        ) : (
+                          <p className="py-8 text-center text-sm text-slate-500">
+                            No hay registros con el filtro seleccionado.
+                          </p>
+                        )}
                       </div>
                     </div>
-                  </>
+                  </div>
                 ) : (
                   <div className="flex flex-1 items-center justify-center px-4 text-center text-sm text-slate-500 max-xl:hidden">
                     Selecciona un lote del historial para ver sus detalles.

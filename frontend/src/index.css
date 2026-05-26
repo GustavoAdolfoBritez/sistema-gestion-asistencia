@@ -605,6 +605,22 @@
       padding-bottom: max(5rem, env(safe-area-inset-bottom, 0px), var(--app-mobile-bottom-inset, 2.25rem)) !important;
       scroll-padding-bottom: max(5rem, env(safe-area-inset-bottom, 0px), 3.5rem);
     }
+
+    .import-registros-list {
+      padding-bottom: max(4rem, env(safe-area-inset-bottom, 0px), var(--app-mobile-bottom-inset, 2.25rem));
+      scroll-padding-bottom: max(3rem, env(safe-area-inset-bottom, 0px), 2.5rem);
+    }
+  }
+
+  /** Tarjetas de fila en detalle de lote: contraste en modo claro (evita “líneas” sin texto). */
+  html:not(.dark) .import-lote-registro-card {
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  }
+
+  html:not(.dark) .import-lote-registros-panel {
+    background-color: #ffffff !important;
   }
 
   /**
