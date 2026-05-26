@@ -1291,12 +1291,12 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                 </div>
               </div>
 
-              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-4 space-y-4">
+              <div className="scroll-region app-scroll-content scrollbar-hide flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-4 space-y-4 max-lg:overflow-y-auto lg:overflow-hidden">
                 {detailLoading ? (
                   <p className="text-center text-sm text-slate-500">Cargando detalle...</p>
                 ) : batchDetail ? (
                   <>
-                    <div className="bg-[#132a52] border border-slate-800 rounded-xl p-4 space-y-2">
+                    <div className="shrink-0 bg-[#132a52] border border-slate-800 rounded-xl p-4 space-y-2">
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-xs text-slate-500">Archivo</p>
@@ -1373,8 +1373,8 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                       </div>
                     </div>
 
-                    <div className="bg-[#132a52] border border-slate-800 rounded-xl p-4 flex flex-col gap-3 flex-1 min-h-0">
-                      <div className="flex flex-col gap-2.5">
+                    <div className="flex min-h-0 flex-1 flex-col gap-3 rounded-xl border border-slate-800 bg-[#132a52] p-4 max-lg:flex-none max-lg:min-h-0 lg:overflow-hidden">
+                      <div className="flex shrink-0 flex-col gap-2.5">
                         <div>
                           <p className="text-sm text-[#f0f4f8] font-medium">Registros cargados</p>
                           <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
@@ -1399,11 +1399,11 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                         </div>
                       </div>
 
-                      <div className="flex-1 min-h-0 flex flex-col">
+                      <div className="flex min-h-0 flex-1 flex-col max-lg:flex-none lg:overflow-hidden">
                       {recordsLoading ? (
                         <p className="text-center text-sm text-slate-500 py-4">Cargando registros...</p>
                       ) : records.length ? (
-                        <div className="scroll-region app-scroll-content flex-1 min-h-0 pr-1 -mr-0.5">
+                        <div className="scroll-region-at-lg flex min-h-0 flex-1 flex-col gap-3 pr-1 -mr-0.5 max-lg:overflow-visible max-lg:flex-none lg:app-scroll-content">
                           {records.map((registro) => {
                             const { entries, truncated, total } = recordPreviewEntries(registro);
                             const invalid = registro.valido === false;
