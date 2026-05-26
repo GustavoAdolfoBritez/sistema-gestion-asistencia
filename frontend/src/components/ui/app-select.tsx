@@ -13,9 +13,17 @@ export const appSelectDarkSurfaceClass =
   'dark:border-slate-700 dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:text-[#e7eef9] dark:shadow-none ' +
   'dark:focus:border-[#4a6fa5] dark:focus:ring-[#4a6fa5]/30';
 
+/** Texto del control cerrado: en móvil hasta 3 líneas; en escritorio una línea con ellipsis. */
+export const appSelectTriggerLabelClass =
+  'min-w-0 flex-1 text-inherit max-lg:whitespace-normal max-lg:break-words max-lg:leading-snug max-lg:line-clamp-3 lg:truncate';
+
+/** Icono del control cerrado (alineado al borde derecho del trigger). */
+export const appSelectTriggerChevronClass =
+  'material-symbols-outlined ml-auto shrink-0 leading-none text-slate-500 select-none self-start mt-0.5 lg:mt-0 lg:self-center';
+
 /** Estilo unificado: control + lista desplegable redondeada (como Reportes). */
 export const appSelectTriggerClass =
-  'w-full min-w-0 rounded-lg border text-sm text-left truncate pl-3 pr-10 py-2.5 ' +
+  'flex w-full min-w-0 items-start gap-2 rounded-lg border text-sm text-left pl-3 pr-3 py-2.5 lg:items-center ' +
   'bg-white border-slate-300 text-black shadow-sm ' +
   'hover:border-slate-400 hover:bg-slate-50 ' +
   'dark:hover:border-slate-600 ' +
@@ -23,10 +31,16 @@ export const appSelectTriggerClass =
   `${appSelectDarkSurfaceClass} ` +
   'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:border-slate-300';
 
-export const appSelectListClass =
-  'z-[200] w-max max-w-[min(100vw-2rem,28rem)] overflow-auto rounded-lg border py-1 shadow-lg ' +
+/** Panel desplegable (AppSelect y autocompletados con la misma convención). */
+export const appDropdownPanelClass =
+  'app-dropdown-panel overflow-auto rounded-lg border shadow-lg ' +
   'bg-white border-slate-200 text-black ' +
   'dark:bg-[#0b2147] dark:border-slate-700 dark:text-[#e7eef9]';
+
+export const appSelectListClass = cn('z-[200] py-1', appDropdownPanelClass);
+
+/** Texto de opción / resultado: permite varias líneas sin cortar con ellipsis. */
+export const appDropdownOptionLineClass = 'whitespace-normal break-words leading-snug';
 
 const MENU_GAP_PX = 4;
 const VIEWPORT_MARGIN_PX = 8;
@@ -48,7 +62,7 @@ interface MenuPlacement {
   bottom?: number;
 }
 
-function computeMenuPlacement(trigger: DOMRect, optionLabels: string[] = []): MenuPlacement {
+function computeMenuPlacement(trigger: DOMRect, optionLabels: string[] = [], wrapOptions = true): MenuPlacement {
   const spaceBelow = window.innerHeight - trigger.bottom - VIEWPORT_MARGIN_PX;
   const spaceAbove = trigger.top - VIEWPORT_MARGIN_PX;
   const openUp = spaceBelow < 120 && spaceAbove > spaceBelow;
@@ -57,10 +71,17 @@ function computeMenuPlacement(trigger: DOMRect, optionLabels: string[] = []): Me
     MENU_PREFERRED_MAX_PX,
     Math.max(available - MENU_GAP_PX, 96)
   );
-  const width = Math.max(trigger.width, minWidthForLabels(optionLabels));
+  const viewportMax = window.innerWidth - VIEWPORT_MARGIN_PX * 2;
+  const width = wrapOptions
+    ? Math.min(Math.max(trigger.width, 160), viewportMax)
+    : Math.min(Math.max(trigger.width, minWidthForLabels(optionLabels)), viewportMax);
+  const left = Math.min(
+    Math.max(VIEWPORT_MARGIN_PX, trigger.left),
+    window.innerWidth - width - VIEWPORT_MARGIN_PX
+  );
 
   return {
-    left: trigger.left,
+    left,
     width,
     maxHeight,
     ...(openUp
@@ -74,7 +95,8 @@ export const appSelectOptionTextClass = 'text-black dark:text-[#e7eef9]';
 
 export function appSelectOptionClass(selected: boolean): string {
   return cn(
-    'w-full px-3 py-2 text-left text-sm leading-snug whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed',
+    'w-full px-3 py-2 text-left text-sm disabled:opacity-40 disabled:cursor-not-allowed',
+    appDropdownOptionLineClass,
     appSelectOptionTextClass,
     selected ? 'bg-primary/15 font-medium' : 'hover:bg-slate-100 dark:hover:bg-slate-800/50'
   );
@@ -151,24 +173,11 @@ export function AppSelect({
     [options, value, allowEmpty, emptyLabel, clearOption]
   );
 
-  const allOptionLabels = useMemo(() => {
-    const labels = options.map((o) => o.label);
-    if (allowEmpty) labels.push(emptyLabel);
-    if (clearOption) labels.push(clearOption.label);
-    return labels;
-  }, [options, allowEmpty, emptyLabel, clearOption]);
-
-  const fontSizePx = size === 'xs' ? 12 : 14;
-  const stableMinWidthPx = useMemo(
-    () => minWidthForLabels(allOptionLabels, fontSizePx),
-    [allOptionLabels, fontSizePx]
-  );
-
   const sizeTrigger =
     size === 'xs'
-      ? 'py-1.5 pr-8 text-xs rounded-lg'
+      ? 'py-1.5 text-xs rounded-lg'
       : size === 'sm'
-        ? 'py-2 pr-9 text-sm rounded-lg'
+        ? 'py-2 text-sm rounded-lg'
         : '';
 
   useEffect(() => {
@@ -258,14 +267,10 @@ export function AppSelect({
   }, [open, updateMenuPlacement, visibleListOptions.length]);
 
   return (
-    <div
-      ref={rootRef}
-      className={cn('relative min-w-0', className)}
-      style={stableMinWidthPx > 0 ? { minWidth: stableMinWidthPx } : undefined}
-    >
+    <div ref={rootRef} className={cn('relative w-full max-w-full min-w-0', className)}>
       <button
         type="button"
-        title={title}
+        title={title ?? selectedLabel ?? undefined}
         disabled={disabled}
         aria-label={ariaLabel ?? title}
         aria-haspopup="listbox"
@@ -285,20 +290,17 @@ export function AppSelect({
         )}
       >
         {selectedLabel ? (
-          <span className="block truncate text-inherit">{selectedLabel}</span>
+          <span className={appSelectTriggerLabelClass}>{selectedLabel}</span>
         ) : (
-          <span className="block truncate text-inherit">{emptyText}</span>
+          <span className={appSelectTriggerLabelClass}>{emptyText}</span>
         )}
+        <span
+          className={cn(appSelectTriggerChevronClass, size === 'xs' ? 'text-[18px]' : 'text-[22px]')}
+          aria-hidden
+        >
+          expand_more
+        </span>
       </button>
-      <span
-        className={cn(
-          'material-symbols-outlined pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 leading-none select-none',
-          size === 'xs' ? 'text-[18px]' : 'text-[22px]'
-        )}
-        aria-hidden
-      >
-        expand_more
-      </span>
 
       {open && !disabled && menuPlacement
         ? createPortal(
@@ -311,8 +313,8 @@ export function AppSelect({
               style={{
                 position: 'fixed',
                 left: menuPlacement.left,
+                width: menuPlacement.width,
                 minWidth: menuPlacement.width,
-                width: 'max-content',
                 maxWidth: 'min(100vw - 2rem, 28rem)',
                 maxHeight: menuPlacement.maxHeight,
                 top: menuPlacement.top,
@@ -320,7 +322,9 @@ export function AppSelect({
               }}
             >
               {visibleListOptions.length === 0 ? (
-                <li className={cn('px-3 py-2 text-sm', appSelectOptionTextClass)}>{emptyText}</li>
+                <li className={cn('px-3 py-2 text-sm', appDropdownOptionLineClass, appSelectOptionTextClass)}>
+                  {emptyText}
+                </li>
               ) : (
                 visibleListOptions.map((opt) => {
                   const isSelected = opt.value === value;

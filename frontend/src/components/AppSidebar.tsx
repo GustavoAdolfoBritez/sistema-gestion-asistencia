@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { getAllowedViewsForUser } from '../utils/rbac';
 import type { AppView } from '../utils/rbac';
@@ -67,6 +68,24 @@ export function AppSidebar({ sidebarOpen, onLogout, onClose }: AppSidebarProps) 
 
   const { isDark, toggle } = useTheme();
 
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const sync = () => {
+      const mobile = !mq.matches;
+      if (sidebarOpen && mobile) {
+        document.documentElement.classList.add('mobile-sidebar-open');
+      } else {
+        document.documentElement.classList.remove('mobile-sidebar-open');
+      }
+    };
+    sync();
+    mq.addEventListener('change', sync);
+    return () => {
+      document.documentElement.classList.remove('mobile-sidebar-open');
+      mq.removeEventListener('change', sync);
+    };
+  }, [sidebarOpen]);
+
   const txt = isDark ? 'text-[#f0f4f8]' : 'text-slate-900';
   const txtHover = isDark ? 'hover:bg-[#273664] hover:text-[#e8eeff]' : 'hover:bg-slate-100 hover:text-slate-900';
   const iconTxt = isDark ? 'text-[#9caedc]' : 'text-slate-600';
@@ -85,17 +104,32 @@ export function AppSidebar({ sidebarOpen, onLogout, onClose }: AppSidebarProps) 
 
   return (
     <aside
-      className={`app-sidebar-shell fixed inset-y-0 left-0 z-30 w-64 transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 ${
-        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      className={`app-sidebar-shell shrink-0 fixed inset-y-0 left-0 z-50 w-64 max-w-[85vw] transition-transform duration-200 ease-in-out lg:static lg:z-auto lg:max-w-none lg:translate-x-0 ${
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}
     >
-      <div className="flex flex-col h-full justify-between p-4">
+      <div className="flex h-full min-h-0 flex-col">
+        <div className="flex items-center justify-end px-3 pt-3 lg:hidden">
+          <button
+            type="button"
+            className={`rounded-lg p-2 ${txt} ${txtHover}`}
+            onClick={() => onClose?.()}
+            aria-label="Cerrar menú"
+          >
+            <span className="material-symbols-outlined text-[22px]">close</span>
+          </button>
+        </div>
+        <div className="scroll-region flex min-h-0 flex-1 flex-col justify-between p-4 max-lg:pt-0 lg:pt-4">
         <div className="flex flex-col gap-6">
           <div className={`flex gap-3 items-center pb-4 border-b ${divider}`}>
             <UserAvatar nombres={currentUser?.nombres} apellidos={currentUser?.apellidos} size="md" />
-            <div className="flex flex-col overflow-hidden">
-              <h1 className={`${nameClr} text-sm font-semibold leading-tight truncate`}>{displayName}</h1>
-              <p className={`${roleClr} text-xs font-normal leading-normal truncate`}>{primaryRole}</p>
+            <div className="flex flex-col overflow-hidden min-w-0 flex-1">
+              <h1 className={`${nameClr} text-sm font-semibold leading-tight max-lg:whitespace-normal lg:truncate`}>
+                {displayName}
+              </h1>
+              <p className={`${roleClr} text-xs font-normal leading-normal max-lg:whitespace-normal lg:truncate`}>
+                {primaryRole}
+              </p>
             </div>
           </div>
 
@@ -156,6 +190,7 @@ export function AppSidebar({ sidebarOpen, onLogout, onClose }: AppSidebarProps) 
             </span>
             Cerrar sesión
           </button>
+        </div>
         </div>
       </div>
     </aside>

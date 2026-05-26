@@ -8,6 +8,8 @@
   },
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "dev:mobile": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-mobile.ps1",
+    "mobile:urls": "node scripts/print-mobile-dev-urls.mjs",
     "build": "tsc --extendedDiagnostics --pretty",
     "start": "node dist/src/server.js",
     "heroku-postbuild": "npm run build",

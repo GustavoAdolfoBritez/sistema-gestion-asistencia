@@ -824,7 +824,7 @@ export function ReportesPage({ onLogout }: Props) {
   );
 
   const filtroAnioModulo = (
-    <div className="w-[min(100%,7.5rem)] min-w-0 flex flex-col gap-1 shrink-0">
+    <div className="w-full min-w-0 flex flex-col gap-1 lg:w-[7.5rem] lg:shrink-0">
       <label className="text-xs text-slate-400">Año del módulo</label>
       <AppSelect
         title="Seleccionar año del módulo"
@@ -841,7 +841,7 @@ export function ReportesPage({ onLogout }: Props) {
   );
 
   const filtroSemestrePlan = (
-    <div className="w-[min(100%,11rem)] min-w-0 flex flex-col gap-1 shrink-0">
+    <div className="w-full min-w-0 flex flex-col gap-1 lg:w-[11rem] lg:shrink-0">
       <label className="text-xs text-slate-400">Semestre del plan</label>
       <AppSelect
         title="Seleccionar semestre"
@@ -860,44 +860,44 @@ export function ReportesPage({ onLogout }: Props) {
   );
 
   return (
-    <div className="system-bg text-[#e7eef9] min-h-screen h-screen overflow-hidden">
-      <div className="flex h-full w-full overflow-hidden">
-        {sidebarOpen ? <div className="fixed inset-0 bg-black/70 z-20 lg:hidden" onClick={() => setSidebarOpen(false)} /> : null}
+    <div className="system-bg app-shell-viewport text-[#e7eef9] min-h-screen h-screen overflow-hidden">
+      <div className="app-layout-row">
+        {sidebarOpen ? <div className="app-sidebar-scrim" onClick={() => setSidebarOpen(false)} aria-hidden="true" /> : null}
 
         <AppSidebar sidebarOpen={sidebarOpen} onLogout={onLogout} onClose={() => setSidebarOpen(false)} />
 
-        <main className="flex-1 flex flex-col h-full overflow-hidden">
-          <header className="flex-shrink-0 h-16 bg-[#132a52]/90 backdrop-blur-md border-b border-slate-800 flex items-center px-6 z-10 gap-3">
-            <button className="lg:hidden text-slate-400" onClick={() => setSidebarOpen(true)} aria-label="Abrir menu">
+        <main className="app-layout-main">
+          <header className="flex-shrink-0 min-h-16 bg-[#132a52]/90 backdrop-blur-md border-b border-slate-800 flex flex-wrap items-center gap-3 px-4 sm:px-6 py-3 z-10">
+            <button className="lg:hidden shrink-0 text-slate-400" onClick={() => setSidebarOpen(true)} aria-label="Abrir menu">
               <span className="material-symbols-outlined">menu</span>
             </button>
-            <span className="material-symbols-outlined text-[#6b8bc3]">description</span>
-            <div>
+            <span className="material-symbols-outlined shrink-0 text-[#6b8bc3]">description</span>
+            <div className="min-w-0 flex-1">
               <p className="text-xs uppercase tracking-widest text-slate-500">Módulo</p>
-              <h1 className="text-xl font-semibold leading-none">Reportes y cierre mensual</h1>
+              <h1 className="text-xl font-semibold leading-tight truncate">Reportes y cierre mensual</h1>
             </div>
           </header>
 
-          <section className="flex-1 overflow-auto p-6 space-y-5">
+          <section className="scroll-region app-scroll-content flex-1 min-h-0 min-w-0 p-4 sm:p-6 space-y-5">
 
-            <div className="rounded-2xl border border-[#2d466d]/70 bg-[#132a52] p-2 flex flex-wrap items-center gap-2">
+            <div className="btn-mobile-tabs flex flex-wrap items-center gap-2 rounded-2xl border border-[#2d466d]/70 bg-[#132a52] p-2">
               <button
                 type="button"
-                className={`px-3 py-1.5 rounded-lg text-sm border ${tabBtnClass('cierre')}`}
+                className={`rounded-lg border px-3 py-1.5 text-sm lg:py-1.5 ${tabBtnClass('cierre')}`}
                 onClick={() => setReporteTab('cierre')}
               >
                 Cierre mensual
               </button>
               <button
                 type="button"
-                className={`px-3 py-1.5 rounded-lg text-sm border ${tabBtnClass('consolidado')}`}
+                className={`rounded-lg border px-3 py-1.5 text-sm lg:py-1.5 ${tabBtnClass('consolidado')}`}
                 onClick={() => setReporteTab('consolidado')}
               >
                 Inhabilitados
               </button>
               <button
                 type="button"
-                className={`px-3 py-1.5 rounded-lg text-sm border ${tabBtnClass('ausentismo')}`}
+                className={`rounded-lg border px-3 py-1.5 text-sm lg:py-1.5 ${tabBtnClass('ausentismo')}`}
                 onClick={() => setReporteTab('ausentismo')}
               >
                 Estadísticas Facultad/Carrera
@@ -910,10 +910,10 @@ export function ReportesPage({ onLogout }: Props) {
                   Filtros — cierre mensual
                 </p>
                 {filtrosFacultadCarreraGrid}
-                <div className="flex flex-wrap items-end gap-3 min-w-0">
+                <div className="flex flex-col gap-3 min-w-0 lg:flex-row lg:flex-wrap lg:items-end">
                   {filtroAnioModulo}
                   {filtroSemestrePlan}
-                  <div className="min-w-0 flex-1 basis-full sm:basis-[min(100%,20rem)] flex flex-col gap-1">
+                  <div className="min-w-0 flex w-full flex-col gap-1 lg:flex-1 lg:min-w-[12rem]">
                     <label className="text-xs text-slate-400">Curso</label>
                     <ReportesCursoPicker
                       options={cursoOpcionesFiltradas}
@@ -930,7 +930,7 @@ export function ReportesPage({ onLogout }: Props) {
                   </div>
                   <button
                     type="button"
-                    className="btn-modern btn-modern-primary btn-modern-sm flex items-center justify-center gap-1.5 w-full min-[900px]:w-auto min-[900px]:shrink-0 min-[900px]:self-end py-2.5 min-[900px]:min-w-[9.5rem]"
+                    className="btn-modern btn-modern-primary btn-modern-sm btn-mobile-cta flex items-center justify-center gap-1.5 lg:w-auto lg:shrink-0 lg:self-end lg:min-w-[9.5rem]"
                     onClick={() => void cargarChecklist()}
                     disabled={!cursoValido || checklistLoading}
                   >
@@ -966,7 +966,7 @@ export function ReportesPage({ onLogout }: Props) {
                   Facultad, carrera, año del módulo y semestre del plan. No requiere elegir un curso.
                 </p>
                 {filtrosFacultadCarreraGrid}
-                <div className="flex flex-wrap items-end gap-3 min-w-0">
+                <div className="flex flex-col gap-3 min-w-0 lg:flex-row lg:flex-wrap lg:items-end">
                   {filtroAnioModulo}
                   {filtroSemestrePlan}
                 </div>
@@ -975,7 +975,7 @@ export function ReportesPage({ onLogout }: Props) {
 
             {reporteTab === 'cierre' ? (
             <>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
               <div className="rounded-xl border border-slate-800 bg-[#132a52] p-4 flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 flex-shrink-0">
                   <span className="material-symbols-outlined text-[20px]">article</span>
@@ -1015,37 +1015,37 @@ export function ReportesPage({ onLogout }: Props) {
                   <p className="text-xs font-semibold uppercase tracking-widest text-slate-600 dark:text-[#eff3ff] mb-4">Flujo de cierre guiado</p>
                   <div className="space-y-3">
 
-                    <div className="flex items-center gap-4 p-3 rounded-xl bg-[#0c1a3b] border border-slate-800">
+                    <div className="flex flex-col gap-3 p-3 rounded-xl bg-[#0c1a3b] border border-slate-800 sm:flex-row sm:items-center sm:gap-4">
                       <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-blue-300 text-sm font-bold">1</div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold">Recalcular ausentismo</p>
                         <p className="text-xs text-slate-400">Actualiza las estadísticas de asistencia del periodo.</p>
                       </div>
-                      <button className="btn-modern btn-modern-primary btn-modern-sm flex-shrink-0 flex items-center gap-1.5" onClick={() => void recalcular()} disabled={!cursoValido || loading}>
+                      <button type="button" className="btn-modern btn-modern-primary btn-modern-sm btn-mobile-cta shrink-0 flex items-center justify-center gap-1.5 lg:w-auto" onClick={() => void recalcular()} disabled={!cursoValido || loading}>
                         <span className="material-symbols-outlined text-[15px]">refresh</span>
                         Recalcular
                       </button>
                     </div>
 
-                    <div className="flex items-center gap-4 p-3 rounded-xl bg-[#0c1a3b] border border-slate-800">
+                    <div className="flex flex-col gap-3 p-3 rounded-xl bg-[#0c1a3b] border border-slate-800 sm:flex-row sm:items-center sm:gap-4">
                       <div className="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300 text-sm font-bold">2</div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold">Generar acta habilitados/no habilitados</p>
                         <p className="text-xs text-slate-400">Registra quiénes quedan habilitados para el examen final.</p>
                       </div>
-                      <button className="btn-modern btn-modern-success btn-modern-sm flex-shrink-0 flex items-center gap-1.5" onClick={() => void generarActa('habilitados_no_habilitados')} disabled={!cursoValido || loading}>
+                      <button type="button" className="btn-modern btn-modern-success btn-modern-sm btn-mobile-cta shrink-0 flex items-center justify-center gap-1.5 lg:w-auto" onClick={() => void generarActa('habilitados_no_habilitados')} disabled={!cursoValido || loading}>
                         <span className="material-symbols-outlined text-[15px]">how_to_reg</span>
                         Generar
                       </button>
                     </div>
 
-                    <div className="flex items-center gap-4 p-3 rounded-xl bg-[#0c1a3b] border border-slate-800">
+                    <div className="flex flex-col gap-3 p-3 rounded-xl bg-[#0c1a3b] border border-slate-800 sm:flex-row sm:items-center sm:gap-4">
                       <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-blue-600 text-sm font-bold">3</div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold">Generar PDF legal</p>
                         <p className="text-xs text-slate-400">Documento oficial con el registro de asistencias del periodo.</p>
                       </div>
-                      <button className="btn-modern btn-modern-info btn-modern-sm flex-shrink-0 flex items-center gap-1.5" onClick={() => void generarActa('pdf_legal')} disabled={!cursoValido || loading}>
+                      <button type="button" className="btn-modern btn-modern-info btn-modern-sm btn-mobile-cta shrink-0 flex items-center justify-center gap-1.5 lg:w-auto" onClick={() => void generarActa('pdf_legal')} disabled={!cursoValido || loading}>
                         <span className="material-symbols-outlined text-[15px]">picture_as_pdf</span>
                         Generar PDF
                       </button>
@@ -1053,7 +1053,7 @@ export function ReportesPage({ onLogout }: Props) {
 
                     {puedeCerrarModulo ? (
                       <div
-                        className={`flex items-center gap-4 p-3 rounded-xl border ${
+                        className={`flex flex-col gap-3 p-3 rounded-xl border sm:flex-row sm:items-center sm:gap-4 ${
                           checklist?.puedeCerrar
                             ? 'bg-rose-50 border-rose-300/70 dark:bg-[rgba(59,18,29,0.5)] dark:border-rose-500/60 dark:shadow-[inset_0_0_0_1px_rgba(244,63,94,0.35)]'
                             : 'bg-[#0c1a3b] border-slate-800'
@@ -1089,7 +1089,8 @@ export function ReportesPage({ onLogout }: Props) {
                           </p>
                         </div>
                         <button
-                          className="btn-modern btn-modern-danger btn-modern-sm flex-shrink-0 flex items-center gap-1.5"
+                          type="button"
+                          className="btn-modern btn-modern-danger btn-modern-sm btn-mobile-cta shrink-0 flex items-center justify-center gap-1.5 lg:w-auto"
                           onClick={() => setConfirmCloseOpen(true)}
                           disabled={!checklist?.puedeCerrar || closing}
                         >
@@ -1151,18 +1152,27 @@ export function ReportesPage({ onLogout }: Props) {
                     <p className="text-xs font-semibold uppercase tracking-widest text-slate-600 dark:text-[#eff3ff]">Actas generadas</p>
                     <span className="text-xs bg-[#0c1a3b] border border-slate-800 px-2 py-0.5 rounded-full text-slate-400">{actas.length}</span>
                   </div>
-                  <div className="max-h-[300px] overflow-auto space-y-2">
+                  <div className="scroll-region-at-lg space-y-2 lg:max-h-[300px]">
                     {actas.length ? actas.map((a) => (
-                      <div key={a.id} className="rounded-xl bg-[#0c1a3b] border border-slate-800 p-3 flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{tipoActaLabel(a.tipo_acta)}</p>
-                          <p className="text-xs text-slate-400 truncate">{a.materia}</p>
+                      <div key={a.id} className="flex flex-col gap-2 rounded-xl border border-slate-800 bg-[#0c1a3b] p-3 max-lg:items-stretch lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">{tipoActaLabel(a.tipo_acta)}</p>
+                          <p className="truncate text-xs text-slate-400">{a.materia}</p>
                           <p className="text-xs text-slate-500">{formatDateTime24(a.generado_en, { locale: 'es-AR' })}</p>
                         </div>
                         <button
                           type="button"
                           onClick={() => void abrirDocumento(a.url_documento).catch((err) => toastApiError(err, 'No se pudo abrir el documento'))}
-                          className="flex-shrink-0 p-1.5 rounded-lg bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 "
+                          className="btn-modern btn-modern-info btn-mobile-cta shrink-0 gap-1.5 lg:hidden"
+                          title="Abrir documento (datos actuales)"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+                          Abrir
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void abrirDocumento(a.url_documento).catch((err) => toastApiError(err, 'No se pudo abrir el documento'))}
+                          className="hidden shrink-0 rounded-lg bg-cyan-500/10 p-1.5 text-cyan-400 hover:bg-cyan-500/20 lg:inline-flex"
                           title="Abrir documento (datos actuales)"
                         >
                           <span className="material-symbols-outlined text-[16px]">open_in_new</span>
@@ -1182,7 +1192,7 @@ export function ReportesPage({ onLogout }: Props) {
                     <p className="text-xs font-semibold uppercase tracking-widest text-slate-600 dark:text-[#eff3ff]">Habilitados a examen</p>
                     <span className="text-xs bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full text-emerald-300">{habilitadosCount}</span>
                   </div>
-                  <div className="max-h-[300px] overflow-auto space-y-2">
+                  <div className="scroll-region-at-lg space-y-2 lg:max-h-[300px]">
                     {habilitados.filter((h) => h.habilitado).length ? (
                       habilitados.filter((h) => h.habilitado).map((h) => (
                         <div key={h.matricula_id} className="flex items-center justify-between gap-2 rounded-xl bg-[#0c1a3b] border border-slate-800 px-3 py-2.5">
@@ -1209,7 +1219,7 @@ export function ReportesPage({ onLogout }: Props) {
             ) : null}
 
             {reporteTab === 'consolidado' ? (
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4 dark:border-[#2d466d]/70 dark:bg-[#132a52]">
+              <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 dark:border-[#2d466d]/70 dark:bg-[#132a52] max-lg:space-y-3 max-lg:p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-widest text-slate-600 dark:text-[#eff3ff]">Inhabilitados</p>
@@ -1217,9 +1227,10 @@ export function ReportesPage({ onLogout }: Props) {
                       Alumnos que no pueden rendir el examen final: asistencia menor al 75% en el periodo.
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="btn-mobile-stack flex w-full flex-wrap items-center gap-2 lg:w-auto lg:flex-row">
                     <button
-                      className="btn-modern btn-modern-ghost btn-modern-sm flex items-center gap-1.5"
+                      type="button"
+                      className="btn-modern btn-modern-ghost btn-modern-sm btn-mobile-cta flex items-center justify-center gap-1.5 lg:w-auto"
                       onClick={() => void cargarConsolidado()}
                       disabled={consolidadoLoading || !consolidadoFiltrosListos}
                     >
@@ -1227,7 +1238,8 @@ export function ReportesPage({ onLogout }: Props) {
                       {consolidadoLoading ? 'Cargando...' : 'Actualizar'}
                     </button>
                     <button
-                      className="btn-modern btn-modern-info btn-modern-sm flex items-center gap-1.5"
+                      type="button"
+                      className="btn-modern btn-modern-info btn-modern-sm btn-mobile-cta flex items-center justify-center gap-1.5 lg:w-auto"
                       onClick={() => void generarConsolidadoPdf()}
                       disabled={consolidadoPdfLoading || !consolidadoFiltrosListos}
                     >
@@ -1263,54 +1275,122 @@ export function ReportesPage({ onLogout }: Props) {
                   />
                 </div>
 
-                <div className="overflow-auto max-h-[520px] rounded-xl border border-slate-300 dark:border-slate-800">
-                  <table className="w-full text-sm text-slate-800 dark:text-[#e7eef9]">
-                    <thead className="sticky top-0 bg-slate-100 text-xs text-slate-700 uppercase dark:bg-[#0b1827] dark:text-slate-400">
-                      <tr>
-                        <th className="px-3 py-2 text-left font-medium">Periodo</th>
-                        <th className="px-3 py-2 text-left font-medium">Facultad</th>
-                        <th className="px-3 py-2 text-left font-medium">Carrera</th>
-                        <th className="px-3 py-2 text-left font-medium">Semestre</th>
-                        <th className="px-3 py-2 text-left font-medium">Materia</th>
-                        <th className="px-3 py-2 text-left font-medium">Alumno</th>
-                        <th className="px-3 py-2 text-left font-medium">CI</th>
-                        <th className="px-3 py-2 text-left font-medium">% Asist.</th>
-                        <th className="px-3 py-2 text-left font-medium">Faltas</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {consolidadoView.map((item, idx) => (
-                        <tr key={`${item.curso_id}-${item.numero_documento}-${idx}`} className="border-t border-slate-200 dark:border-slate-800/60">
-                          <td className="px-3 py-2">{item.periodo}</td>
-                          <td className="px-3 py-2">{item.facultad}</td>
-                          <td className="px-3 py-2">{item.carrera}</td>
-                          <td className="px-3 py-2">
-                            {item.semestre > 0 ? `${item.semestre}°` : '—'}
-                          </td>
-                          <td className="px-3 py-2">{item.materia}</td>
-                          <td className="px-3 py-2">{item.alumno}</td>
-                          <td className="px-3 py-2 tabular-nums">{item.numero_documento || '—'}</td>
-                          <td className="px-3 py-2">{Number(item.porcentaje_asistencia ?? 0).toFixed(1)}%</td>
-                          <td className="px-3 py-2">{item.faltas_acumuladas}</td>
-                        </tr>
-                      ))}
-                      {!consolidadoLoading && consolidadoView.length === 0 ? (
-                        <tr>
-                          <td colSpan={9} className="px-3 py-8 text-center text-slate-500 dark:text-slate-500">
+                <div className="scroll-region-at-lg rounded-xl border border-slate-300 dark:border-slate-800 lg:max-h-[min(70dvh,520px)]">
+                  {consolidadoLoading ? (
+                    <p className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">Cargando inhabilitados…</p>
+                  ) : (
+                    <>
+                      <ul className="divide-y divide-slate-200 dark:divide-slate-800/60 lg:hidden">
+                        {consolidadoView.length === 0 ? (
+                          <li className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
                             {!consolidadoFiltrosListos
                               ? 'Seleccioná año y semestre en los filtros de arriba.'
                               : 'No hay alumnos inhabilitados para el filtro actual.'}
-                          </td>
-                        </tr>
-                      ) : null}
-                    </tbody>
-                  </table>
+                          </li>
+                        ) : (
+                          consolidadoView.map((item, idx) => (
+                            <li
+                              key={`${item.curso_id}-${item.numero_documento}-${idx}`}
+                              className="space-y-2 bg-white px-4 py-3 dark:bg-transparent"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="min-w-0 flex-1 break-words text-[15px] font-semibold leading-snug text-slate-900 dark:text-[#e7eef9]">
+                                  {item.alumno}
+                                </p>
+                                <span className="shrink-0 rounded-full border border-rose-500/40 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">
+                                  Inhabilitado
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-600 dark:text-slate-400">
+                                <span className="font-medium text-slate-500 dark:text-slate-500">CI </span>
+                                <span className="tabular-nums text-slate-800 dark:text-slate-200">
+                                  {item.numero_documento || '—'}
+                                </span>
+                              </p>
+                              <p className="break-words text-xs leading-snug text-slate-700 dark:text-slate-300">
+                                <span className="font-medium text-slate-500 dark:text-slate-500">Materia </span>
+                                {item.materia}
+                              </p>
+                              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs tabular-nums">
+                                <span>
+                                  <span className="text-slate-500 dark:text-slate-500">% Asist. </span>
+                                  <span className="font-semibold text-rose-700 dark:text-rose-300">
+                                    {Number(item.porcentaje_asistencia ?? 0).toFixed(1)}%
+                                  </span>
+                                </span>
+                                <span>
+                                  <span className="text-slate-500 dark:text-slate-500">Faltas </span>
+                                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                    {item.faltas_acumuladas}
+                                  </span>
+                                </span>
+                                {item.semestre > 0 ? (
+                                  <span>
+                                    <span className="text-slate-500 dark:text-slate-500">Sem. </span>
+                                    {item.semestre}°
+                                  </span>
+                                ) : null}
+                              </div>
+                              <p className="break-words text-[11px] leading-snug text-slate-500 dark:text-slate-500">
+                                {item.periodo}
+                                {item.facultad ? ` · ${item.facultad}` : ''}
+                                {item.carrera ? ` · ${item.carrera}` : ''}
+                              </p>
+                            </li>
+                          ))
+                        )}
+                      </ul>
+
+                      <table className="hidden w-full text-sm text-slate-800 dark:text-[#e7eef9] lg:table">
+                        <thead className="sticky top-0 bg-slate-100 text-xs uppercase text-slate-700 dark:bg-[#0b1827] dark:text-slate-400">
+                          <tr>
+                            <th className="px-3 py-2 text-left font-medium">Periodo</th>
+                            <th className="px-3 py-2 text-left font-medium">Facultad</th>
+                            <th className="px-3 py-2 text-left font-medium">Carrera</th>
+                            <th className="px-3 py-2 text-left font-medium">Semestre</th>
+                            <th className="px-3 py-2 text-left font-medium">Materia</th>
+                            <th className="px-3 py-2 text-left font-medium">Alumno</th>
+                            <th className="px-3 py-2 text-left font-medium">CI</th>
+                            <th className="px-3 py-2 text-left font-medium">% Asist.</th>
+                            <th className="px-3 py-2 text-left font-medium">Faltas</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {consolidadoView.map((item, idx) => (
+                            <tr
+                              key={`${item.curso_id}-${item.numero_documento}-${idx}`}
+                              className="border-t border-slate-200 dark:border-slate-800/60"
+                            >
+                              <td className="px-3 py-2">{item.periodo}</td>
+                              <td className="px-3 py-2">{item.facultad}</td>
+                              <td className="px-3 py-2">{item.carrera}</td>
+                              <td className="px-3 py-2">{item.semestre > 0 ? `${item.semestre}°` : '—'}</td>
+                              <td className="px-3 py-2">{item.materia}</td>
+                              <td className="px-3 py-2">{item.alumno}</td>
+                              <td className="px-3 py-2 tabular-nums">{item.numero_documento || '—'}</td>
+                              <td className="px-3 py-2">{Number(item.porcentaje_asistencia ?? 0).toFixed(1)}%</td>
+                              <td className="px-3 py-2">{item.faltas_acumuladas}</td>
+                            </tr>
+                          ))}
+                          {consolidadoView.length === 0 ? (
+                            <tr>
+                              <td colSpan={9} className="px-3 py-8 text-center text-slate-500 dark:text-slate-500">
+                                {!consolidadoFiltrosListos
+                                  ? 'Seleccioná año y semestre en los filtros de arriba.'
+                                  : 'No hay alumnos inhabilitados para el filtro actual.'}
+                              </td>
+                            </tr>
+                          ) : null}
+                        </tbody>
+                      </table>
+                    </>
+                  )}
                 </div>
               </div>
             ) : null}
 
             {reporteTab === 'ausentismo' ? (
-              <div className="rounded-2xl border border-[#2d466d]/70 bg-[#132a52] p-5 space-y-4">
+              <div className="space-y-4 rounded-2xl border border-[#2d466d]/70 bg-[#132a52] p-5 max-lg:space-y-3 max-lg:p-3">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-widest text-slate-600 dark:text-[#eff3ff]">
@@ -1321,10 +1401,10 @@ export function ReportesPage({ onLogout }: Props) {
                       calculadas por curso (recálculo en cierre mensual). No usa semestre del plan ni curso puntual.
                     </p>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="btn-mobile-stack flex w-full flex-wrap items-center gap-2 lg:w-auto lg:flex-row">
                     <button
                       type="button"
-                      className="btn-modern btn-modern-ghost btn-modern-sm flex items-center gap-1.5"
+                      className="btn-modern btn-modern-ghost btn-modern-sm btn-mobile-cta flex items-center justify-center gap-1.5 lg:w-auto"
                       onClick={() => void cargarAusentismoAgregado()}
                       disabled={ausentismoDatosLoading || !ausentismoPeriodoListo || !ausentismoAlcanceListo}
                     >
@@ -1333,7 +1413,7 @@ export function ReportesPage({ onLogout }: Props) {
                     </button>
                     <button
                       type="button"
-                      className="btn-modern btn-modern-primary btn-modern-sm flex items-center gap-1.5"
+                      className="btn-modern btn-modern-primary btn-modern-sm btn-mobile-cta flex items-center justify-center gap-1.5 lg:w-auto"
                       onClick={() => void generarAusentismoPdf()}
                       disabled={ausentismoPdfLoading || !ausentismoPeriodoListo || !ausentismoAlcanceListo}
                     >
@@ -1345,8 +1425,8 @@ export function ReportesPage({ onLogout }: Props) {
 
                 <div className="space-y-3">
                   <p className="text-xs font-medium text-slate-400">Periodo y alcance</p>
-                  <div className="flex flex-wrap items-end gap-3">
-                    <div className="w-[min(100%,9rem)] flex flex-col gap-1">
+                  <div className="flex flex-col gap-3 min-w-0 sm:flex-row sm:flex-wrap sm:items-end">
+                    <div className="w-full min-w-0 flex flex-col gap-1 sm:w-[9rem] sm:shrink-0">
                       <label className="text-xs text-slate-400">Mes</label>
                       <AppSelect
                         aria-label="Mes del reporte"
@@ -1356,7 +1436,7 @@ export function ReportesPage({ onLogout }: Props) {
                         triggerClassName={selectReportesTriggerClass}
                       />
                     </div>
-                    <div className="w-[min(100%,7rem)] flex flex-col gap-1">
+                    <div className="w-full min-w-0 flex flex-col gap-1 sm:w-[7rem] sm:shrink-0">
                       <label className="text-xs text-slate-400">Año</label>
                       <AppSelect
                         aria-label="Año del reporte"
@@ -1384,69 +1464,128 @@ export function ReportesPage({ onLogout }: Props) {
                 </div>
 
                 {ausentismoResumen ? (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div className="rounded-xl border border-slate-800 bg-[#0c1a3b] p-3">
-                      <p className="text-[10px] uppercase text-slate-500">Carreras</p>
-                      <p className="text-xl font-bold text-[#f0f4f8]">{ausentismoResumen.totalCarreras}</p>
+                  <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4 lg:gap-3">
+                    <div className="rounded-xl border border-slate-800 bg-[#0c1a3b] p-2.5 lg:p-3">
+                      <p className="text-[10px] uppercase leading-tight text-slate-500">Carreras</p>
+                      <p className="text-lg font-bold text-[#f0f4f8] lg:text-xl">{ausentismoResumen.totalCarreras}</p>
                     </div>
-                    <div className="rounded-xl border border-slate-800 bg-[#0c1a3b] p-3">
-                      <p className="text-[10px] uppercase text-slate-500">Cursos</p>
-                      <p className="text-xl font-bold text-[#f0f4f8]">{ausentismoResumen.totalCursos}</p>
+                    <div className="rounded-xl border border-slate-800 bg-[#0c1a3b] p-2.5 lg:p-3">
+                      <p className="text-[10px] uppercase leading-tight text-slate-500">Cursos</p>
+                      <p className="text-lg font-bold text-[#f0f4f8] lg:text-xl">{ausentismoResumen.totalCursos}</p>
                     </div>
-                    <div className="rounded-xl border border-slate-800 bg-[#0c1a3b] p-3">
-                      <p className="text-[10px] uppercase text-slate-500">% Ausentismo prom.</p>
-                      <p className="text-xl font-bold text-amber-300">{ausentismoResumen.promedioAusentismo}%</p>
+                    <div className="rounded-xl border border-slate-800 bg-[#0c1a3b] p-2.5 lg:p-3">
+                      <p className="text-[10px] uppercase leading-tight text-slate-500">% Ausentismo prom.</p>
+                      <p className="text-lg font-bold text-amber-300 lg:text-xl">
+                        {ausentismoResumen.promedioAusentismo}%
+                      </p>
                     </div>
-                    <div className="rounded-xl border border-slate-800 bg-[#0c1a3b] p-3">
-                      <p className="text-[10px] uppercase text-slate-500">Faltas totales</p>
-                      <p className="text-xl font-bold text-[#f0f4f8]">{ausentismoResumen.totalFaltas}</p>
+                    <div className="rounded-xl border border-slate-800 bg-[#0c1a3b] p-2.5 lg:p-3">
+                      <p className="text-[10px] uppercase leading-tight text-slate-500">Faltas totales</p>
+                      <p className="text-lg font-bold text-[#f0f4f8] lg:text-xl">{ausentismoResumen.totalFaltas}</p>
                     </div>
                   </div>
                 ) : null}
 
-                <div className="overflow-auto max-h-[480px] rounded-xl border border-slate-800">
-                  <table className="w-full text-sm text-[#e7eef9]">
-                    <thead className="sticky top-0 bg-[#0b1827] text-xs text-slate-400 uppercase">
-                      <tr>
-                        <th className="px-3 py-2 text-left font-medium">Facultad</th>
-                        <th className="px-3 py-2 text-left font-medium">Carrera</th>
-                        <th className="px-3 py-2 text-center font-medium">Cursos</th>
-                        <th className="px-3 py-2 text-center font-medium">% Ausentismo</th>
-                        <th className="px-3 py-2 text-center font-medium">% Asistencia</th>
-                        <th className="px-3 py-2 text-center font-medium">Nivel</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {ausentismoDatos.map((row, idx) => (
-                        <tr
-                          key={`${row.facultad}-${row.carrera}-${idx}`}
-                          className="border-t border-slate-800/60"
-                        >
-                          <td className="px-3 py-2">{row.facultad}</td>
-                          <td className="px-3 py-2">{row.carrera}</td>
-                          <td className="px-3 py-2 text-center tabular-nums">{row.totalCursos}</td>
-                          <td className="px-3 py-2 text-center tabular-nums">{row.promedioAusentismo.toFixed(1)}%</td>
-                          <td className="px-3 py-2 text-center tabular-nums">{row.promedioAsistencia.toFixed(1)}%</td>
-                          <td className="px-3 py-2 text-center">
-                            <span
-                              className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${nivelAusentismoClass(row.nivel)}`}
-                            >
-                              {row.nivel}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                      {!ausentismoDatosLoading && ausentismoDatos.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="px-3 py-10 text-center text-slate-500">
+                <div className="scroll-region-at-lg rounded-xl border border-slate-800 lg:max-h-[min(70dvh,480px)]">
+                  {ausentismoDatosLoading ? (
+                    <p className="px-4 py-10 text-center text-sm text-slate-500">Cargando estadísticas…</p>
+                  ) : (
+                    <>
+                      <ul className="divide-y divide-slate-800/60 lg:hidden">
+                        {ausentismoDatos.length === 0 ? (
+                          <li className="px-4 py-10 text-center text-sm text-slate-500">
                             {!ausentismoPeriodoListo || !ausentismoAlcanceListo
                               ? 'Completá periodo y alcance para ver el ranking.'
                               : 'Sin estadísticas para este periodo y alcance.'}
-                          </td>
-                        </tr>
-                      ) : null}
-                    </tbody>
-                  </table>
+                          </li>
+                        ) : (
+                          ausentismoDatos.map((row, idx) => (
+                            <li
+                              key={`${row.facultad}-${row.carrera}-${idx}`}
+                              className="space-y-2 px-4 py-3"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="min-w-0 flex-1 break-words text-[15px] font-semibold leading-snug text-[#e7eef9]">
+                                  {row.carrera}
+                                </p>
+                                <span
+                                  className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${nivelAusentismoClass(row.nivel)}`}
+                                >
+                                  {row.nivel}
+                                </span>
+                              </div>
+                              <p className="break-words text-xs leading-snug text-slate-400">{row.facultad}</p>
+                              <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs tabular-nums">
+                                <div>
+                                  <p className="text-slate-500">Cursos</p>
+                                  <p className="font-semibold text-[#e7eef9]">{row.totalCursos}</p>
+                                </div>
+                                <div>
+                                  <p className="text-slate-500">Faltas</p>
+                                  <p className="font-semibold text-[#e7eef9]">{row.totalFaltas}</p>
+                                </div>
+                                <div>
+                                  <p className="text-slate-500">% Ausentismo</p>
+                                  <p className="font-semibold text-amber-300">{row.promedioAusentismo.toFixed(1)}%</p>
+                                </div>
+                                <div>
+                                  <p className="text-slate-500">% Asistencia</p>
+                                  <p className="font-semibold text-emerald-300">{row.promedioAsistencia.toFixed(1)}%</p>
+                                </div>
+                              </div>
+                            </li>
+                          ))
+                        )}
+                      </ul>
+
+                      <table className="hidden w-full text-sm text-[#e7eef9] lg:table">
+                        <thead className="sticky top-0 bg-[#0b1827] text-xs uppercase text-slate-400">
+                          <tr>
+                            <th className="px-3 py-2 text-left font-medium">Facultad</th>
+                            <th className="px-3 py-2 text-left font-medium">Carrera</th>
+                            <th className="px-3 py-2 text-center font-medium">Cursos</th>
+                            <th className="px-3 py-2 text-center font-medium">% Ausentismo</th>
+                            <th className="px-3 py-2 text-center font-medium">% Asistencia</th>
+                            <th className="px-3 py-2 text-center font-medium">Nivel</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {ausentismoDatos.map((row, idx) => (
+                            <tr
+                              key={`${row.facultad}-${row.carrera}-${idx}`}
+                              className="border-t border-slate-800/60"
+                            >
+                              <td className="px-3 py-2">{row.facultad}</td>
+                              <td className="px-3 py-2">{row.carrera}</td>
+                              <td className="px-3 py-2 text-center tabular-nums">{row.totalCursos}</td>
+                              <td className="px-3 py-2 text-center tabular-nums">
+                                {row.promedioAusentismo.toFixed(1)}%
+                              </td>
+                              <td className="px-3 py-2 text-center tabular-nums">
+                                {row.promedioAsistencia.toFixed(1)}%
+                              </td>
+                              <td className="px-3 py-2 text-center">
+                                <span
+                                  className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold ${nivelAusentismoClass(row.nivel)}`}
+                                >
+                                  {row.nivel}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                          {ausentismoDatos.length === 0 ? (
+                            <tr>
+                              <td colSpan={6} className="px-3 py-10 text-center text-slate-500">
+                                {!ausentismoPeriodoListo || !ausentismoAlcanceListo
+                                  ? 'Completá periodo y alcance para ver el ranking.'
+                                  : 'Sin estadísticas para este periodo y alcance.'}
+                              </td>
+                            </tr>
+                          ) : null}
+                        </tbody>
+                      </table>
+                    </>
+                  )}
                 </div>
               </div>
             ) : null}
@@ -1521,10 +1660,10 @@ export function ReportesPage({ onLogout }: Props) {
                     </p>
                   </div>
 
-                  <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end sm:gap-3">
+                  <div className="btn-mobile-stack flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end sm:gap-3">
                     <button
                       type="button"
-                      className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-500/50 dark:bg-transparent dark:text-slate-200 dark:hover:bg-white/5"
+                      className="btn-modern btn-modern-ghost btn-mobile-cta lg:h-10 lg:min-h-0 lg:w-auto lg:rounded-xl lg:px-4"
                       onClick={() => {
                         setConfirmCloseOpen(false);
                         setCierrePasswordConfirm('');
@@ -1535,7 +1674,7 @@ export function ReportesPage({ onLogout }: Props) {
                     </button>
                     <button
                       type="button"
-                      className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-rose-600/40 bg-gradient-to-r from-rose-600 to-rose-700 px-4 text-sm font-semibold text-white shadow-md shadow-rose-600/25 transition-[transform,box-shadow] hover:from-rose-500 hover:to-rose-600 hover:shadow-rose-600/35 disabled:pointer-events-none disabled:opacity-50 dark:border-rose-500/50 dark:shadow-lg dark:shadow-rose-900/30 dark:hover:shadow-rose-900/40"
+                      className="btn-modern btn-modern-danger btn-mobile-cta inline-flex items-center justify-center gap-2 lg:h-10 lg:min-h-0 lg:w-auto lg:rounded-xl lg:border-rose-600/40 lg:bg-gradient-to-r lg:from-rose-600 lg:to-rose-700 lg:px-4 lg:shadow-md lg:shadow-rose-600/25 lg:hover:from-rose-500 lg:hover:to-rose-600"
                       onClick={() => void cerrarModulo()}
                       disabled={!cierrePasswordConfirm.trim() || closing}
                     >

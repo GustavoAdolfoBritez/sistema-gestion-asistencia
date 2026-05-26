@@ -27,7 +27,7 @@ export interface PanelChartTheme {
 export function getPanelChartTheme(isDark: boolean): PanelChartTheme {
   if (isDark) {
     return {
-      card: 'rounded-xl border border-slate-800 bg-[#132a52] p-5',
+      card: 'min-w-0 w-full overflow-hidden rounded-xl border border-slate-800 bg-[#132a52] p-5',
       kicker: 'text-[10px] uppercase tracking-[0.15em] text-slate-500 font-semibold',
       title: 'text-base font-bold text-white mt-0.5 mb-1',
       hint: 'text-xs text-slate-400 mb-3',
@@ -59,7 +59,7 @@ export function getPanelChartTheme(isDark: boolean): PanelChartTheme {
   }
 
   return {
-    card: 'rounded-xl border border-slate-200 bg-white p-5 shadow-sm',
+    card: 'min-w-0 w-full overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-sm',
     kicker: 'text-[10px] uppercase tracking-[0.15em] text-slate-500 font-semibold',
     title: 'text-base font-bold text-slate-900 mt-0.5 mb-1',
     hint: 'text-xs text-slate-600 mb-3',

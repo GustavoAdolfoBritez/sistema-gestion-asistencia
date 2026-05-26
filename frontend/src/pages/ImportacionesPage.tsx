@@ -69,6 +69,12 @@ function yieldToMain(): Promise<void> {
   return new Promise((resolve) => requestAnimationFrame(() => resolve()));
 }
 
+/** lg = 1024px: mismo criterio que `max-lg:` en Tailwind (solo celular/tablet). */
+function viewportEsEscritorio(): boolean {
+  if (typeof window === 'undefined') return true;
+  return window.matchMedia('(min-width: 1024px)').matches;
+}
+
 const LEGACY_FACULTADES = [
   {
     nombre: 'Facultad de Ciencias Empresariales',
@@ -361,7 +367,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
         if (current && lista.some((item) => item.id === current)) {
           return current;
         }
-        return lista[0]?.id ?? null;
+        return viewportEsEscritorio() ? (lista[0]?.id ?? null) : null;
       });
     } catch (error) {
       const mensaje = error instanceof Error ? error.message : 'No se pudo cargar el historial';
@@ -836,11 +842,11 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
   }, [discardDialogLoteId, loadBatches, selectedBatchId]);
 
   return (
-    <div className="system-bg text-[#e7eef9] min-h-screen h-screen overflow-hidden">
-      <div className="flex h-full w-full overflow-hidden">
+    <div className="system-bg app-shell-viewport text-[#e7eef9] min-h-screen h-screen overflow-hidden">
+      <div className="app-layout-row">
         {sidebarOpen ? (
           <div
-            className="fixed inset-0 bg-black/70 z-20 lg:hidden"
+            className="app-sidebar-scrim"
             onClick={() => setSidebarOpen(false)}
             aria-hidden="true"
           />
@@ -848,54 +854,59 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
 
         <AppSidebar sidebarOpen={sidebarOpen} onLogout={onLogout} onClose={() => setSidebarOpen(false)} />
 
-        <main className="flex-1 flex flex-col h-full overflow-hidden">
-          <header className="flex-shrink-0 h-16 bg-[#132a52]/90 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-6 z-10">
-            <div className="flex items-center gap-3">
-              <button className="lg:hidden text-slate-400" onClick={() => setSidebarOpen((prev) => !prev)} aria-label="Abrir menú">
+        <main className="app-layout-main">
+          <header className="flex-shrink-0 min-h-16 bg-[#132a52]/90 backdrop-blur-md border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3 z-10">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <button className="lg:hidden shrink-0 text-slate-400" onClick={() => setSidebarOpen((prev) => !prev)} aria-label="Abrir menú">
                 <span className="material-symbols-outlined">menu</span>
               </button>
-              <span className="material-symbols-outlined text-[#6b8bc3]">upload_file</span>
-              <div>
+              <span className="material-symbols-outlined shrink-0 text-[#6b8bc3]">upload_file</span>
+              <div className="min-w-0">
                 <p className="text-xs uppercase text-slate-400">Módulos</p>
-                <h1 className="text-xl font-semibold">Asistente de importación</h1>
+                <h1 className="text-xl font-semibold truncate">Asistente de importación</h1>
               </div>
-            </div>
-            <div className="flex items-center gap-4">
             </div>
           </header>
 
-          <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
-            <section className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-hide">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-5 rounded-xl bg-[#132a52] border border-slate-800">
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
+          <div className="grid min-h-0 min-w-0 flex-1 grid-cols-1 overflow-hidden max-lg:flex max-lg:flex-col lg:grid-cols-[minmax(0,1fr)_min(100%,26.25rem)]">
+            <section
+              className={`min-w-0 flex flex-col overflow-hidden ${
+                selectedBatchId ? 'max-lg:hidden' : 'max-lg:flex max-lg:min-h-0 max-lg:flex-1'
+              }`}
+            >
+              <div className="scroll-region app-scroll-content scrollbar-hide min-w-0 flex-1 space-y-8 p-4 sm:p-6 max-lg:space-y-5 max-lg:p-3">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3 max-lg:grid-cols-2 max-lg:gap-2">
+                <div className="rounded-xl border border-slate-800 bg-[#132a52] p-5 max-lg:p-3.5">
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="rounded-lg bg-blue-500/10 p-2 text-blue-400">
                       <span className="material-symbols-outlined text-[22px]">dataset</span>
                     </div>
                     <span className="text-xs text-slate-500">Total lotes</span>
                   </div>
-                  <p className="text-2xl font-bold text-[#f0f4f8]">{resumen.totalLotes}</p>
+                  <p className="text-2xl font-bold text-[#f0f4f8] max-lg:text-xl">{resumen.totalLotes}</p>
                   <p className="text-xs text-slate-500">Registros acumulados: {resumen.totalRegistros}</p>
                 </div>
-                <div className="p-5 rounded-xl bg-[#132a52] border border-slate-800">
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+                <div className="rounded-xl border border-slate-800 bg-[#132a52] p-5 max-lg:p-3.5">
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="rounded-lg bg-emerald-500/10 p-2 text-emerald-400">
                       <span className="material-symbols-outlined text-[22px]">task_alt</span>
                     </div>
                     <span className="text-xs text-slate-500">Procesados</span>
                   </div>
-                  <p className="text-2xl font-bold text-[#f0f4f8]">{resumen.totalProcesados}</p>
+                  <p className="text-2xl font-bold text-[#f0f4f8] max-lg:text-xl">{resumen.totalProcesados}</p>
                   <p className="text-xs text-slate-500">Importaciones activas: {resumen.activos}</p>
                 </div>
-                <div className="p-5 rounded-xl bg-[#132a52] border border-slate-800">
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="p-2 rounded-lg bg-rose-500/10 text-rose-400">
+                <div className="rounded-xl border border-slate-800 bg-[#132a52] p-5 max-lg:col-span-2 max-lg:p-3.5">
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="rounded-lg bg-rose-500/10 p-2 text-rose-400">
                       <span className="material-symbols-outlined text-[22px]">error</span>
                     </div>
                     <span className="text-xs text-slate-500">Errores</span>
                   </div>
-                  <p className="text-2xl font-bold text-[#f0f4f8]">{resumen.totalErrores}</p>
-                  <p className="text-xs text-slate-500">Última actualización: {formatDate(batches[0]?.ejecutadoEn)}</p>
+                  <p className="text-2xl font-bold text-[#f0f4f8] max-lg:text-xl">{resumen.totalErrores}</p>
+                  <p className="text-xs text-slate-500 max-lg:line-clamp-2">
+                    Última actualización: {formatDate(batches[0]?.ejecutadoEn)}
+                  </p>
                 </div>
               </div>
 
@@ -905,7 +916,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                     <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-xs text-[#f0f4f8] font-bold">1</span>
                     Tipo de importación
                   </h2>
-                  <div className="inline-flex w-fit max-w-full items-center gap-2.5 rounded-lg border border-slate-800 px-3 py-2">
+                  <div className="inline-flex w-full max-w-full min-w-0 sm:w-fit items-center gap-2.5 rounded-lg border border-slate-800 px-3 py-2">
                     <span className="material-symbols-outlined shrink-0 text-[20px] leading-none text-primary/90">
                       {entityImportAlumnos.icono}
                     </span>
@@ -922,7 +933,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                     Selecciona facultad y carrera
                   </h2>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <label className="flex flex-col gap-2 text-sm">
+                    <label className="flex min-w-0 flex-col gap-2 text-sm">
                       <span className="text-[#9fb3d4] font-medium">Facultad</span>
                       <AppSelect
                         value={facultadSeleccionadaId}
@@ -935,11 +946,11 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                           value: String(facultad.id),
                           label: facultad.nombre,
                         }))}
-                        triggerClassName="px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                        triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                       />
                     </label>
 
-                    <label className="flex flex-col gap-2 text-sm">
+                    <label className="flex min-w-0 flex-col gap-2 text-sm">
                       <span className="text-[#9fb3d4] font-medium">Carrera</span>
                       <AppSelect
                         value={carreraSeleccionadaId}
@@ -950,7 +961,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                           value: String(carrera.id),
                           label: carrera.nombre,
                         }))}
-                        triggerClassName="px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm disabled:opacity-60 disabled:cursor-not-allowed dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                        triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm disabled:opacity-60 disabled:cursor-not-allowed dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                       />
                     </label>
                   </div>
@@ -965,7 +976,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                     Selecciona el semestre
                   </h2>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <label className="flex flex-col gap-2 text-sm">
+                    <label className="flex min-w-0 flex-col gap-2 text-sm">
                       <span className="text-[#9fb3d4] font-medium">Semestre</span>
                       <AppSelect
                         value={semestreSeleccionado}
@@ -976,16 +987,16 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                           value: String(n),
                           label: `${n}° Semestre`,
                         }))}
-                        triggerClassName="px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm disabled:opacity-60 disabled:cursor-not-allowed dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                        triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm disabled:opacity-60 disabled:cursor-not-allowed dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                       />
                     </label>
-                    <label className="flex flex-col gap-2 text-sm">
+                    <label className="flex min-w-0 flex-col gap-2 text-sm">
                       <span className="text-[#9fb3d4] font-medium">Año de ingreso</span>
                       <input
                         type="text"
                         inputMode="numeric"
                         placeholder="Ej. 2025 (opcional)"
-                        className="px-3 py-2 rounded-lg bg-[#132a52] border border-slate-700 focus:border-primary focus:outline-none text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="w-full px-3 py-2 rounded-lg bg-[#132a52] border border-slate-700 focus:border-primary focus:outline-none text-sm disabled:opacity-60 disabled:cursor-not-allowed"
                         value={cohorteIngresoAnio}
                         disabled={!carreraSeleccionadaId}
                         onChange={(e) => setCohorteIngresoAnio(e.target.value)}
@@ -1023,19 +1034,76 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                     <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-xs text-[#f0f4f8] font-bold">5</span>
                     Historial de importaciones
                   </h2>
-                  <div className="bg-[#132a52] border border-slate-800 rounded-xl overflow-hidden">
-                    <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
-                      <p className="text-sm text-[#f0f4f8] font-medium">Registros recientes</p>
+                  <div className="bg-[#132a52] border border-slate-800 rounded-xl overflow-hidden flex flex-col min-h-0 min-w-0">
+                    <div className="shrink-0 px-4 py-3 border-b border-slate-800 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-sm text-[#f0f4f8] font-medium min-w-0">Registros recientes</p>
                       <button
                         type="button"
-                        className="text-xs text-slate-400 hover:text-[#f0f4f8] flex items-center gap-1"
+                        className="text-xs text-slate-400 hover:text-[#f0f4f8] flex items-center gap-1 shrink-0 self-start sm:self-auto"
                         onClick={() => loadBatches()}
                       >
                         <span className="material-symbols-outlined text-[18px]">refresh</span>
                         Actualizar
                       </button>
                     </div>
-                    <div className="overflow-x-auto">
+                    <ul className="divide-y divide-slate-800 lg:hidden">
+                      {batchesLoading ? (
+                        <li className="px-4 py-6 text-center text-sm text-slate-500">Cargando...</li>
+                      ) : batches.length ? (
+                        batches.slice(0, 6).map((lote) => {
+                          const badge = estadoBadges[lote.estado] ?? {
+                            label: lote.estado,
+                            bg: 'bg-slate-700/60 border-slate-600',
+                            text: 'text-[#c9d7ed]',
+                          };
+                          return (
+                            <li key={lote.id} className="flex items-stretch">
+                              <button
+                                type="button"
+                                className="min-w-0 flex-1 px-4 py-3 text-left transition-colors active:bg-slate-800/50"
+                                onClick={() => setSelectedBatchId(lote.id)}
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className="min-w-0 flex-1 break-words text-sm font-medium text-[#f0f4f8]">
+                                    {lote.archivoFuente ?? 'Sin nombre'}
+                                  </p>
+                                  <span
+                                    className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${badge.bg} ${badge.text}`}
+                                  >
+                                    {badge.label}
+                                  </span>
+                                </div>
+                                <p className="mt-1 text-xs text-slate-500">{formatDate(lote.ejecutadoEn)} · {lote.tipoLote}</p>
+                                <p className="mt-0.5 text-xs text-[#9fb3d4]">
+                                  {lote.procesados}/{lote.totalRegistros} registros
+                                </p>
+                              </button>
+                              {loteEsDescartable(lote.estado) ? (
+                                <button
+                                  type="button"
+                                  className="flex shrink-0 items-center self-center px-3 text-rose-300 hover:bg-rose-500/10"
+                                  title="Descartar importación"
+                                  onClick={() => setDiscardDialogLoteId(lote.id)}
+                                >
+                                  <span className="material-symbols-outlined text-[22px]">delete_forever</span>
+                                </button>
+                              ) : null}
+                            </li>
+                          );
+                        })
+                      ) : (
+                        <li className="px-4 py-8 text-center text-slate-500">
+                          <div className="flex flex-col items-center gap-2">
+                            <span className="material-symbols-outlined text-[36px] text-slate-600">inbox</span>
+                            <p className="text-sm font-medium text-[#c9d7ed]">{batchesError ?? 'Aún no se registraron importaciones.'}</p>
+                            <p className="max-w-sm text-xs text-slate-500">
+                              Cuando completes una carga en los pasos anteriores, el historial aparecerá aquí.
+                            </p>
+                          </div>
+                        </li>
+                      )}
+                    </ul>
+                    <div className="scroll-region hidden min-h-0 max-h-[min(70dvh,40rem)] lg:block lg:max-h-none">
                       <table className="w-full text-left text-sm">
                         <thead className="bg-[#132a52] text-slate-500 uppercase text-xs">
                           <tr>
@@ -1120,9 +1188,16 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                   </div>
                 </div>
               </div>
+              </div>
             </section>
 
-            <aside className="relative w-full lg:w-[420px] bg-[#132a52] border-l border-slate-800 flex flex-col h-full overflow-hidden">
+            <aside
+              className={`relative z-10 flex min-w-0 w-full flex-col overflow-hidden border-slate-800 bg-[#132a52] ${
+                selectedBatchId
+                  ? 'max-lg:flex max-lg:min-h-0 max-lg:flex-1 max-lg:border-t-0'
+                  : 'max-lg:hidden'
+              } lg:flex lg:h-full lg:max-h-none lg:border-l lg:border-t-0`}
+            >
               <ImportConfirmOverlay
                 phase={confirmPhase}
                 archivo={batchDetail?.archivoFuente}
@@ -1131,15 +1206,33 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                 successMessage={confirmSuccessMessage}
                 onDismissError={dismissConfirmError}
               />
-              <div className="px-4 py-[7px] border-b border-slate-800 bg-[#132a52] flex items-center justify-between shrink-0">
-                <div>
-                  <h3 className="text-[#f0f4f8] font-semibold">Detalle del lote</h3>
-                  <p className="text-xs text-slate-400">Selecciona un registro para ver sus datos</p>
+              <div className="flex min-w-0 shrink-0 flex-col gap-3 border-b border-slate-800 bg-[#132a52] px-4 py-2 sm:flex-row sm:items-center sm:justify-between sm:py-[7px] max-lg:gap-2 max-lg:py-3">
+                {selectedBatchId ? (
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 self-start rounded-lg px-1 py-1 text-sm font-medium text-slate-300 hover:bg-slate-800/60 lg:hidden"
+                    onClick={() => {
+                      setSelectedBatchId(null);
+                      setBatchDetail(null);
+                      setRecords([]);
+                    }}
+                    aria-label="Volver al asistente de importación"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+                    Volver
+                  </button>
+                ) : null}
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-[#f0f4f8]">Detalle del lote</h3>
+                  <p className="text-xs text-slate-400 max-lg:hidden lg:block">
+                    Selecciona un registro para ver sus datos
+                  </p>
+                  <p className="text-xs text-slate-400 lg:hidden">Revisá el archivo y confirmá o descartá el lote</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex flex-col gap-2">
+                <div className="flex shrink-0 flex-wrap items-center gap-2 max-lg:w-full">
+                  <div className="btn-mobile-stack flex w-full flex-col gap-2 sm:w-auto max-lg:flex-col-reverse">
                     <button
-                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold border ${
+                      className={`btn-modern btn-mobile-cta flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-semibold border ${
                         !batchDetail || batchDetail.estado === 'completado' || confirmBusy || discardLoading
                           ? 'border-slate-700 text-slate-500 cursor-not-allowed opacity-60'
                           : 'border-emerald-500 text-emerald-300 hover:bg-emerald-500/10'
@@ -1162,10 +1255,10 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                           : 'Confirmar'}
                     </button>
                     <button
-                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold border ${
+                      className={`btn-modern btn-mobile-cta flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-semibold border ${
                         !batchDetail || !loteEsDescartable(batchDetail.estado) || confirmBusy || discardLoading
                           ? 'border-slate-300 text-slate-400 cursor-not-allowed opacity-60 dark:border-slate-700 dark:text-slate-500'
-                          : 'border-rose-500/50 text-rose-700 hover:bg-rose-50 dark:text-rose-200 dark:hover:bg-rose-500/10'
+                          : 'btn-modern-danger border-rose-500/50 text-rose-700 hover:bg-rose-50 dark:text-rose-200 dark:hover:bg-rose-500/10'
                       }`}
                       type="button"
                       title="Quitar la carga del historial"
@@ -1198,7 +1291,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-hidden p-4 space-y-4 flex flex-col">
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-4 space-y-4">
                 {detailLoading ? (
                   <p className="text-center text-sm text-slate-500">Cargando detalle...</p>
                 ) : batchDetail ? (
@@ -1207,7 +1300,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-xs text-slate-500">Archivo</p>
-                          <p className="text-sm text-[#f0f4f8] font-medium">{batchDetail.archivoFuente ?? 'Sin nombre'}</p>
+                          <p className="break-words text-sm font-medium text-[#f0f4f8]">{batchDetail.archivoFuente ?? 'Sin nombre'}</p>
                         </div>
                         {(() => {
                           const badge = estadoBadges[batchDetail.estado] ?? {
@@ -1222,23 +1315,45 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                           );
                         })()}
                       </div>
-                      <div className="grid grid-cols-1 gap-1 text-xs text-slate-400 border border-slate-800 rounded-lg p-2 bg-[#0a1424]">
-                        <p>
-                          <span className="text-slate-500">Facultad destino:</span>{' '}
-                          <span className="text-[#f0f4f8]">{batchDetail.destinoFacultad ?? 'No definida'}</span>
-                        </p>
-                        <p>
-                          <span className="text-slate-500">Carrera destino:</span>{' '}
-                          <span className="text-[#f0f4f8]">{batchDetail.destinoCarrera ?? 'No definida'}</span>
-                        </p>
+                      <div className="rounded-lg border border-slate-800 bg-[#0a1424] p-2 text-xs text-slate-400 max-lg:space-y-2.5 max-lg:p-3 lg:grid lg:grid-cols-1 lg:gap-1">
+                        <div className="max-lg:flex max-lg:flex-col max-lg:gap-0.5">
+                          <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500 lg:hidden">
+                            Facultad destino
+                          </p>
+                          <p className="hidden lg:block">
+                            <span className="text-slate-500">Facultad destino:</span>{' '}
+                            <span className="text-[#f0f4f8]">{batchDetail.destinoFacultad ?? 'No definida'}</span>
+                          </p>
+                          <p className="break-words text-[#f0f4f8] lg:hidden">
+                            {batchDetail.destinoFacultad ?? 'No definida'}
+                          </p>
+                        </div>
+                        <div className="max-lg:flex max-lg:flex-col max-lg:gap-0.5">
+                          <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500 lg:hidden">
+                            Carrera destino
+                          </p>
+                          <p className="hidden lg:block">
+                            <span className="text-slate-500">Carrera destino:</span>{' '}
+                            <span className="text-[#f0f4f8]">{batchDetail.destinoCarrera ?? 'No definida'}</span>
+                          </p>
+                          <p className="break-words text-[#f0f4f8] lg:hidden">
+                            {batchDetail.destinoCarrera ?? 'No definida'}
+                          </p>
+                        </div>
                         {(() => {
                           const sem = batchDetail.descripcion?.match(/(\d{1,2})\s*°?\s*semestre|semestre\s*(\d{1,2})/i);
                           const num = sem ? Number(sem[1] ?? sem[2]) : null;
                           return num ? (
-                            <p>
-                              <span className="text-slate-500">Semestre:</span>{' '}
-                              <span className="text-[#f0f4f8]">{num}° Semestre</span>
-                            </p>
+                            <div className="max-lg:flex max-lg:flex-col max-lg:gap-0.5">
+                              <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500 lg:hidden">
+                                Semestre
+                              </p>
+                              <p className="hidden lg:block">
+                                <span className="text-slate-500">Semestre:</span>{' '}
+                                <span className="text-[#f0f4f8]">{num}° Semestre</span>
+                              </p>
+                              <p className="text-[#f0f4f8] lg:hidden">{num}° Semestre</p>
+                            </div>
                           ) : null;
                         })()}
                       </div>
@@ -1288,7 +1403,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                       {recordsLoading ? (
                         <p className="text-center text-sm text-slate-500 py-4">Cargando registros...</p>
                       ) : records.length ? (
-                        <div className="space-y-2.5 flex-1 min-h-0 overflow-y-auto pr-1 -mr-0.5">
+                        <div className="scroll-region app-scroll-content flex-1 min-h-0 pr-1 -mr-0.5">
                           {records.map((registro) => {
                             const { entries, truncated, total } = recordPreviewEntries(registro);
                             const invalid = registro.valido === false;
@@ -1358,7 +1473,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                     </div>
                   </>
                 ) : (
-                  <div className="flex-1 flex items-center justify-center text-slate-500 text-center text-sm">
+                  <div className="flex flex-1 items-center justify-center px-4 text-center text-sm text-slate-500 max-lg:hidden">
                     Selecciona un lote del historial para ver sus detalles.
                   </div>
                 )}

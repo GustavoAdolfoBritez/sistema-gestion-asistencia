@@ -350,7 +350,7 @@ const inpListaFiltro =
   'dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9] dark:placeholder:text-slate-500';
 
 const inpScope =
-  'w-full py-1.5 text-sm rounded-lg border border-slate-300 bg-white text-black shadow-sm pl-3 pr-12 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 ' +
+  'w-full py-1.5 text-sm rounded-lg border border-slate-300 bg-white text-black shadow-sm pl-3 pr-3 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 ' +
   appSelectDarkSurfaceClass;
 
 export function AcademicoAdminPage({ onLogout }: Props) {
@@ -1549,18 +1549,18 @@ export function AcademicoAdminPage({ onLogout }: Props) {
   const rangoAnioModulo = limitesAnioModulo();
 
   return (
-    <div className="system-bg text-slate-800 dark:text-[#e7eef9] min-h-screen h-screen overflow-hidden">
-      <div className="flex h-full w-full overflow-hidden">
+    <div className="system-bg app-shell-viewport text-slate-800 dark:text-[#e7eef9] min-h-screen h-screen overflow-hidden">
+      <div className="app-layout-row">
         {sidebarOpen ? (
-          <div className="fixed inset-0 bg-black/70 z-20 lg:hidden" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
+          <div className="app-sidebar-scrim" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
         ) : null}
 
         <AppSidebar sidebarOpen={sidebarOpen} onLogout={onLogout} onClose={() => setSidebarOpen(false)} />
 
-        <main className="flex-1 flex flex-col h-full overflow-hidden">
-          <header className="flex-shrink-0 flex flex-col gap-2 py-2.5 px-6 bg-white/95 backdrop-blur-md border-b border-slate-200 z-10 dark:bg-[#132a52]/90 dark:border-slate-800">
-            <div className="flex items-center justify-between gap-3 min-h-10">
-              <div className="flex items-center gap-3">
+        <main className="app-layout-main">
+          <header className="flex-shrink-0 flex flex-col gap-2 py-2.5 px-4 sm:px-6 bg-white/95 backdrop-blur-md border-b border-slate-200 z-10 dark:bg-[#132a52]/90 dark:border-slate-800">
+            <div className="flex flex-wrap items-center justify-between gap-3 min-h-10 min-w-0">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
                 <button
                   className="lg:hidden text-slate-600 hover:text-black dark:text-slate-400 dark:hover:text-slate-200"
                   onClick={() => setSidebarOpen(true)}
@@ -1569,9 +1569,9 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                   <span className="material-symbols-outlined">menu</span>
                 </button>
                 <span className="material-symbols-outlined text-[#6b8bc3]">auto_stories</span>
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Administración</p>
-                  <h1 className="text-xl font-semibold text-black dark:text-[#e7eef9]">Períodos y Cursos</h1>
+                  <h1 className="text-xl font-semibold text-black dark:text-[#e7eef9] leading-snug">Períodos y Cursos</h1>
                 </div>
               </div>
               {loading ? (
@@ -1584,8 +1584,9 @@ export function AcademicoAdminPage({ onLogout }: Props) {
             <AcademicoSubnav />
           </header>
 
-          <section className="flex-1 overflow-auto p-6 space-y-6">
-            <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-4 text-black shadow-sm dark:border-slate-800 dark:bg-[#132a52] dark:text-[#e7eef9] dark:shadow-none">
+          <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden max-lg:pt-10">
+            <div className="scroll-region app-scroll-content academico-mobile-cards-inset flex-1 p-4 sm:p-6 space-y-6 min-w-0">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-4 text-black shadow-sm dark:border-slate-800 dark:bg-[#132a52] dark:text-[#e7eef9] dark:shadow-none min-w-0">
               <div>
                 <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Módulo base</p>
                 <h2 className="text-lg font-semibold">Planes y períodos académicos</h2>
@@ -1594,7 +1595,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
               {!contextoSelectorListo ? (
                 <ScopeSelectorSkeleton soloCarrera={alcanceListo && alcanceVisualAcademico === 'carrera'} />
               ) : (
-                <div className={`grid grid-cols-1 gap-4 ${alcanceVisualAcademico === 'carrera' ? '' : 'xl:grid-cols-2'}`}>
+                <div className={`grid min-w-0 grid-cols-1 gap-4 ${alcanceVisualAcademico === 'carrera' ? '' : 'xl:grid-cols-2'}`}>
                   {alcanceVisualAcademico === 'carrera' ? null : (
                     <ScopeSelector
                       label="Facultad"
@@ -1675,7 +1676,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                           {/* Plan header */}
                           <button
                             type="button"
-                            className="w-full flex items-center justify-between p-3 text-left hover:bg-slate-100 dark:hover:bg-slate-800/50"
+                            className="w-full p-3 text-left hover:bg-slate-100 dark:hover:bg-slate-800/50 max-lg:flex max-lg:flex-col max-lg:gap-2 lg:flex lg:items-center lg:justify-between"
                             onClick={() => {
                               if (isOpen) {
                                 setExpandedPlanId(null);
@@ -1684,11 +1685,11 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                               }
                             }}
                           >
-                            <div className="flex items-center gap-2">
+                            <div className="flex min-w-0 items-center gap-2">
                               <span className="material-symbols-outlined text-slate-400 text-base leading-none">
                                 {isOpen ? 'expand_less' : 'expand_more'}
                               </span>
-                              <div>
+                              <div className="min-w-0">
                                 <p className="font-medium text-sm">{plan.nombre}</p>
                                 <p className="text-xs text-slate-400">
                                   {plan.anio_vigencia ? `Vigente desde ${plan.anio_vigencia}` : 'Sin año de vigencia'}
@@ -1697,9 +1698,9 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                                 </p>
                               </div>
                             </div>
-                            <div className="flex gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-                              <button className="btn-modern btn-modern-xs btn-modern-edit" onClick={() => handleEditPlan(plan)}>Editar</button>
-                              <button className="btn-modern btn-modern-xs btn-modern-danger" onClick={() => handleDeletePlan(plan)}>Eliminar</button>
+                            <div className="btn-mobile-row flex shrink-0 gap-2" onClick={(e) => e.stopPropagation()}>
+                              <button type="button" className="btn-modern btn-modern-xs btn-modern-edit" onClick={() => handleEditPlan(plan)}>Editar</button>
+                              <button type="button" className="btn-modern btn-modern-xs btn-modern-danger" onClick={() => handleDeletePlan(plan)}>Eliminar</button>
                             </div>
                           </button>
 
@@ -1744,17 +1745,17 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                               )}
                               <div className="divide-y divide-slate-200 rounded-lg border border-slate-200 overflow-hidden bg-white dark:divide-slate-800/90 dark:border-slate-800/80 dark:bg-[#0a1628]/50">
                                 {materiasDelSemestre.map((m, idx) => (
-                                  <div key={m.id} className="py-2 flex items-center justify-between gap-2">
-                                    <div className="flex items-center gap-3">
-                                      <span className="text-xs text-slate-500 w-5 text-right shrink-0">{idx + 1}.</span>
-                                      <div>
+                                  <div key={m.id} className="flex flex-col gap-2 py-2 max-lg:px-1 lg:flex-row lg:items-center lg:justify-between">
+                                    <div className="flex min-w-0 items-center gap-3">
+                                      <span className="w-5 shrink-0 text-right text-xs text-slate-500">{idx + 1}.</span>
+                                      <div className="min-w-0">
                                         <p className="text-sm font-medium">{m.nombre}</p>
                                         <p className="text-xs text-slate-600 dark:text-slate-400">{m.codigo}</p>
                                       </div>
                                     </div>
-                                    <div className="flex gap-1 shrink-0">
-                                      <button className="btn-modern btn-modern-xs btn-modern-edit" onClick={() => handleEditMateria(m)}>Editar</button>
-                                      <button className="btn-modern btn-modern-xs btn-modern-danger" onClick={() => handleDeleteMateria(m)}>Eliminar</button>
+                                    <div className="btn-mobile-row flex shrink-0 gap-1 lg:gap-1">
+                                      <button type="button" className="btn-modern btn-modern-xs btn-modern-edit" onClick={() => handleEditMateria(m)}>Editar</button>
+                                      <button type="button" className="btn-modern btn-modern-xs btn-modern-danger" onClick={() => handleDeleteMateria(m)}>Eliminar</button>
                                     </div>
                                   </div>
                                 ))}
@@ -1780,16 +1781,16 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                                       onChange={(e) => setMateriaForm((f) => ({ ...f, codigo: e.target.value }))}
                                     />
                                   </div>
-                                  <div className="flex gap-2">
-                                    <button className="btn-modern btn-modern-primary btn-modern-sm" onClick={() => void handleCreateMateria()}>Guardar materia</button>
-                                    <button className="btn-modern btn-modern-sm btn-modern-ghost" onClick={() => { setAddMateriaForPlanId(null); setMateriaForm({ nombre: '', codigo: '' }); }}>Cancelar</button>
+                                  <div className="btn-mobile-stack flex gap-2">
+                                    <button type="button" className="btn-modern btn-modern-primary btn-modern-sm btn-mobile-cta" onClick={() => void handleCreateMateria()}>Guardar materia</button>
+                                    <button type="button" className="btn-modern btn-modern-sm btn-modern-ghost btn-mobile-cta" onClick={() => { setAddMateriaForPlanId(null); setMateriaForm({ nombre: '', codigo: '' }); }}>Cancelar</button>
                                   </div>
                                 </div>
                               ) : (
-                                <div className="flex gap-2 pt-1 border-t border-slate-200 dark:border-slate-700/80">
+                                <div className="border-t border-slate-200 pt-1 dark:border-slate-700/80">
                                   <button
                                     type="button"
-                                    className="btn-modern btn-modern-primary btn-modern-sm disabled:pointer-events-none disabled:!bg-slate-200 disabled:!text-slate-500 disabled:!border-slate-300 disabled:!shadow-none disabled:!opacity-100 dark:disabled:!bg-[#4f8cdb] dark:disabled:!text-white dark:disabled:!border-[#3d7bc9] dark:disabled:!shadow-[0_4px_12px_rgba(79,140,219,0.28)] dark:disabled:!opacity-40"
+                                    className="btn-modern btn-modern-primary btn-modern-sm btn-mobile-cta disabled:pointer-events-none disabled:!border-slate-300 disabled:!bg-slate-200 disabled:!text-slate-500 disabled:!opacity-100 disabled:!shadow-none dark:disabled:!border-[#3d7bc9] dark:disabled:!bg-[#4f8cdb] dark:disabled:!text-white dark:disabled:!opacity-40 dark:disabled:!shadow-[0_4px_12px_rgba(79,140,219,0.28)]"
                                     disabled={!semElegido}
                                     title={!semElegido ? 'Primero seleccioná un semestre' : undefined}
                                     onClick={() => {
@@ -1813,31 +1814,31 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                     {showAddPlanForm ? (
                       <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 space-y-3">
                         <p className="text-sm font-semibold text-primary">Nuevo plan · {carreraSeleccionada.nombre}</p>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                        <div className="grid grid-cols-1 gap-2 lg:grid-cols-3">
                           <input
-                            className="px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                            className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                             placeholder="Nombre del plan"
                             value={planForm.nombre}
                             onChange={(e) => setPlanForm((f) => ({ ...f, nombre: e.target.value }))}
                             autoFocus
                           />
                           <input
-                            className="px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                            className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                             placeholder="Resolución (opcional)"
                             value={planForm.resolucion}
                             onChange={(e) => setPlanForm((f) => ({ ...f, resolucion: e.target.value }))}
                           />
                           <input
-                            className="px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                            className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                             placeholder="Año vigencia"
                             type="number"
                             value={planForm.anioVigencia}
                             onChange={(e) => setPlanForm((f) => ({ ...f, anioVigencia: e.target.value }))}
                           />
                         </div>
-                        <div className="flex gap-2">
-                          <button className="btn-modern btn-modern-primary btn-modern-sm" onClick={() => void handleCreatePlan()}>Crear plan</button>
-                          <button className="btn-modern btn-modern-sm btn-modern-ghost" onClick={() => { setShowAddPlanForm(false); setPlanForm({ nombre: '', resolucion: '', anioVigencia: '' }); }}>Cancelar</button>
+                        <div className="btn-mobile-stack flex gap-2">
+                          <button type="button" className="btn-modern btn-modern-primary btn-modern-sm btn-mobile-cta" onClick={() => void handleCreatePlan()}>Crear plan</button>
+                          <button type="button" className="btn-modern btn-modern-sm btn-modern-ghost btn-mobile-cta" onClick={() => { setShowAddPlanForm(false); setPlanForm({ nombre: '', resolucion: '', anioVigencia: '' }); }}>Cancelar</button>
                         </div>
                       </div>
                     ) : (
@@ -1859,16 +1860,16 @@ export function AcademicoAdminPage({ onLogout }: Props) {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-              <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-4 text-black shadow-sm dark:border-slate-800 dark:bg-[#132a52] dark:text-[#e7eef9] dark:shadow-none">
-                <div className="flex items-center justify-between">
-                  <div>
+            <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-2">
+              <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 space-y-4 text-black shadow-sm dark:border-slate-800 dark:bg-[#132a52] dark:text-[#e7eef9] dark:shadow-none">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="min-w-0">
                     <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Nuevo módulo</p>
-                    <h2 className="text-lg font-semibold">Abrir período académico</h2>
+                    <h2 className="text-lg font-semibold leading-snug break-words">Abrir período académico</h2>
                   </div>
-                  <span className="material-symbols-outlined text-primary">library_add</span>
+                  <span className="material-symbols-outlined text-primary shrink-0">library_add</span>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                   <label className="flex flex-col gap-1 text-sm col-span-2">
                     <span className="text-slate-600 text-xs dark:text-slate-400">Semestre del plan</span>
                     <AppSelect
@@ -1993,11 +1994,11 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                     />
                   </label>
                 </div>
-                <div className="flex justify-end">
+                <div className="flex justify-end max-lg:w-full">
                   <button
                     type="button"
                     onClick={handleCreateModulo}
-                    className="btn-modern btn-modern-primary"
+                    className="btn-modern btn-modern-primary btn-mobile-cta lg:w-auto"
                     disabled={loading || !contextoAcademicoListo || !moduloFiltroSemestre || !moduloForm.materiaId}
                   >
                     Crear módulo
@@ -2005,8 +2006,8 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3 text-black shadow-sm dark:border-slate-800 dark:bg-[#132a52] dark:text-[#e7eef9] dark:shadow-none">
-                <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 space-y-3 text-black shadow-sm dark:border-slate-800 dark:bg-[#132a52] dark:text-[#e7eef9] dark:shadow-none">
+                <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
                     <h3 className="text-lg font-semibold">Módulos</h3>
                     <p className="text-xs text-slate-600 dark:text-slate-400">
@@ -2018,8 +2019,8 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                   <span className="material-symbols-outlined text-slate-500 text-[22px] shrink-0">calendar_month</span>
                 </div>
                 {carreraSeleccionadaId ? (
-                  <div className="flex flex-wrap gap-2 items-center">
-                    <div className="relative flex-1 min-w-[8.5rem]">
+                  <div className="flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center min-w-0">
+                    <div className="relative w-full min-w-0 flex-1 lg:min-w-[8.5rem]">
                       <span className="material-symbols-outlined pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-[16px]">
                         search
                       </span>
@@ -2034,7 +2035,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                     </div>
                     <AppSelect
                       aria-label="Filtrar módulos por año"
-                      className="w-[7.25rem] shrink-0"
+                      className="w-full min-w-0 shrink-0 lg:w-[7.25rem]"
                       size="xs"
                       value={moduloListaAnio}
                       onChange={setModuloListaAnio}
@@ -2044,12 +2045,12 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                         value: String(anio),
                         label: String(anio),
                       }))}
-                      triggerClassName="px-2 py-1.5 rounded-md bg-white border border-slate-300 text-xs text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                      triggerClassName="w-full px-2 py-1.5 rounded-md bg-white border border-slate-300 text-xs text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                     />
                   </div>
                 ) : null}
                 {/* Altura ≈ 3 filas de tarjeta; a partir de la 4ª aparece scroll vertical */}
-                <div className="max-h-[270px] overflow-y-auto overflow-x-hidden space-y-2 pr-0.5">
+                <div className="scroll-region-at-lg space-y-2 pr-0.5 lg:max-h-[270px]">
                   {!carreraSeleccionadaId ? (
                     <p className="text-sm text-slate-500 py-6 text-center">Selecciona una carrera para ver los módulos.</p>
                   ) : sortedModulos.length === 0 ? (
@@ -2063,19 +2064,19 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                     const fechaFin    = mod.fecha_fin    ? new Date(mod.fecha_fin).toLocaleDateString('es-PY', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
                     const periodo = `${MESES[(mod.mes ?? 1) - 1]} ${mod.anio}`;
                     return (
-                      <div key={mod.id} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 flex items-center justify-between gap-3 hover:bg-slate-100 dark:border-slate-700/70 dark:bg-slate-900/40 dark:hover:bg-slate-800/40">
-                        <div className="flex items-start gap-2.5 min-w-0">
+                      <div key={mod.id} className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 hover:bg-slate-100 dark:border-slate-700/70 dark:bg-slate-900/40 dark:hover:bg-slate-800/40 max-lg:items-stretch lg:flex-row lg:items-center lg:justify-between lg:gap-3">
+                        <div className="flex min-w-0 items-start gap-2.5">
                           <span className="material-symbols-outlined text-primary/70 text-[20px] mt-0.5 shrink-0">book</span>
                           <div className="min-w-0 space-y-0.5">
-                            <p className="font-semibold text-sm truncate">{mod.materia ?? 'Materia'}</p>
-                            <p className="text-xs text-slate-600 flex items-center gap-1 dark:text-slate-400">
+                            <p className="truncate text-sm font-semibold">{mod.materia ?? 'Materia'}</p>
+                            <p className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400">
                               <span className="material-symbols-outlined text-[13px]">calendar_today</span>
                               {periodo}
                             </p>
                             <p className="text-[11px] text-slate-600 dark:text-slate-500">{fechaInicio} → {fechaFin}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                        <div className="btn-mobile-row flex shrink-0 flex-wrap items-center justify-end gap-1.5">
                           <button
                             type="button"
                             className="btn-modern btn-modern-xs btn-modern-edit"
@@ -2094,18 +2095,18 @@ export function AcademicoAdminPage({ onLogout }: Props) {
               </div>
             </div>
 
-            <div className="space-y-4">
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-              <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-4 text-black shadow-sm dark:border-slate-800 dark:bg-[#132a52] dark:text-[#e7eef9] dark:shadow-none">
-                <div className="flex items-center justify-between">
-                  <div>
+            <div className="space-y-4 min-w-0">
+            <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-2">
+              <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 space-y-4 text-black shadow-sm dark:border-slate-800 dark:bg-[#132a52] dark:text-[#e7eef9] dark:shadow-none">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="min-w-0">
                     <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Nuevo curso</p>
-                    <h2 className="text-lg font-semibold">Abrir curso</h2>
+                    <h2 className="text-lg font-semibold leading-snug break-words">Abrir curso</h2>
                   </div>
-                  <span className="material-symbols-outlined text-primary">add_circle</span>
+                  <span className="material-symbols-outlined text-primary shrink-0">add_circle</span>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <label className="flex flex-col gap-1 text-sm">
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                  <label className="flex min-w-0 flex-col gap-1 text-sm">
                     <span className="text-slate-600 text-xs dark:text-slate-400">Semestre</span>
                     <AppSelect
                       aria-label="Semestre del curso"
@@ -2120,10 +2121,10 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                         value: String(s),
                         label: s > 0 ? formatearSemestre(s) : 'Sin semestre asignado',
                       }))}
-                      triggerClassName="px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                      triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                     />
                   </label>
-                  <label className="flex flex-col gap-1 text-sm">
+                  <label className="flex min-w-0 flex-col gap-1 text-sm">
                     <span className="text-slate-600 text-xs dark:text-slate-400">Módulo (materia + mes)</span>
                     <AppSelect
                       aria-label="Módulo del curso"
@@ -2142,10 +2143,10 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                         value: String(m.id),
                         label: `${m.materia ?? `Materia ${m.materia_id}`} · ${MESES[(m.mes ?? 1) - 1]} ${m.anio}`,
                       }))}
-                      triggerClassName="px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                      triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                     />
                   </label>
-                  <div className="flex flex-col gap-1 text-sm relative md:col-span-2">
+                  <div className="flex min-w-0 flex-col gap-1 text-sm relative lg:col-span-2">
                     <span className="text-slate-600 text-xs dark:text-slate-400">Docente</span>
                     <div className="relative">
                       <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 material-symbols-outlined text-[16px]">
@@ -2169,14 +2170,14 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                       />
                     </div>
                     {contextoAcademicoListo && docenteSearchOpen ? (
-                      <div className="absolute top-full mt-1 z-20 w-full rounded-xl border border-slate-200 bg-white shadow-2xl ring-1 ring-slate-200/80 overflow-hidden dark:border-slate-700/60 dark:bg-[#0b1427] dark:ring-white/5">
+                      <div className="app-dropdown-panel absolute top-full z-20 mt-1 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl ring-1 ring-slate-200/80 dark:border-slate-700/60 dark:bg-[#0b1427] dark:ring-white/5">
                         {docentesFiltrados.length ? (
-                          <div className="max-h-[170px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60">
+                          <div className="max-h-[170px] overflow-y-auto overscroll-contain divide-y divide-slate-100 dark:divide-slate-800/60">
                             {docentesFiltrados.map((docente) => (
                               <button
                                 key={docente.id}
                                 type="button"
-                                className="w-full px-3 py-2.5 text-left hover:bg-slate-100 dark:hover:bg-slate-800/70 flex items-center gap-2.5"
+                                className="flex w-full items-start gap-2.5 px-3 py-2.5 text-left hover:bg-slate-100 dark:hover:bg-slate-800/70"
                                 onMouseDown={(event) => {
                                   event.preventDefault();
                                   // Usa docente.id (usuario) si no tiene persona vinculada; el backend resuelve ambos
@@ -2186,9 +2187,14 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                                 }}
                               >
                                 <span className="material-symbols-outlined text-slate-500 text-[18px] shrink-0">person</span>
-                                <div className="min-w-0">
-                                  <p className="text-sm font-medium text-black truncate dark:text-[#e7eef9]">{formatDocenteLabel(docente)}</p>
-                                  <p className="text-xs text-slate-600 truncate dark:text-slate-400">{docente.email}{docente.persona?.legajo ? ` · Legajo ${docente.persona.legajo}` : ''}</p>
+                                <div className="min-w-0 flex-1">
+                                  <p className="app-dropdown-option-line text-sm font-medium text-black dark:text-[#e7eef9]">
+                                    {formatDocenteLabel(docente)}
+                                  </p>
+                                  <p className="app-dropdown-option-line text-xs text-slate-600 dark:text-slate-400">
+                                    {docente.email}
+                                    {docente.persona?.legajo ? ` · Legajo ${docente.persona.legajo}` : ''}
+                                  </p>
                                 </div>
                               </button>
                             ))}
@@ -2213,11 +2219,11 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                     </div>
                   </div>
                 </div>
-                <div className="flex justify-end">
+                <div className="flex justify-end max-lg:w-full">
                   <button
                     type="button"
                     onClick={handleCreateCurso}
-                    className="btn-modern btn-modern-primary"
+                    className="btn-modern btn-modern-primary btn-mobile-cta lg:w-auto"
                     disabled={loading || !contextoAcademicoListo || !cursoForm.moduloId || !cursoForm.docenteId}
                   >
                     Crear curso
@@ -2225,8 +2231,8 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3 text-black shadow-sm dark:border-slate-800 dark:bg-[#132a52] dark:text-[#e7eef9] dark:shadow-none">
-                <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 space-y-3 text-black shadow-sm dark:border-slate-800 dark:bg-[#132a52] dark:text-[#e7eef9] dark:shadow-none">
+                <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
                     <h3 className="text-lg font-semibold">Cursos</h3>
                     <p className="text-xs text-slate-600 dark:text-slate-400">
@@ -2238,8 +2244,8 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                   <span className="material-symbols-outlined text-slate-500 text-[22px] shrink-0">school</span>
                 </div>
                 {carreraSeleccionadaId ? (
-                  <div className="flex flex-wrap gap-2 items-center">
-                    <div className="relative flex-1 min-w-[8.5rem]">
+                  <div className="flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center min-w-0">
+                    <div className="relative w-full min-w-0 flex-1 lg:min-w-[8.5rem]">
                       <span className="material-symbols-outlined pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-[16px]">
                         search
                       </span>
@@ -2254,7 +2260,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                     </div>
                     <AppSelect
                       aria-label="Filtrar cursos por año"
-                      className="w-[7.25rem] shrink-0"
+                      className="w-full min-w-0 shrink-0 lg:w-[7.25rem]"
                       size="xs"
                       value={cursoListaAnio}
                       onChange={setCursoListaAnio}
@@ -2264,13 +2270,13 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                         value: String(anio),
                         label: String(anio),
                       }))}
-                      triggerClassName="px-2 py-1.5 rounded-md bg-white border border-slate-300 text-xs text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                      triggerClassName="w-full px-2 py-1.5 rounded-md bg-white border border-slate-300 text-xs text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                     />
                   </div>
                 ) : null}
 
                 {/* Altura ≈ 3 filas de tarjeta; a partir de la 4ª aparece scroll vertical */}
-                <div className="max-h-[270px] overflow-y-auto overflow-x-auto pr-0.5">
+                <div className="scroll-region-at-lg pr-0.5 lg:max-h-[270px]">
                   {!carreraSeleccionadaId ? (
                     <p className="text-sm text-slate-500 py-6 text-center">Selecciona una carrera para ver los cursos.</p>
                   ) : !cursosFiltradosPorCarrera.length ? (
@@ -2280,9 +2286,9 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                       Ningún curso coincide con la búsqueda o el año seleccionado.
                     </p>
                   ) : (
-                    <div className="min-w-[17.5rem]">
+                    <div className="w-full min-w-0">
                       <div
-                        className="sticky top-0 z-10 grid grid-cols-[1.25rem_minmax(0,1fr)_minmax(6.5rem,8.5rem)_3.5rem_8.75rem] gap-x-2 items-center px-3 py-2 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500 bg-white border-b border-slate-200 shadow-[0_1px_3px_rgba(15,23,42,0.06)] dark:text-slate-400 dark:bg-[#132a52] dark:border-slate-700 dark:shadow-[0_1px_0_#1e293b]"
+                        className="sticky top-0 z-10 mb-1.5 hidden items-center gap-x-2 border-b border-slate-200 bg-white px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 shadow-[0_1px_3px_rgba(15,23,42,0.06)] dark:border-slate-700 dark:bg-[#132a52] dark:text-slate-400 dark:shadow-[0_1px_0_#1e293b] lg:grid lg:grid-cols-[1.25rem_minmax(0,1fr)_minmax(0,8.5rem)_minmax(2.5rem,3.5rem)_minmax(0,8.75rem)]"
                         aria-hidden
                       >
                         <span />
@@ -2291,7 +2297,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                         <span className="text-right">Alumnos</span>
                         <span />
                       </div>
-                      <div className="space-y-1.5 pt-0.5">
+                      <div className="space-y-1.5 pt-0.5 max-lg:space-y-2">
                       {cursosListaVisibles.map((curso) => {
                         const isSelected = selectedCursoId === curso.id;
                         const materiaTitulo = curso.materia ?? `Módulo ${curso.modulo_id}`;
@@ -2300,7 +2306,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                         return (
                           <div
                             key={curso.id}
-                            className={`rounded-lg border grid grid-cols-[1.25rem_minmax(0,1fr)_minmax(6.5rem,8.5rem)_3.5rem_8.75rem] gap-x-2 items-center px-3 py-2.5 transition-colors ${
+                            className={`rounded-lg border transition-colors max-lg:flex max-lg:flex-col max-lg:gap-2 max-lg:p-3 lg:grid lg:grid-cols-[1.25rem_minmax(0,1fr)_minmax(0,8.5rem)_minmax(2.5rem,3.5rem)_minmax(0,8.75rem)] lg:items-center lg:gap-x-2 lg:px-3 lg:py-2.5 ${
                               isSelected
                                 ? 'border-primary/60 bg-primary/5 ring-2 ring-primary/30 dark:bg-primary/10'
                                 : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm dark:border-slate-700/70 dark:bg-slate-900/30 dark:hover:border-slate-600/80'
@@ -2308,33 +2314,48 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                           >
                             <button
                               type="button"
-                              className="contents text-left"
+                              className="text-left max-lg:flex max-lg:w-full max-lg:flex-col max-lg:gap-2 lg:contents"
                               onClick={() => void handleSelectCurso(curso.id)}
                             >
-                              <span
-                                className={`material-symbols-outlined text-[18px] leading-none justify-self-center cursor-pointer ${
-                                  isSelected ? 'text-primary' : 'text-slate-400 dark:text-slate-500'
-                                }`}
-                              >
-                                {isSelected ? 'check_circle' : 'school'}
-                              </span>
-                              <span className="min-w-0 text-sm font-semibold leading-snug text-slate-900 truncate cursor-pointer dark:text-[#e7eef9]">
-                                {materiaTitulo}
-                              </span>
-                              <span
-                                className="min-w-0 text-xs leading-snug text-slate-600 truncate cursor-pointer dark:text-slate-400"
-                                title={docenteNombre}
-                              >
-                                {docenteNombre}
-                              </span>
-                              <span className="justify-self-end text-xs leading-snug tabular-nums whitespace-nowrap cursor-pointer">
+                              <div className="flex min-w-0 items-start gap-2 max-lg:w-full lg:contents">
+                                <span
+                                  className={`material-symbols-outlined shrink-0 text-[18px] leading-none cursor-pointer lg:justify-self-center ${
+                                    isSelected ? 'text-primary' : 'text-slate-400 dark:text-slate-500'
+                                  }`}
+                                >
+                                  {isSelected ? 'check_circle' : 'school'}
+                                </span>
+                                <div className="min-w-0 flex-1 lg:contents">
+                                  <span className="min-w-0 cursor-pointer text-sm font-semibold leading-snug text-slate-900 max-lg:block max-lg:break-words max-lg:whitespace-normal dark:text-[#e7eef9] lg:truncate">
+                                    <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-500 lg:hidden">
+                                      Materia
+                                    </span>
+                                    {materiaTitulo}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="min-w-0 max-lg:pl-7 lg:contents">
+                                <span
+                                  className="min-w-0 cursor-pointer text-xs leading-snug text-slate-600 max-lg:block max-lg:break-words max-lg:whitespace-normal dark:text-slate-400 lg:truncate"
+                                  title={docenteNombre}
+                                >
+                                  <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-500 lg:hidden">
+                                    Docente
+                                  </span>
+                                  {docenteNombre}
+                                </span>
+                              </div>
+                              <span className="cursor-pointer text-xs leading-snug tabular-nums max-lg:pl-7 lg:justify-self-end lg:whitespace-nowrap">
+                                <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-500 lg:hidden">
+                                  Alumnos
+                                </span>
                                 <span className="font-semibold text-slate-800 dark:text-slate-200">{inscriptos}</span>
                                 <span className="text-slate-500 dark:text-slate-500"> insc.</span>
                               </span>
                             </button>
                             <div
                               data-curso-acciones
-                              className="col-start-5 flex items-center justify-end gap-1 border-l border-slate-200/80 pl-1.5 dark:border-slate-700/80"
+                              className="btn-mobile-row flex items-center justify-end gap-1 max-lg:border-t max-lg:border-slate-200/80 max-lg:pt-2 dark:max-lg:border-slate-700/80 lg:col-start-5 lg:border-l lg:border-slate-200/80 lg:pl-1.5 dark:lg:border-slate-700/80"
                             >
                               <button
                                 type="button"
@@ -2364,15 +2385,15 @@ export function AcademicoAdminPage({ onLogout }: Props) {
             {cursoSeleccionado ? (
               <div
                 ref={planillaPanelRef}
-                className="rounded-xl border border-slate-200 bg-white shadow-sm scroll-mt-4 dark:border-slate-800 dark:bg-[#132a52] dark:shadow-none flex flex-col min-h-0"
+                className="min-w-0 rounded-xl border border-slate-200 bg-white shadow-sm scroll-mt-4 dark:border-slate-800 dark:bg-[#132a52] dark:shadow-none flex flex-col min-h-0"
               >
-                <div className="flex flex-wrap items-start justify-between gap-3 p-4 border-b border-slate-200 dark:border-slate-800">
-                  <div className="min-w-0 space-y-1">
+                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 p-4 dark:border-slate-800 max-lg:flex-col max-lg:gap-2 max-lg:p-3">
+                  <div className="min-w-0 space-y-1 max-lg:w-full">
                     <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Planilla de alumnos</p>
-                    <h3 className="text-lg font-semibold text-black dark:text-[#e7eef9] truncate">
+                    <h3 className="text-lg font-semibold text-black dark:text-[#e7eef9] max-lg:break-words max-lg:leading-snug max-lg:whitespace-normal lg:truncate">
                       {cursoSeleccionado.materia ?? `Módulo ${cursoSeleccionado.modulo_id}`}
                     </h3>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                    <p className="text-sm text-slate-600 dark:text-slate-400 break-words leading-relaxed">
                       {cursoSeleccionado.docente ?? cursoSeleccionado.docente_id} ·{' '}
                       <span className="tabular-nums">{planillaSeleccionada.length} alumno{planillaSeleccionada.length !== 1 ? 's' : ''}</span>
                     </p>
@@ -2385,7 +2406,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                   </div>
                   <button
                     type="button"
-                    className="btn-modern btn-modern-ghost btn-modern-sm shrink-0"
+                    className="btn-modern btn-modern-ghost btn-modern-sm btn-mobile-cta shrink-0 lg:w-auto"
                     onClick={cerrarPlanillaCurso}
                     aria-label="Cerrar planilla"
                   >
@@ -2394,7 +2415,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                   </button>
                 </div>
 
-                <div className="p-4 space-y-4">
+                <div className="space-y-4 p-4 max-lg:space-y-3 max-lg:p-3">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Agregar alumno</p>
@@ -2425,7 +2446,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                           }}
                         />
                         {alumnoSearchOpen && (alumnoResultados.length > 0 || alumnoSearchLoading) ? (
-                          <div className="absolute top-full mt-1 z-30 w-full rounded-xl border border-slate-200 bg-white shadow-2xl overflow-hidden dark:border-slate-600 dark:bg-[#0b1427]">
+                          <div className="app-dropdown-panel absolute top-full z-30 mt-1 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-600 dark:bg-[#0b1427]">
                             {alumnoSearchLoading ? (
                               <p className="px-3 py-3 text-xs text-slate-600 dark:text-slate-400">Buscando...</p>
                             ) : (
@@ -2443,16 +2464,16 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                                       key={al.id}
                                       type="button"
                                       role="option"
-                                      className="flex h-14 w-full shrink-0 flex-col justify-center px-3 text-left hover:bg-slate-100 border-b border-slate-100 last:border-b-0 dark:hover:bg-slate-800 dark:border-slate-800"
+                                      className="flex w-full shrink-0 flex-col justify-center px-3 py-2.5 text-left hover:bg-slate-100 border-b border-slate-100 last:border-b-0 dark:hover:bg-slate-800 dark:border-slate-800"
                                       onMouseDown={(e) => {
                                         e.preventDefault();
                                         void handleMatricularAlumno(cursoSeleccionado.id, al);
                                       }}
                                     >
-                                      <p className="truncate text-sm font-medium leading-tight text-black dark:text-[#e7eef9]">
+                                      <p className="app-dropdown-option-line text-sm font-medium text-black dark:text-[#e7eef9]">
                                         {nombre}
                                       </p>
-                                      <p className="truncate text-xs leading-tight text-slate-600 dark:text-slate-400">
+                                      <p className="app-dropdown-option-line text-xs text-slate-600 dark:text-slate-400">
                                         Doc: {al.numero_documento}
                                       </p>
                                     </button>
@@ -2505,10 +2526,10 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                       return (
                         <div className="space-y-1">
                           <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Asignar planilla importada</p>
-                          <div className="flex gap-2 items-center">
+                          <div className="flex items-center gap-2 max-lg:flex-col max-lg:items-stretch">
                             <AppSelect
                               aria-label="Seleccionar semestre importado para asignar al curso"
-                              className="flex-1"
+                              className="min-w-0 flex-1 max-lg:w-full"
                               value={semestreSeleccionado}
                               disabled={sinPlanillasCompatibles}
                               onChange={(v) => setSemestreLotePorCurso((prev) => ({ ...prev, [curso.id]: v }))}
@@ -2521,7 +2542,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                             />
                             <button
                               type="button"
-                              className="btn-modern btn-modern-sm btn-modern-primary shrink-0"
+                              className="btn-modern btn-modern-sm btn-modern-primary btn-mobile-cta shrink-0 lg:w-auto"
                               disabled={sinPlanillasCompatibles || !loteSeleccionado || loteImportLoading}
                               onClick={() =>
                                 loteSeleccionado &&
@@ -2540,10 +2561,10 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                     })()}
                   </div>
 
-                  <div className="flex flex-wrap gap-2 items-center pt-1 border-t border-slate-200 dark:border-slate-700">
+                  <div className="flex flex-col gap-2 pt-1 border-t border-slate-200 dark:border-slate-700 lg:flex-row lg:flex-wrap lg:items-center min-w-0">
                     <AppSelect
                       aria-label="Curso origen para copiar planilla"
-                      className="flex-1 min-w-[12rem]"
+                      className="w-full min-w-0 flex-1 lg:min-w-[12rem]"
                       value={copiarDesdeCursoId}
                       onChange={setCopiarDesdeCursoId}
                       allowEmpty
@@ -2564,7 +2585,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                     />
                     <button
                       type="button"
-                      className="btn-modern btn-modern-sm btn-modern-ghost border-slate-300 shrink-0 dark:border-slate-600"
+                      className="btn-modern btn-modern-sm btn-modern-ghost btn-mobile-cta shrink-0 border-slate-300 dark:border-slate-600 lg:w-auto"
                       disabled={!copiarDesdeCursoId}
                       onClick={() => void handleCopiarMatriculas(cursoSeleccionado.id)}
                     >
@@ -2572,7 +2593,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                     </button>
                   </div>
 
-                  <div className="rounded-lg border border-slate-200 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-950/20 overflow-hidden">
+                  <div className="rounded-lg border border-slate-200 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-950/20 overflow-hidden min-w-0">
                     {planillaLoading ? (
                       <p className="text-sm text-slate-600 text-center py-12 dark:text-slate-400">Cargando planilla...</p>
                     ) : planillaSeleccionada.length === 0 ? (
@@ -2580,46 +2601,85 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                         Sin alumnos inscritos. Usá el buscador o asigná una planilla importada.
                       </p>
                     ) : (
-                      <div className="h-[min(28rem,55vh)] overflow-y-auto overflow-x-auto overscroll-contain">
-                        <table className="w-full text-sm border-collapse min-w-[32rem]">
-                          <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-[#0d1b2e]">
-                            <tr className="text-left text-xs uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                              <th className="px-3 py-2.5 w-10 font-semibold">#</th>
-                              <th className="px-3 py-2.5 font-semibold">Apellidos y nombres</th>
-                              <th className="px-3 py-2.5 w-28 font-semibold">Documento</th>
-                              <th className="px-3 py-2.5 w-24 font-semibold">Estado</th>
-                              <th className="px-3 py-2.5 w-24 text-right font-semibold">Acción</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                            {planillaSeleccionada.map((m, idx) => (
-                              <tr
-                                key={m.id}
-                                className="bg-white hover:bg-slate-50 dark:bg-transparent dark:hover:bg-slate-900/50"
-                              >
-                                <td className="px-3 py-3 text-xs text-slate-500 tabular-nums">{idx + 1}</td>
-                                <td className="px-3 py-3 font-medium text-black dark:text-[#e7eef9]">{m.nombre_completo}</td>
-                                <td className="px-3 py-3 text-slate-600 tabular-nums dark:text-slate-400">{m.numero_documento}</td>
-                                <td className="px-3 py-3 text-slate-600 capitalize dark:text-slate-400">{m.estado_academico}</td>
-                                <td className="px-3 py-3 text-right">
-                                  <button
-                                    type="button"
-                                    className="btn-modern btn-modern-xs btn-modern-danger"
-                                    onClick={() => handleDesmatricularAlumno(cursoSeleccionado.id, m)}
-                                  >
-                                    Quitar
-                                  </button>
-                                </td>
+                      <>
+                        <ul className="divide-y divide-slate-200 dark:divide-slate-800 lg:hidden">
+                          {planillaSeleccionada.map((m, idx) => (
+                            <li
+                              key={m.id}
+                              className="flex flex-col gap-2 bg-white px-4 py-3 dark:bg-transparent"
+                            >
+                              <div className="flex items-start justify-between gap-2 max-lg:flex-col max-lg:gap-2.5">
+                                <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                  #{idx + 1}
+                                </span>
+                                <button
+                                  type="button"
+                                  className="btn-modern btn-modern-xs btn-modern-danger btn-mobile-cta shrink-0 lg:w-auto"
+                                  onClick={() => handleDesmatricularAlumno(cursoSeleccionado.id, m)}
+                                >
+                                  Quitar
+                                </button>
+                              </div>
+                              <p className="text-[15px] font-medium leading-snug break-words text-black dark:text-[#e7eef9]">
+                                {m.nombre_completo}
+                              </p>
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600 dark:text-slate-400">
+                                <span>
+                                  <span className="text-slate-500 dark:text-slate-500">Documento </span>
+                                  <span className="tabular-nums font-medium text-slate-800 dark:text-slate-200">
+                                    {m.numero_documento}
+                                  </span>
+                                </span>
+                                <span className="capitalize">
+                                  <span className="text-slate-500 dark:text-slate-500">Estado </span>
+                                  {m.estado_academico}
+                                </span>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                        <div className="scroll-region hidden h-[min(28rem,55vh)] lg:block">
+                          <table className="w-full min-w-[32rem] border-collapse text-sm">
+                            <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-[#0d1b2e]">
+                              <tr className="text-left text-xs uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                                <th className="w-10 px-3 py-2.5 font-semibold">#</th>
+                                <th className="px-3 py-2.5 font-semibold">Apellidos y nombres</th>
+                                <th className="w-28 px-3 py-2.5 font-semibold">Documento</th>
+                                <th className="w-24 px-3 py-2.5 font-semibold">Estado</th>
+                                <th className="w-24 px-3 py-2.5 text-right font-semibold">Acción</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                            </thead>
+                            <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                              {planillaSeleccionada.map((m, idx) => (
+                                <tr
+                                  key={m.id}
+                                  className="bg-white hover:bg-slate-50 dark:bg-transparent dark:hover:bg-slate-900/50"
+                                >
+                                  <td className="px-3 py-3 text-xs tabular-nums text-slate-500">{idx + 1}</td>
+                                  <td className="px-3 py-3 font-medium text-black dark:text-[#e7eef9]">{m.nombre_completo}</td>
+                                  <td className="px-3 py-3 tabular-nums text-slate-600 dark:text-slate-400">{m.numero_documento}</td>
+                                  <td className="px-3 py-3 capitalize text-slate-600 dark:text-slate-400">{m.estado_academico}</td>
+                                  <td className="px-3 py-3 text-right">
+                                    <button
+                                      type="button"
+                                      className="btn-modern btn-modern-xs btn-modern-danger"
+                                      onClick={() => handleDesmatricularAlumno(cursoSeleccionado.id, m)}
+                                    >
+                                      Quitar
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>
               </div>
             ) : null}
+            </div>
             </div>
 
           </section>

@@ -54,6 +54,15 @@ type PlanillaMatrix = Map<
   }
 >;
 
+type PlanillaMatrixEntry = NonNullable<ReturnType<PlanillaMatrix['get']>>;
+
+type ColumnaPlanilla = {
+  fecha: string;
+  modalidadDefault: 'presencial' | 'virtual';
+  sesion: Sesion | null;
+  esListaExcepcional: boolean;
+};
+
 type PlanillaAsignada = {
   curso_id: number;
   modulo_id: number;
@@ -208,10 +217,520 @@ function claseFilaPlanilla(estado: EstadoFilaPlanilla, idx: number): string {
   return idx % 2 === 0 ? 'planilla-fila-regular-par' : 'planilla-fila-regular-impar';
 }
 
+/** Paneles del módulo justificaciones: blanco en claro, azul oscuro en dark (como referencia UI). */
+const JUSTIF_PANEL_CLASS =
+  'min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-[#132a52] dark:shadow-none';
+
+/** Cabecera interna de cada panel (Nueva justificación / Historial). */
+const JUSTIF_PANEL_HEADER_CLASS =
+  'flex min-w-0 flex-col gap-3 border-b border-slate-200 bg-white px-4 py-3 max-lg:py-4 dark:border-slate-800 dark:bg-[#132a52] lg:flex-row lg:items-center lg:justify-between';
+
+/** Tabla historial escritorio — thead y filas. */
+const JUSTIF_TABLE_HEAD_CLASS =
+  'sticky top-0 z-10 bg-slate-50 text-slate-700 dark:bg-[#0d1b2e] dark:text-[#f0f4f8]';
+
+const JUSTIF_TABLE_ROW_CLASS =
+  'border-t border-slate-200 align-top hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-[#0d1b2e]/40';
+
+function claseBadgeEstadoJustificacion(estado: JustificacionEstado): string {
+  if (estado === 'aprobada') {
+    return 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300';
+  }
+  if (estado === 'rechazada') {
+    return 'border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300';
+  }
+  return 'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-400/60 dark:bg-transparent dark:text-amber-300';
+}
+
+const PLANILLA_KPI_ITEMS = [
+  {
+    key: 'matriculas',
+    label: 'Matrículas',
+    color: 'border-slate-200 text-slate-700 dark:border-slate-700 dark:text-slate-300',
+  },
+  {
+    key: 'sesiones',
+    label: 'Sesiones del mes',
+    color: 'border-slate-200 text-slate-700 dark:border-slate-700 dark:text-slate-300',
+  },
+  {
+    key: 'riesgo',
+    label: 'En riesgo',
+    color: 'border-amber-300 text-amber-700 dark:border-amber-500/40 dark:text-[#ef8001]',
+  },
+  {
+    key: 'inhabilitados',
+    label: 'Inhabilitados',
+    color: 'border-rose-300 text-rose-700 dark:border-rose-500/40 dark:text-rose-300',
+  },
+] as const;
+
+function PlanillaDiaCeldaMovil({
+  col,
+  matriculaId,
+  entry,
+  sesionActivaId,
+  getEstadoSiguiente,
+  onRegistrar,
+}: {
+  col: ColumnaPlanilla;
+  matriculaId: number;
+  entry: PlanillaMatrixEntry;
+  sesionActivaId: number | null;
+  getEstadoSiguiente: (estado: 'presente' | 'ausente' | 'justificada' | null) => 'presente' | 'ausente';
+  onRegistrar: (matriculaId: number, sesionId: number, estado: 'presente' | 'ausente') => void;
+}) {
+  const s = col.sesion;
+  const f = new Date(`${col.fecha}T00:00:00`);
+  const etiquetaDia = f.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric' });
+  const esActiva = s ? sesionActivaId === s.id : false;
+  const dimmed = sesionActivaId !== null && !esActiva;
+  const pointerStartRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
+  const swipeTriggeredRef = useRef(false);
+  const resetSwipe = () => {
+    pointerStartRef.current = null;
+    swipeTriggeredRef.current = false;
+  };
+
+  if (!s) {
+    return (
+      <div
+        className={`flex w-11 shrink-0 flex-col items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-0.5 py-1.5 dark:border-slate-700 dark:bg-[#0e1a30] ${dimmed ? 'opacity-40' : ''}`}
+        title="Día lectivo sin sesión"
+      >
+        <span className="text-[9px] font-medium uppercase text-slate-600">{etiquetaDia}</span>
+        <span className="text-slate-600 text-[10px] font-black">—</span>
+      </div>
+    );
+  }
+
+  const celda = entry.celdas.get(s.id);
+  const estado = celda?.estadoAsistencia ?? null;
+  const cerrada = s.estado.toLowerCase() === 'cerrada';
+  const siguiente = getEstadoSiguiente(estado);
+  const cellLabel = estado === 'presente' ? 'P' : estado === 'ausente' ? 'A' : estado === 'justificada' ? 'J' : '—';
+  const badgeCerrada =
+    estado === 'presente'
+      ? 'bg-emerald-100 text-emerald-800 border-emerald-400 dark:bg-emerald-500/15 dark:text-emerald-200 dark:border-emerald-400/40'
+      : estado === 'ausente'
+        ? 'bg-rose-100 text-rose-800 border-rose-400 dark:bg-rose-500/15 dark:text-rose-200 dark:border-rose-400/40'
+        : estado === 'justificada'
+          ? 'bg-amber-100 text-amber-900 border-amber-400 dark:bg-amber-500/15 dark:text-amber-200 dark:border-amber-400/40'
+          : 'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800/70 dark:text-slate-300 dark:border-slate-600';
+
+  return (
+    <div
+      className={`flex w-11 shrink-0 flex-col items-center gap-1 rounded-lg border px-0.5 py-1.5 ${
+        esActiva
+          ? 'border-primary/50 bg-primary/10'
+          : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-[#0e1a30]'
+      } ${dimmed ? 'opacity-45' : ''}`}
+    >
+      <span className={`text-[9px] font-semibold uppercase ${esActiva ? 'text-primary' : 'text-slate-500'}`}>
+        {etiquetaDia}
+      </span>
+      {cerrada ? (
+        estado === null ? (
+          <span className="text-slate-600 text-[10px] font-black">—</span>
+        ) : (
+          <span className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border text-sm font-bold ${badgeCerrada}`}>
+            {cellLabel}
+          </span>
+        )
+      ) : estado === 'justificada' ? (
+        <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-amber-400 bg-amber-100 text-sm font-bold text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+          J
+        </span>
+      ) : (
+        <button
+          type="button"
+          title={`Marcar ${siguiente === 'presente' ? 'presente' : 'ausente'}`}
+          // Permite scroll vertical mientras detectamos swipe horizontal.
+          className={`touch-pan-y inline-flex h-9 w-9 items-center justify-center rounded-lg font-black transition-transform active:scale-95 ${
+            estado === 'presente'
+              ? 'border bg-emerald-100 text-emerald-700 border-emerald-400 dark:bg-emerald-500/15 dark:text-emerald-200 dark:border-emerald-400/40'
+              : estado === 'ausente'
+                ? 'border bg-rose-100 text-rose-700 border-rose-400 dark:bg-rose-500/15 dark:text-rose-200 dark:border-rose-400/40'
+                : 'border-0 bg-transparent text-lg text-slate-500 dark:text-slate-600'
+          }`}
+          onPointerDown={(e) => {
+            if (cerrada) return;
+            pointerStartRef.current = { x: e.clientX, y: e.clientY, pointerId: e.pointerId };
+            swipeTriggeredRef.current = false;
+          }}
+          onPointerCancel={resetSwipe}
+          onPointerUp={resetSwipe}
+          onPointerMove={(e) => {
+            if (cerrada) return;
+            const start = pointerStartRef.current;
+            if (!start || start.pointerId !== e.pointerId) return;
+            if (swipeTriggeredRef.current) return;
+
+            const dx = e.clientX - start.x;
+            const dy = e.clientY - start.y;
+            const absX = Math.abs(dx);
+            const absY = Math.abs(dy);
+
+            // Swipe horizontal deliberado (evita interferir con scroll vertical)
+            if (absX < 28 || absX <= absY) return;
+
+            const target = dx > 0 ? ('presente' as const) : ('ausente' as const);
+            if (estado === target) {
+              swipeTriggeredRef.current = true;
+              return;
+            }
+            swipeTriggeredRef.current = true;
+            onRegistrar(matriculaId, s.id, target);
+          }}
+          onClick={() => onRegistrar(matriculaId, s.id, siguiente)}
+        >
+          {estado === 'presente' ? 'P' : estado === 'ausente' ? 'A' : '—'}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Fracción del ancho de la tarjeta que hay que deslizar para confirmar P/A (solo al soltar). */
+const SWIPE_UMBRAL_FRACCION = 0.55;
+
+function PlanillaAlumnoSwipeCardMovil({
+  matriculaId,
+  idx,
+  entry,
+  sesion,
+  estado,
+  onMarcar,
+}: {
+  matriculaId: number;
+  idx: number;
+  entry: PlanillaMatrixEntry;
+  sesion: Sesion;
+  estado: 'presente' | 'ausente' | 'justificada' | null;
+  onMarcar: (matriculaId: number, estado: 'presente' | 'ausente') => void;
+}) {
+  const [dragX, setDragX] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const startRef = useRef<{ x: number; y: number } | null>(null);
+  const dragXRef = useRef(0);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const maxDragRef = useRef(340);
+  const umbralRef = useRef(160);
+  const axisRef = useRef<'none' | 'x' | 'y'>('none');
+
+  useLayoutEffect(() => {
+    const medir = () => {
+      const w = containerRef.current?.offsetWidth ?? 340;
+      maxDragRef.current = Math.max(280, Math.round(w * 0.92));
+      umbralRef.current = Math.max(130, Math.round(maxDragRef.current * SWIPE_UMBRAL_FRACCION));
+    };
+    medir();
+    window.addEventListener('resize', medir);
+    return () => window.removeEventListener('resize', medir);
+  }, []);
+
+  const cerrada = sesion.estado?.toLowerCase?.() === 'cerrada';
+  const canSwipe = !cerrada && estado !== 'justificada';
+
+  const abs = Math.abs(dragX);
+  const umbralActual = umbralRef.current;
+  const intensidadTinte = Math.min(1, abs / Math.max(umbralActual, 1));
+  const listoParaConfirmar = abs >= umbralActual;
+  const tintePresente = dragX > 0;
+  const tinteAusente = dragX < 0;
+
+  const resetDrag = useCallback(() => {
+    setDragX(0);
+    dragXRef.current = 0;
+    setDragging(false);
+    startRef.current = null;
+    axisRef.current = 'none';
+  }, []);
+
+  const aplicarMarca = useCallback(
+    (target: 'presente' | 'ausente') => {
+      if (!canSwipe || estado === target) {
+        resetDrag();
+        return;
+      }
+      onMarcar(matriculaId, target);
+      resetDrag();
+    },
+    [canSwipe, estado, matriculaId, onMarcar, resetDrag]
+  );
+
+  const onMove = useCallback(
+    (clientX: number, clientY: number, preventScroll: () => void) => {
+      const start = startRef.current;
+      if (!start || !canSwipe) return;
+
+      const dx = clientX - start.x;
+      const dy = clientY - start.y;
+
+      if (axisRef.current === 'none') {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        if (Math.abs(dy) > Math.abs(dx) * 1.05) {
+          axisRef.current = 'y';
+          setDragging(false);
+          startRef.current = null;
+          return;
+        }
+        axisRef.current = 'x';
+      }
+      if (axisRef.current === 'y') return;
+
+      preventScroll();
+      const max = maxDragRef.current;
+      const clamped = Math.max(-max, Math.min(max, dx));
+      dragXRef.current = clamped;
+      setDragX(clamped);
+    },
+    [canSwipe]
+  );
+
+  const onEnd = useCallback(() => {
+    if (!canSwipe) return;
+    const finalX = dragXRef.current;
+    const umbral = umbralRef.current;
+    if (Math.abs(finalX) >= umbral) {
+      aplicarMarca(finalX > 0 ? 'presente' : 'ausente');
+      return;
+    }
+    resetDrag();
+  }, [aplicarMarca, canSwipe, resetDrag]);
+
+  const onMoveRef = useRef(onMove);
+  const onEndRef = useRef(onEnd);
+  onMoveRef.current = onMove;
+  onEndRef.current = onEnd;
+
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el || !canSwipe) return;
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      startRef.current = { x: t.clientX, y: t.clientY };
+      axisRef.current = 'none';
+      setDragging(true);
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      onMoveRef.current(t.clientX, t.clientY, () => e.preventDefault());
+    };
+
+    const onTouchEnd = () => {
+      if (axisRef.current === 'y') {
+        resetDrag();
+        return;
+      }
+      onEndRef.current();
+    };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd);
+    el.addEventListener('touchcancel', onTouchEnd);
+
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+      el.removeEventListener('touchcancel', onTouchEnd);
+    };
+  }, [canSwipe, resetDrag]);
+
+  const insigniaEstado =
+    estado === 'presente'
+      ? {
+          letra: 'P',
+          etiqueta: 'Presente',
+          caja: 'bg-emerald-50 ring-1 ring-emerald-300 dark:bg-emerald-500/15 dark:ring-emerald-400/45',
+          letraCls: 'text-emerald-700 dark:text-emerald-200',
+          etiquetaCls: 'text-emerald-600 dark:text-emerald-400/90',
+        }
+      : estado === 'ausente'
+        ? {
+            letra: 'A',
+            etiqueta: 'Ausente',
+            caja: 'bg-rose-50 ring-1 ring-rose-300 dark:bg-rose-500/15 dark:ring-rose-400/45',
+            letraCls: 'text-rose-700 dark:text-rose-200',
+            etiquetaCls: 'text-rose-600 dark:text-rose-400/90',
+          }
+        : estado === 'justificada'
+          ? {
+              letra: 'J',
+              etiqueta: 'Justif.',
+              caja: 'bg-amber-50 ring-1 ring-amber-300 dark:bg-amber-500/15 dark:ring-amber-400/45',
+              letraCls: 'text-amber-800 dark:text-amber-200',
+              etiquetaCls: 'text-amber-700 dark:text-amber-400/90',
+            }
+          : {
+              letra: '—',
+              etiqueta: 'Sin marcar',
+              caja: 'bg-slate-100 ring-1 ring-slate-300 dark:bg-slate-800/60 dark:ring-slate-600/50',
+              letraCls: 'text-slate-500',
+              etiquetaCls: 'text-slate-500',
+            };
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-[#0f1a30]"
+    >
+      {tinteAusente ? (
+        <div
+          className={`absolute inset-0 z-0 transition-colors ${
+            listoParaConfirmar
+              ? 'bg-gradient-to-r from-rose-600 via-rose-500 to-rose-600/40'
+              : 'bg-gradient-to-r from-rose-700/90 via-rose-600/70 to-transparent'
+          }`}
+          style={{ opacity: 0.45 + intensidadTinte * 0.55 }}
+          aria-hidden
+        />
+      ) : null}
+      {tintePresente ? (
+        <div
+          className={`absolute inset-0 z-0 transition-colors ${
+            listoParaConfirmar
+              ? 'bg-gradient-to-l from-emerald-600 via-emerald-500 to-emerald-600/40'
+              : 'bg-gradient-to-l from-emerald-700/90 via-emerald-600/70 to-transparent'
+          }`}
+          style={{ opacity: 0.45 + intensidadTinte * 0.55 }}
+          aria-hidden
+        />
+      ) : null}
+
+      <div
+        ref={cardRef}
+        className={`relative z-10 rounded-2xl bg-white px-4 py-4 transition-[transform,border-color] select-none dark:bg-[#0f1a30] ${
+          dragging ? 'duration-0' : 'duration-200'
+        } ${
+          listoParaConfirmar && tinteAusente
+            ? 'ring-2 ring-rose-400/60 ring-inset'
+            : listoParaConfirmar && tintePresente
+              ? 'ring-2 ring-emerald-400/60 ring-inset'
+              : ''
+        }`}
+        style={{
+          transform: `translateX(${dragX}px)`,
+          touchAction: 'pan-y',
+        }}
+        onPointerDown={(e) => {
+          if (!canSwipe || e.pointerType === 'touch') return;
+          startRef.current = { x: e.clientX, y: e.clientY };
+          axisRef.current = 'none';
+          setDragging(true);
+          cardRef.current?.setPointerCapture?.(e.pointerId);
+        }}
+        onPointerMove={(e) => {
+          if (!canSwipe || e.pointerType === 'touch') return;
+          onMove(e.clientX, e.clientY, () => e.preventDefault());
+        }}
+        onPointerUp={(e) => {
+          if (!canSwipe || e.pointerType === 'touch') return;
+          try {
+            cardRef.current?.releasePointerCapture?.(e.pointerId);
+          } catch {
+            /* ya liberado */
+          }
+          onEnd();
+        }}
+        onPointerCancel={(e) => {
+          if (e.pointerType === 'touch') return;
+          resetDrag();
+        }}
+      >
+        <div className="flex items-start gap-2.5">
+          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold tabular-nums text-slate-600 dark:bg-slate-800/90 dark:text-slate-400">
+            {idx + 1}
+          </span>
+
+          <div className="relative min-w-0 flex-1 pr-[4.75rem]">
+            <div
+              className={`absolute right-0 top-0 flex flex-col items-center justify-center rounded-xl px-2 py-1.5 ${insigniaEstado.caja}`}
+              aria-label={insigniaEstado.etiqueta}
+            >
+              <span className={`text-xl font-black leading-none ${insigniaEstado.letraCls}`}>{insigniaEstado.letra}</span>
+              <span className={`mt-0.5 max-w-[4rem] text-center text-[8px] font-semibold uppercase leading-tight tracking-wide ${insigniaEstado.etiquetaCls}`}>
+                {insigniaEstado.etiqueta}
+              </span>
+            </div>
+
+            <p className="text-[15px] font-semibold leading-snug text-slate-900 [overflow-wrap:anywhere] dark:text-[#e8eef8]">
+              {formatoNombreLegible(entry.alumno)}
+            </p>
+            <p className="mt-1 text-xs text-slate-600 dark:text-slate-500">CI {entry.documento || '—'}</p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] tabular-nums text-slate-600 dark:bg-slate-800/70 dark:text-slate-400">
+                {entry.porcentajeAsistencia != null ? `${entry.porcentajeAsistencia}% asist.` : '—% asist.'}
+              </span>
+              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] tabular-nums text-slate-600 dark:bg-slate-800/70 dark:text-slate-400">
+                {entry.faltasAcumuladas ?? 0} faltas
+              </span>
+              {cerrada ? (
+                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500 dark:bg-slate-800/50 dark:text-slate-600">
+                  Lista cerrada
+                </span>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
+        {!canSwipe ? (
+          <p className="mt-3 border-t border-slate-200 pt-2.5 text-center text-[11px] text-slate-500 dark:border-slate-800/80 dark:text-slate-600">
+            {cerrada ? 'No se puede modificar: lista cerrada.' : 'No se puede deslizar: estado justificado.'}
+          </p>
+        ) : (
+          <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-200 pt-2.5 text-[10px] font-medium uppercase tracking-wide dark:border-slate-800/80">
+            <span className="text-rose-600 dark:text-rose-400/85">← Ausente</span>
+            <span className="material-symbols-outlined text-[15px] text-slate-400 dark:text-slate-600" aria-hidden>
+              swipe
+            </span>
+            <span className="text-emerald-600 dark:text-emerald-400/85">Presente →</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
   const mostrarModuloJustificaciones = true;
   const puedeResolverJustificaciones = puedeAprobarJustificaciones(roles);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSidebarOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    const desktopMq = window.matchMedia('(min-width: 1024px)');
+    let prevOverflow = '';
+    if (!desktopMq.matches) {
+      prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      if (!desktopMq.matches) {
+        document.body.style.overflow = prevOverflow;
+      }
+    };
+  }, [sidebarOpen]);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1023px)');
+    const onChange = () => setViewportEsMovil(mq.matches);
+    onChange();
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
   const [subView, setSubView] = useState<'planilla' | 'justificaciones'>('planilla');
   const [planillasAsignadas, setPlanillasAsignadas] = useState<PlanillaAsignada[]>([]);
   const [planillasLoading, setPlanillasLoading] = useState(false);
@@ -252,6 +771,10 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
   const [justifArchivo, setJustifArchivo] = useState<File | null>(null);
   const [subiendoJustif, setSubiendoJustif] = useState(false);
   const [mostrarFormJustif, setMostrarFormJustif] = useState(false);
+  const [viewportEsMovil, setViewportEsMovil] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches,
+  );
+  const listaAbiertaSyncKeyRef = useRef<string | null>(null);
 
   const planillaSeleccionada = useMemo(
     () => planillasAsignadas.find((item) => String(item.curso_id) === cursoId) ?? null,
@@ -350,14 +873,6 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
     return dias;
   }, [mesAnio, planillaSeleccionada]);
 
-  type ColumnaPlanilla = {
-    fecha: string;
-    modalidadDefault: 'presencial' | 'virtual';
-    sesion: Sesion | null;
-    /** Clase reprogramada fuera del calendario fijo (p. ej. viernes) — columna “Lista”. */
-    esListaExcepcional: boolean;
-  };
-
   // Días fijos Lun–Jue + columnas extra por sesiones en fechas no estándar (mismo mes, orden cronológico)
   const columnasDelMes = useMemo((): ColumnaPlanilla[] => {
     const fechasEstandar = new Set(diasLectivosDelMes.map((d) => d.fecha));
@@ -395,6 +910,21 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
     return [...planillaMatrix.entries()]
       .sort(([, a], [, b]) => a.alumno.localeCompare(b.alumno));
   }, [planillaMatrix]);
+
+  const sesionActiva = useMemo(() => {
+    if (!sesionActivaId) return null;
+    return sesiones.find((s) => s.id === sesionActivaId) ?? null;
+  }, [sesiones, sesionActivaId]);
+
+  /** Sesión en toma de lista (solo si no está cerrada; persiste tras recargar). */
+  const sesionMovilLista = useMemo(() => {
+    const candidata = sesionActiva ?? sesionListaAbierta;
+    if (!candidata || candidata.estado?.toLowerCase?.() === 'cerrada') return null;
+    return candidata;
+  }, [sesionActiva, sesionListaAbierta]);
+
+  // Móvil: mismo orden alfabético que la planilla (sin reordenar al marcar P/A)
+  const alumnosOrdenadosMovil = alumnosOrdenados;
 
   const planillaNombreMedirRef = useRef<HTMLSpanElement>(null);
   const [planillaNombreColPx, setPlanillaNombreColPx] = useState(260);
@@ -570,8 +1100,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
     (matriculaId: number, sesionId: number, estado: 'presente' | 'ausente') => {
       const key = `${matriculaId}:${sesionId}`;
       setPlanillaMatrix((prev) => {
-        const next = new Map(prev);
-        const entry = next.get(matriculaId);
+        const entry = prev.get(matriculaId);
         if (!entry) return prev;
         const celda = entry.celdas.get(sesionId) ?? {
           sesionId,
@@ -581,7 +1110,10 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
           matriculaId,
           justificada: false,
         };
-        entry.celdas.set(sesionId, { ...celda, estadoAsistencia: estado, justificada: false });
+        const newCeldas = new Map(entry.celdas);
+        newCeldas.set(sesionId, { ...celda, estadoAsistencia: estado, justificada: false });
+        const next = new Map(prev);
+        next.set(matriculaId, { ...entry, celdas: newCeldas });
         return next;
       });
       setPendingChanges((prev) => {
@@ -591,6 +1123,34 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
       });
     },
     [cursoId]
+  );
+
+  /** Móvil: guarda cada marca al instante (el swipe no espera a «Cerrar lista»). */
+  const registrarAsistenciaMovil = useCallback(
+    async (matriculaId: number, sesionId: number, estado: 'presente' | 'ausente') => {
+      const key = `${matriculaId}:${sesionId}`;
+      handleRegistrar(matriculaId, sesionId, estado);
+      try {
+        await apiFetch('/asistencias/registro', {
+          method: 'POST',
+          body: JSON.stringify({
+            sesionId,
+            matriculaId,
+            estado,
+            justificada: false,
+          }),
+        });
+        setPendingChanges((prev) => {
+          const next = new Map(prev);
+          next.delete(key);
+          return next;
+        });
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'No se pudo guardar la asistencia');
+        void cargarPlanillaMes();
+      }
+    },
+    [cargarPlanillaMes, handleRegistrar]
   );
 
   const guardarCambiosLote = useCallback(async () => {
@@ -738,6 +1298,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
       await guardarCambiosLote();
       const cerrada = await apiFetch<Sesion>(`/asistencias/sesiones/${sesionId}/cierre`, { method: 'POST' });
       setSesiones((prev) => prev.map((x) => x.id === sesionId ? cerrada : x));
+      listaAbiertaSyncKeyRef.current = null;
       setSesionActivaId((prev) => prev === sesionId ? null : prev);
       toast.success('Lista cerrada. Se actualizó el porcentaje del curso.');
       void cargarPlanillaMes();
@@ -837,6 +1398,31 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
   }, [cursoId, subView, planillasLoading, cargarPlanillaMes]);
 
   useEffect(() => {
+    listaAbiertaSyncKeyRef.current = null;
+  }, [cursoId]);
+
+  /** Tras cargar datos: si hay lista abierta, modo «Tomar lista» (sin re-ejecutar en bucle). */
+  useEffect(() => {
+    if (!cursoId || loading || subView !== 'planilla') return;
+
+    const abierta =
+      [...sesiones].reverse().find((s) => s.estado?.toLowerCase?.() !== 'cerrada') ?? null;
+
+    const syncKey = abierta ? `${cursoId}:${abierta.id}` : `${cursoId}:none`;
+    if (listaAbiertaSyncKeyRef.current === syncKey) return;
+    listaAbiertaSyncKeyRef.current = syncKey;
+
+    if (!abierta) {
+      setSesionActivaId(null);
+      return;
+    }
+
+    const mesSesion = normalizeDate(abierta.fecha).slice(0, 7);
+    setMesAnio((prev) => (prev === mesSesion ? prev : mesSesion));
+    setSesionActivaId(abierta.id);
+  }, [cursoId, loading, subView, sesiones]);
+
+  useEffect(() => {
     if (subView !== 'justificaciones') {
       return;
     }
@@ -857,9 +1443,12 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
     const maxYm = yyyyMmDesdeFecha(fin);
     const rMin = minYm <= maxYm ? minYm : maxYm;
     const rMax = minYm <= maxYm ? maxYm : minYm;
-    const ym = fechaDefault.slice(0, 7);
-    setMesAnio(clampYyyyMm(ym, rMin, rMax));
-  }, [planillaSeleccionada?.curso_id, planillaSeleccionada?.fecha_inicio, planillaSeleccionada?.fecha_fin]);
+    const hayListaAbierta = sesiones.some((s) => s.estado?.toLowerCase?.() !== 'cerrada');
+    if (!hayListaAbierta) {
+      const ym = fechaDefault.slice(0, 7);
+      setMesAnio(clampYyyyMm(ym, rMin, rMax));
+    }
+  }, [planillaSeleccionada?.curso_id, planillaSeleccionada?.fecha_inicio, planillaSeleccionada?.fecha_fin, sesiones]);
 
   /** Si el mes quedó fuera del módulo (p. ej. datos del curso se actualizaron), lo acota. */
   useEffect(() => {
@@ -871,19 +1460,24 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
   }, [rangoMesModulo?.min, rangoMesModulo?.max]);
 
   return (
-    <div className="system-bg text-[#e7eef9] min-h-screen h-screen overflow-hidden">
-      <div className="flex h-full w-full overflow-hidden">
+    <div className="system-bg app-shell-viewport min-h-screen h-screen overflow-hidden text-slate-800 dark:text-[#e7eef9]">
+      <div className="app-layout-row">
         {sidebarOpen ? (
           <div
-            className="fixed inset-0 bg-black/70 z-20 lg:hidden"
+            className="app-sidebar-scrim"
             onClick={() => setSidebarOpen(false)}
-            aria-hidden="true"
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setSidebarOpen(false);
+            }}
+            role="button"
+            tabIndex={-1}
+            aria-label="Cerrar menú"
           />
         ) : null}
 
         <AppSidebar sidebarOpen={sidebarOpen} onLogout={onLogout} onClose={() => setSidebarOpen(false)} />
 
-        <main className="flex-1 flex flex-col h-full overflow-hidden">
+        <main className="app-layout-main">
           {cursoId ? (
             <span
               ref={planillaNombreMedirRef}
@@ -893,20 +1487,21 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
               {longestNombrePlanilla}
             </span>
           ) : null}
-          <header className="flex-shrink-0 h-16 bg-[#132a52]/90 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-6 z-10">
-            <div className="flex items-center gap-3">
+          <header className="z-10 flex min-h-16 flex-shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-md dark:border-slate-800 dark:bg-[#132a52]/90 sm:px-6">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
               <button
                 type="button"
-                className="lg:hidden text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg p-1 transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                onClick={() => setSidebarOpen(true)}
-                aria-label="Abrir menú"
+                className="lg:hidden shrink-0 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg p-1 transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                onClick={() => setSidebarOpen((open) => !open)}
+                aria-label={sidebarOpen ? 'Cerrar menú' : 'Abrir menú'}
+                aria-expanded={sidebarOpen}
               >
                 <span className="material-symbols-outlined">menu</span>
               </button>
-              <span className="material-symbols-outlined text-[#6b8bc3]">fact_check</span>
-              <div>
+              <span className="material-symbols-outlined shrink-0 text-[#6b8bc3]">fact_check</span>
+              <div className="min-w-0">
                 <p className="text-xs uppercase text-slate-400">Asistencias</p>
-                <h1 className="text-xl font-semibold">
+                <h1 className="text-xl font-semibold leading-snug">
                   {subView === 'planilla' || !mostrarModuloJustificaciones
                     ? 'Planilla de Asistencia'
                     : 'Gestión de Justificaciones'}
@@ -914,22 +1509,22 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
               </div>
             </div>
             {loading ? (
-              <div className="flex items-center gap-2 text-sm text-slate-400">
+              <div className="flex items-center gap-2 text-sm text-slate-400 max-lg:hidden">
                 <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                 Cargando...
               </div>
             ) : null}
           </header>
 
-          <section className="flex-1 flex flex-col overflow-hidden p-6 gap-4">
-            <div className="rounded-xl border border-slate-800 bg-[#132a52] p-2 inline-flex gap-2">
+          <section className="justif-movil-scroll-section app-scroll-content flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-6 max-lg:overflow-y-auto max-lg:bg-background-light dark:max-lg:bg-[#0d1830]">
+            <div className="btn-mobile-tabs flex w-full flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-[#132a52] sm:w-auto">
               <button
                 type="button"
                 onClick={() => setSubView('planilla')}
-                className={`px-3 py-2 rounded-lg text-sm font-semibold ${
+                className={`rounded-lg px-3 py-2 text-sm font-semibold ${
                   subView === 'planilla'
-                    ? 'bg-primary text-[#f0f4f8]'
-                    : 'text-[#9fb3d4] hover:bg-slate-800'
+                    ? 'bg-primary text-white'
+                    : 'text-slate-700 dark:text-white hover:bg-slate-100 dark:hover:bg-white/10'
                 }`}
               >
                  Planilla de Asistencia
@@ -938,38 +1533,39 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                 <button
                   type="button"
                   onClick={() => setSubView('justificaciones')}
-                  className={`px-3 py-2 rounded-lg text-sm font-semibold ${
+                  className={`rounded-lg px-3 py-2 text-sm font-semibold ${
                     subView === 'justificaciones'
-                      ? 'bg-primary text-[#f0f4f8]'
-                      : 'text-[#9fb3d4] hover:bg-slate-800'
-                  }`}
+                      ? 'bg-primary text-white'
+                      : 'text-slate-700 dark:text-white hover:bg-slate-100 dark:hover:bg-white/10'
+                }`}
                 >
                    Justificaciones
                 </button>
               ) : null}
             </div>
 
-            {subView === 'planilla' ? <div className="flex-1 flex flex-col overflow-hidden gap-4 min-h-0">
+            {subView === 'planilla' ? (
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden max-lg:flex-none max-lg:overflow-visible">
 
-            {/* Barra + KPI por encima de la tabla (z-index) */}
-            <div className="relative z-30 flex flex-col gap-4 shrink-0">
-            <div className="rounded-xl border border-slate-800 bg-[#132a52] p-4 space-y-3">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div>
+            {/* Barra + KPI: scroll propio en móvil para no competir con la planilla */}
+            <div className="relative flex min-w-0 shrink-0 flex-col gap-4">
+            <div className="min-w-0 space-y-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-[#132a52]">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-xs uppercase text-slate-400">Planilla de asistencia</p>
-                  <h2 className="text-lg font-semibold">{planillaSeleccionada?.materia ?? 'Selecciona un curso'}</h2>
+                  <h2 className="text-lg font-semibold leading-snug break-words">{planillaSeleccionada?.materia ?? 'Selecciona un curso'}</h2>
                   {planillaSeleccionada ? (
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-slate-400 leading-relaxed break-words">
                       {planillaSeleccionada.carrera} · {planillaSeleccionada.total_matriculas} alumnos
                       {' · '}
                       {(() => { const mes = new Date(`${planillaSeleccionada.fecha_inicio}T00:00:00`).getMonth() + 1; return mes <= 6 ? '1er Semestre' : '2do Semestre'; })()}
                     </p>
                   ) : null}
                 </div>
-                <div className="relative z-40 flex items-center gap-2 flex-wrap">
+                <div className="relative z-10 flex w-full min-w-0 flex-col gap-2 lg:w-auto lg:flex-row lg:flex-wrap lg:items-center lg:justify-end">
                   {/* Selector de curso */}
                   <AppSelect
-                    className="min-w-[12rem]"
+                    className="w-full min-w-0 lg:min-w-[12rem] lg:w-auto"
                     aria-label="Seleccionar curso"
                     value={cursoId}
                     onChange={setCursoId}
@@ -982,14 +1578,14 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                       value: String(item.curso_id),
                       label: item.materia,
                     }))}
-                    triggerClassName="pl-3 pr-8 py-2 rounded-lg bg-white border border-slate-300 text-sm text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                    triggerClassName="w-full py-2 pl-3 pr-3 rounded-lg border border-slate-300 bg-white text-sm text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                   />
                   {/* Selector de mes */}
                   <input
                     type="month"
                     aria-label="Mes y año"
                     title="Solo meses dentro del dictado del módulo"
-                    className="px-3 py-2 rounded-lg bg-[#132a52] border border-[#4f8cdb] text-sm text-[#e7eef9] disabled:opacity-50"
+                    className="w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:opacity-50 dark:border-slate-700 dark:bg-[#132a52] dark:text-[#e7eef9] lg:w-auto"
                     value={mesAnio}
                     min={rangoMesModulo?.min}
                     max={rangoMesModulo?.max}
@@ -1000,32 +1596,34 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                       setMesAnio(rangoMesModulo ? clampYyyyMm(v, rangoMesModulo.min, rangoMesModulo.max) : v);
                     }}
                   />
-                  <button
-                    type="button"
-                    className="btn-modern btn-modern-ghost btn-modern-sm"
-                    onClick={() => void cargarPlanillaMes()}
-                    disabled={loading || !cursoId}
-                  >
-                    <span className="material-symbols-outlined text-[16px]">refresh</span>
-                    {loading ? 'Cargando...' : 'Actualizar'}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-modern btn-modern-ghost btn-modern-sm"
-                    onClick={() => void descargarPlanillaLegal()}
-                    disabled={generandoPdfLegal || !cursoId}
-                    title="Generar y abrir planilla legal PDF del mes seleccionado"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">print</span>
-                    {generandoPdfLegal ? 'Generando PDF...' : 'Imprimir planilla legal'}
-                  </button>
+                  <div className="btn-mobile-stack flex w-full flex-col gap-2 lg:w-auto lg:flex-row lg:items-center">
+                    <button
+                      type="button"
+                      className="btn-modern btn-modern-ghost btn-modern-sm btn-mobile-cta lg:w-auto"
+                      onClick={() => void cargarPlanillaMes()}
+                      disabled={loading || !cursoId}
+                    >
+                      <span className="material-symbols-outlined text-[16px]">refresh</span>
+                      {loading ? 'Cargando...' : 'Actualizar'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-modern btn-modern-ghost btn-modern-sm btn-mobile-cta lg:w-auto"
+                      onClick={() => void descargarPlanillaLegal()}
+                      disabled={generandoPdfLegal || !cursoId}
+                      title="Generar y abrir planilla legal PDF del mes seleccionado"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">print</span>
+                      {generandoPdfLegal ? 'Generando PDF...' : 'Imprimir planilla legal'}
+                    </button>
+                  </div>
                 </div>
               </div>
 
               {!planillasLoading && !planillasError && planillasAsignadas.length === 0 ? (
                 <div className="rounded-lg border border-amber-500/25 bg-amber-500/5 px-4 py-6 text-center">
                   <span className="material-symbols-outlined text-[40px] text-amber-300/90">event_busy</span>
-                  <p className="mt-2 text-sm font-medium text-[#e7eef9]">No hay planillas</p>
+                  <p className="mt-2 text-sm font-medium text-slate-900 dark:text-[#e7eef9]">No hay planillas</p>
                   <p className="mt-1 text-xs text-slate-400 max-w-md mx-auto">
                     Si deberías ver cursos, confirmá con secretaría o coordinación académica que tengas planillas registradas.
                   </p>
@@ -1033,13 +1631,13 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
               ) : null}
 
               {/* Nueva sesión */}
-              <div className="flex items-center gap-2 pt-1 border-t border-slate-800/60 flex-wrap">
-                <span className="text-xs text-slate-500">Nueva sesión:</span>
+              <div className="flex min-w-0 flex-col gap-2 border-t border-slate-200 pt-1 dark:border-slate-800/60 lg:flex-row lg:flex-wrap lg:items-center">
+                <span className="shrink-0 text-xs text-slate-600 dark:text-slate-500">Nueva sesión:</span>
                 <input
                   type="date"
                   aria-label="Fecha de nueva sesión"
                   title="Solo fechas dentro del dictado del módulo"
-                  className="px-2 py-1 rounded-lg bg-[#132a52] border border-[#4f8cdb] text-sm text-[#e7eef9]"
+                  className="w-full min-w-0 rounded-lg border border-slate-300 bg-white px-2 py-1 text-sm text-slate-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 dark:border-slate-700 dark:bg-[#132a52] dark:text-[#e7eef9] lg:w-auto"
                   value={nuevaSesionFecha}
                   min={planillaSeleccionada ? normalizeDate(planillaSeleccionada.fecha_inicio) : undefined}
                   max={planillaSeleccionada ? normalizeDate(planillaSeleccionada.fecha_fin) : undefined}
@@ -1055,7 +1653,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                   }}
                 />
                 {/* Selector Presencial / Virtual */}
-                <div className="inline-flex rounded-lg overflow-hidden border border-slate-600">
+                <div className="inline-flex w-full max-w-full min-w-0 justify-center overflow-hidden rounded-lg border border-slate-300 dark:border-slate-600 lg:w-auto">
                   <button
                     type="button"
                     onClick={() => {
@@ -1067,10 +1665,10 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                         }
                       }
                     }}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold transition-none ${
+                    className={`inline-flex flex-1 items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-bold transition-none max-lg:min-h-11 max-lg:text-sm lg:flex-none ${
                       nuevaSesionModalidad === 'presencial'
                         ? 'bg-emerald-500 text-white'
-                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200'
                     }`}
                   >
                     <span className="material-symbols-outlined text-[14px]">location_on</span>
@@ -1087,10 +1685,10 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                         }
                       }
                     }}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold transition-none border-l border-slate-600 ${
+                    className={`inline-flex flex-1 items-center justify-center gap-1.5 border-l border-slate-300 px-3 py-1.5 text-xs font-bold transition-none max-lg:min-h-11 max-lg:text-sm dark:border-slate-600 lg:flex-none ${
                       nuevaSesionModalidad === 'virtual'
                         ? 'bg-violet-500 text-white'
-                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200'
                     }`}
                   >
                     <span className="material-symbols-outlined text-[14px]">videocam</span>
@@ -1099,7 +1697,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                 </div>
                 <button
                   type="button"
-                  className="btn-modern btn-modern-primary btn-modern-sm"
+                  className="btn-modern btn-modern-primary btn-modern-sm btn-mobile-cta lg:w-auto"
                   disabled={creandoSesion || !cursoId || !nuevaSesionFecha || !!sesionListaAbierta}
                   title={
                     sesionListaAbierta
@@ -1118,6 +1716,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                         });
                         return;
                       }
+                      listaAbiertaSyncKeyRef.current = null;
                       setSesionActivaId(existente.id);
                       toast.success('Sesión reanudada. Podés seguir marcando asistencia.');
                       void cargarPlanillaMes();
@@ -1131,6 +1730,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                       });
                       toast.success('Sesión creada. Todos presentes por defecto; marcá solo ausentes.');
                       setSesiones((prev) => [...prev, nuevaSesion]);
+                      listaAbiertaSyncKeyRef.current = null;
                       setSesionActivaId(nuevaSesion.id);
                       void cargarPlanillaMes();
                     } catch (e) {
@@ -1146,7 +1746,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                 {sesionListaAbierta ? (
                   <button
                     type="button"
-                    className="btn-modern btn-modern-sm flex items-center gap-1.5 bg-rose-600 hover:bg-rose-500 text-white border-0 font-semibold shadow-md"
+                    className="btn-modern btn-modern-sm btn-mobile-cta flex items-center justify-center gap-1.5 border-0 bg-rose-600 font-semibold text-white shadow-md hover:bg-rose-500 lg:w-auto"
                     disabled={cerrandoSesionId === sesionListaAbierta.id}
                     onClick={() => void cerrarSesionById(sesionListaAbierta.id)}
                   >
@@ -1157,24 +1757,86 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
               </div>
 
               {planillasError ? (
-                <div className="flex items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">
+                <div className="flex items-center gap-2 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-100">
                   <span className="material-symbols-outlined text-[16px]">error</span>
                   {planillasError}
                 </div>
               ) : null}
               {sessionError ? (
-                <div className="flex items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">
+                <div className="flex items-center gap-2 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-100">
                   <span className="material-symbols-outlined text-[16px]">error</span>
                   {sessionError}
                 </div>
               ) : null}
             </div>
 
-            {/* KPI chips */}
-            <div className="flex flex-wrap gap-2">
+            {/* KPI + leyenda — móvil compacto */}
+            <div className="space-y-2 lg:hidden">
+              <div className="grid grid-cols-2 gap-2">
+                {PLANILLA_KPI_ITEMS.map((k) => {
+                  const value =
+                    k.key === 'matriculas'
+                      ? planillaMatrix.size
+                      : k.key === 'sesiones'
+                        ? sesionesDelMes.length
+                        : k.key === 'riesgo'
+                          ? resumen.evaluacionPendiente
+                            ? '—'
+                            : resumen.enRiesgo
+                          : resumen.evaluacionPendiente
+                            ? '—'
+                            : resumen.inhabilitados;
+                  const title =
+                    k.key === 'riesgo' || k.key === 'inhabilitados'
+                      ? resumen.evaluacionPendiente
+                        ? `Se evalúa al cerrar el 75% de las clases del módulo (${metricasModulo?.sesionesCerradas ?? 0}/${metricasModulo?.clasesMinimasParaEvaluar ?? '?'})`
+                        : undefined
+                      : undefined;
+                  return (
+                    <div
+                      key={k.key}
+                      title={title}
+                      className={`rounded-lg border bg-white px-2.5 py-2 text-center dark:bg-[#132a52] ${k.color}`}
+                    >
+                      <p className="text-lg font-bold tabular-nums leading-none">{value}</p>
+                      <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wide opacity-80">{k.label}</p>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-[#0f1f3d] dark:text-slate-300">
+                <span className="inline-flex items-center gap-2">
+                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-emerald-400 bg-emerald-100 text-sm font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-200">
+                    P
+                  </span>
+                  Pres.
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-rose-400 bg-rose-100 text-sm font-bold text-rose-700 dark:bg-rose-500/15 dark:text-rose-200">
+                    A
+                  </span>
+                  Aus.
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-amber-400 bg-amber-100 text-sm font-bold text-amber-800 dark:bg-amber-500/15 dark:text-amber-200">
+                    J
+                  </span>
+                  Just.
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-slate-300 bg-slate-100 text-base font-bold leading-none text-slate-500 dark:border-slate-600 dark:bg-slate-800/40">
+                    —
+                  </span>
+                  Vacío
+                </span>
+              </div>
+            </div>
+
+            {/* KPI + leyenda — escritorio */}
+            <div className="hidden flex-wrap gap-2 lg:flex">
               {[
-                { label: 'Matrículas', value: planillaMatrix.size, color: 'border-slate-700 text-slate-300' },
-                { label: 'Sesiones del mes', value: sesionesDelMes.length, color: 'border-slate-700 text-slate-300' },
+                { label: 'Matrículas', value: planillaMatrix.size, color: PLANILLA_KPI_ITEMS[0].color },
+                { label: 'Sesiones del mes', value: sesionesDelMes.length, color: PLANILLA_KPI_ITEMS[1].color },
                 {
                   label: 'En riesgo',
                   value: resumen.evaluacionPendiente ? '—' : resumen.enRiesgo,
@@ -1195,12 +1857,12 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                 <div
                   key={k.label}
                   title={'title' in k ? k.title : undefined}
-                  className={`rounded-lg border px-3 py-1.5 text-sm ${k.color} bg-[#132a52]`}
+                  className={`rounded-lg border bg-white px-3 py-1.5 text-sm dark:bg-[#132a52] ${k.color}`}
                 >
                   <span className="font-bold">{k.value}</span> <span className="text-xs opacity-70">{k.label}</span>
                 </div>
               ))}
-              <div className="rounded-lg border border-slate-300 bg-white text-slate-600 dark:border-slate-700 dark:bg-[#0f1f3d] dark:text-slate-300 px-3 py-1.5 text-xs inline-flex items-center gap-3">
+              <div className="rounded-lg border border-slate-300 bg-white text-slate-600 dark:border-slate-700 dark:bg-[#0f1f3d] dark:text-slate-300 px-3 py-1.5 text-xs flex flex-wrap items-center gap-x-3 gap-y-1.5 w-full min-w-0">
                 <span className="inline-flex items-center gap-1.5">
                   <span className="inline-flex items-center justify-center w-5 h-5 rounded border text-xs font-bold bg-emerald-100 text-emerald-700 border-emerald-400 dark:bg-emerald-500/15 dark:text-emerald-200 dark:border-emerald-400/40">P</span>
                   Presente
@@ -1221,8 +1883,8 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
             </div>
             </div>
 
-            {/* Tabla tipo planilla (min-h-0: sticky thead funciona dentro de flex) */}
-            <div className="relative z-0 rounded-xl border border-slate-800 bg-[#07101f] overflow-hidden flex-1 flex flex-col min-h-0">
+            {/* Tabla tipo planilla */}
+            <div className="relative z-0 flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 max-lg:flex-none max-lg:bg-white dark:border-slate-700 dark:bg-[#07101f] dark:max-lg:bg-[#0a1828]">
               {loading ? (
                 <div className="flex items-center justify-center py-16 text-slate-500 gap-2">
                   <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
@@ -1239,9 +1901,152 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                   <p>No hay sesiones registradas para {mesAnio}</p>
                   <p className="text-xs">Agrega una sesión desde el formulario de arriba</p>
                 </div>
-              ) : !sesionesDelMes.length ? (
-                <div className="overflow-auto flex-1 min-h-0">
-                  <table className="text-sm border-collapse w-full">
+              ) : (
+                <>
+                  {/* Planilla móvil — tarjetas por alumno */}
+                  <div className="app-mobile-bottom-bar space-y-3 px-3 pt-3 pb-3 lg:hidden">
+                    {sesionMovilLista ? (
+                      <div className="space-y-3">
+                        <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 dark:border-slate-700 dark:bg-[#0f1a30] dark:text-slate-500">
+                          <p className="font-semibold text-slate-800 dark:text-slate-300">
+                            Tomar lista · {formatDateLabel(sesionMovilLista.fecha, true)}
+                          </p>
+                          <p className="mt-0.5">
+                            Deslizá <span className="font-semibold text-rose-600 dark:text-rose-300">izquierda</span>{' '}
+                            para Ausente y{' '}
+                            <span className="font-semibold text-emerald-600 dark:text-emerald-300">derecha</span> para
+                            Presente.
+                          </p>
+                        </div>
+
+                        <ul className="space-y-3">
+                          {alumnosOrdenadosMovil.map(([matriculaId, entry], idx) => {
+                            const celda = entry.celdas.get(sesionMovilLista.id);
+                            const estado = celda?.estadoAsistencia ?? null;
+                            return (
+                              <li key={matriculaId}>
+                                <PlanillaAlumnoSwipeCardMovil
+                                  matriculaId={matriculaId}
+                                  idx={idx}
+                                  entry={entry}
+                                  sesion={sesionMovilLista}
+                                  estado={estado}
+                                  onMarcar={(mid, est) => void registrarAsistenciaMovil(mid, sesionMovilLista.id, est)}
+                                />
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    ) : null}
+
+                    {/* Vista por días del mes (solo si no hay lista abierta) */}
+                    {!sesionMovilLista ? (
+                      <>
+                        {!sesionesDelMes.length ? (
+                          <>
+                            <p className="text-center text-xs text-slate-500">
+                              Sin sesiones en {mesAnio}. Agregá una desde «Tomar lista» arriba.
+                            </p>
+                            <ul className="space-y-2">
+                              {alumnosOrdenadosMovil.map(([matriculaId, entry], idx) => {
+                                const evaluado = evaluarAlumnoPlanilla(entry, sesiones, metricasModulo);
+                                const borde =
+                                  evaluado.estado === 'inhabilitado'
+                                    ? 'border-rose-300 dark:border-rose-500/40'
+                                    : evaluado.estado === 'riesgo'
+                                      ? 'border-amber-300 dark:border-amber-500/40'
+                                      : 'border-slate-200 dark:border-slate-700';
+                                return (
+                                  <li
+                                    key={matriculaId}
+                                    className={`rounded-xl border bg-white px-3 py-3 dark:bg-[#0f1a30] ${borde}`}
+                                    title={evaluado.tooltip}
+                                  >
+                                    <div className="flex gap-2">
+                                      <span className="w-6 shrink-0 text-center text-xs font-semibold text-slate-500">
+                                        {idx + 1}
+                                      </span>
+                                      <div className="min-w-0 flex-1">
+                                        <p className="text-sm font-semibold leading-snug text-slate-900 dark:text-[#e7eef9]">
+                                          {formatoNombreLegible(entry.alumno)}
+                                        </p>
+                                        <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-500">
+                                          CI {entry.documento || '—'} · {evaluado.faltas} faltas ·{' '}
+                                          {entry.porcentajeAsistencia != null ? `${entry.porcentajeAsistencia}%` : '—'} asist.
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          </>
+                        ) : (
+                          <>
+                            <ul className="space-y-3">
+                              {alumnosOrdenadosMovil.map(([matriculaId, entry], idx) => {
+                                const evaluado = evaluarAlumnoPlanilla(entry, sesiones, metricasModulo);
+                                const borde =
+                                  evaluado.estado === 'inhabilitado'
+                                    ? 'border-rose-300 dark:border-rose-500/40'
+                                    : evaluado.estado === 'riesgo'
+                                      ? 'border-amber-300 dark:border-amber-500/40'
+                                      : 'border-slate-200 dark:border-slate-700';
+                                return (
+                                  <li
+                                    key={matriculaId}
+                                    className={`rounded-xl border bg-white p-3 dark:bg-[#0f1a30] ${borde}`}
+                                    title={evaluado.tooltip}
+                                  >
+                                    <div className="flex items-start gap-2">
+                                      <span className="mt-0.5 w-6 shrink-0 text-center text-xs font-semibold text-slate-500">
+                                        {idx + 1}
+                                      </span>
+                                      <div className="min-w-0 flex-1">
+                                        <p className="text-sm font-semibold leading-snug text-slate-900 dark:text-[#e7eef9]">
+                                          {formatoNombreLegible(entry.alumno)}
+                                        </p>
+                                        <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-500">
+                                          CI {entry.documento || '—'}
+                                        </p>
+                                        <p className="mt-1 text-xs font-medium tabular-nums text-slate-500 dark:text-slate-400">
+                                          {evaluado.faltas} faltas ·{' '}
+                                          {entry.porcentajeAsistencia != null ? `${entry.porcentajeAsistencia}%` : '—'} asistencia
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="-mx-1 mt-3 flex gap-1.5 overflow-x-auto overscroll-x-contain pb-1 pt-0.5">
+                                      {columnasDelMes.map((col) => (
+                                        <PlanillaDiaCeldaMovil
+                                          key={col.fecha}
+                                          col={col}
+                                          matriculaId={matriculaId}
+                                          entry={entry}
+                                          sesionActivaId={sesionActivaId}
+                                          getEstadoSiguiente={getEstadoSiguiente}
+                                          onRegistrar={handleRegistrar}
+                                        />
+                                      ))}
+                                    </div>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          </>
+                        )}
+                        {!alumnosOrdenados.length && !loading ? (
+                          <p className="py-8 text-center text-sm text-slate-500">No hay alumnos matriculados en este curso.</p>
+                        ) : null}
+                      </>
+                    ) : null}
+                  </div>
+
+                  {/* Planilla escritorio — tablas */}
+                  <div className="hidden min-h-0 flex-1 flex-col overflow-hidden lg:flex">
+              {!sesionesDelMes.length ? (
+                <div className="w-full min-w-0 lg:scroll-region lg:min-h-0 lg:flex-1">
+                  <table className="text-sm border-collapse w-full min-w-max">
                     <thead className="sticky top-0 z-50 bg-[#0d1b2e] border-b border-slate-800/40">
                       <tr>
                         <th
@@ -1300,7 +2105,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                   </div>
                 </div>
               ) : (
-                <div className="overflow-auto flex-1 min-h-0 isolate rounded-t-xl">
+                <div className="isolate w-full min-w-0 flex-1 rounded-t-xl lg:scroll-region lg:min-h-0">
                   <table
                     className="text-sm border-separate border-spacing-0 w-full min-w-max table-fixed"
                     style={{ minWidth: anchoMinPlanillaTabla }}
@@ -1537,7 +2342,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                                       <button
                                         type="button"
                                         title={`Estado actual: ${estado === 'presente' ? 'Presente' : estado === 'ausente' ? 'Ausente' : 'Sin marcar'}. Clic para marcar ${siguiente === 'presente' ? 'Presente' : 'Ausente'}.`}
-                                        className={`h-8 w-8 rounded-lg font-black inline-flex items-center justify-center transition-transform duration-100 hover:scale-[1.02] active:scale-[0.98] ${
+                                        className={`inline-flex h-8 w-8 items-center justify-center rounded-lg font-black transition-transform duration-100 hover:scale-[1.02] active:scale-[0.98] max-lg:h-10 max-lg:w-10 ${
                                           estado === 'presente'
                                             ? 'text-sm border bg-emerald-100 text-emerald-700 border-emerald-400 dark:bg-emerald-500/15 dark:text-emerald-200 dark:border-emerald-400/40'
                                             : estado === 'ausente'
@@ -1567,21 +2372,32 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                   </table>
                 </div>
               )}
+                  </div>
+                </>
+              )}
             </div>
 
-            </div> : null}
+            </div>
+            ) : null}
 
-            {mostrarModuloJustificaciones && subView === 'justificaciones' ? <div className="flex-1 overflow-auto space-y-4">
+            {mostrarModuloJustificaciones && subView === 'justificaciones' ? (
+            <div className="min-w-0 space-y-4 max-lg:flex-none lg:scroll-region lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:gap-4">
 
-              {/* Formulario nueva justificación */}
-              <div className="rounded-xl border border-slate-800 bg-[#132a52] overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
-                  <div>
-                    <p className="text-xs uppercase text-slate-400">Nueva justificación</p>
-                    <h3 className="text-lg font-semibold">Registrar justificativo de inasistencia</h3>
+              {/* Formulario nueva justificación — altura solo al contenido en móvil (evita bloque blanco vacío) */}
+              <div
+                data-justif-form-panel
+                className={`justif-movil-form-panel ${JUSTIF_PANEL_CLASS} max-lg:h-auto max-lg:min-h-0 max-lg:shrink-0`}
+              >
+                <div className={JUSTIF_PANEL_HEADER_CLASS}>
+                  <div className="min-w-0">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Nueva justificación</p>
+                    <h3 className="text-lg font-semibold leading-snug break-words text-slate-900 dark:text-[#f0f4f8]">
+                      Registrar justificativo de inasistencia
+                    </h3>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="btn-mobile-stack flex w-full min-w-0 flex-col gap-2 lg:w-auto lg:flex-row lg:items-center">
                     <AppSelect
+                      className="w-full min-w-0 lg:w-auto"
                       aria-label="Seleccionar curso para justificación"
                       value={cursoId}
                       onChange={(v) => {
@@ -1594,11 +2410,11 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                         value: String(item.curso_id),
                         label: item.materia,
                       }))}
-                      triggerClassName="pl-3 pr-8 py-2 rounded-lg bg-white border border-slate-300 text-sm text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                      triggerClassName="w-full rounded-lg border border-slate-300 bg-white py-2 pl-3 pr-3 text-sm text-slate-900 dark:border-slate-600 dark:bg-[#0b2147] dark:text-[#e7eef9]"
                     />
                     <button
                       type="button"
-                      className="btn-modern btn-modern-primary btn-modern-sm"
+                      className="btn-modern btn-modern-primary btn-modern-sm btn-mobile-cta lg:w-auto"
                       onClick={() => {
                         if (mostrarFormJustif) {
                           setJustifAlumnoBusqueda('');
@@ -1621,7 +2437,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                 </div>
 
                 {mostrarFormJustif ? (
-                  <div className="p-4 space-y-5">
+                  <div className="justif-movil-form-scroll space-y-5 p-4 max-lg:px-4 max-lg:pt-4">
 
                     {/* Paso 1: Buscar alumno */}
                     <div className="space-y-2">
@@ -1634,7 +2450,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[18px]">search</span>
                             <input
                               type="text"
-                              className="w-full pl-9 pr-4 py-2 rounded-lg bg-[#132a52] border border-[#4f8cdb] focus:border-primary focus:outline-none text-sm text-[#e7eef9]"
+                              className="w-full rounded-lg border py-2 pl-9 pr-4 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 max-lg:min-h-11 max-lg:border-slate-300 max-lg:bg-white max-lg:text-slate-900 max-lg:placeholder:text-slate-400 lg:border-[#4f8cdb] lg:bg-[#132a52] lg:text-[#e7eef9]"
                               placeholder="Buscar por nombre o CI..."
                               value={justifAlumnoBusqueda}
                               onChange={(e) => {
@@ -1679,13 +2495,13 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                                   setJustifAlumnoSeleccionado(al.matriculaId);
                                   setJustifDiasSeleccionados([]);
                                 }}
-                                className={`group w-full flex items-center gap-2 rounded-md border px-2.5 py-2 text-left text-sm transition-all
+                                className={`group flex w-full items-center gap-2 rounded-md border px-2.5 py-2 text-left text-sm transition-all max-lg:min-h-12 max-lg:rounded-xl max-lg:px-3 max-lg:py-3
                                   ${justifAlumnoSeleccionado === al.matriculaId
                                     ? 'border-primary/50 bg-primary/15 ring-1 ring-primary/25 shadow-sm'
-                                    : 'border-slate-700/60 bg-[#0d1b2e] hover:border-slate-500 hover:bg-[#132a52]'}`}
+                                    : 'border-slate-700/60 bg-[#0d1b2e] hover:border-slate-500 hover:bg-[#132a52] max-lg:border-slate-200 max-lg:bg-slate-50 max-lg:hover:border-slate-300 max-lg:hover:bg-slate-100 dark:max-lg:border-slate-700/60 dark:max-lg:bg-[#0d1b2e] dark:max-lg:hover:bg-[#132a52]'}`}
                               >
                                 <div className="min-w-0 flex-1">
-                                  <p className="text-[13px] font-semibold text-[#e7eef9] leading-snug tracking-tight whitespace-normal break-words">
+                                  <p className="text-[13px] font-semibold leading-snug tracking-tight whitespace-normal break-words text-[#e7eef9] max-lg:text-slate-900 dark:max-lg:text-[#e7eef9]">
                                     {formatoNombreLegible(al.alumno)}
                                   </p>
                                   <p className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500">
@@ -1695,7 +2511,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                                     </span>
                                   </p>
                                 </div>
-                                <span className="shrink-0 inline-flex items-center rounded-md border border-rose-500/45 bg-rose-500/18 px-2 py-0.5 text-[10px] font-semibold text-rose-100 shadow-sm shadow-rose-950/30">
+                                <span className="inline-flex shrink-0 items-center rounded-md border border-rose-300 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700 shadow-sm max-lg:py-1 dark:border-rose-500/45 dark:bg-rose-500/18 dark:text-rose-100 dark:shadow-rose-950/30">
                                   {al.dias.length} {al.dias.length === 1 ? 'falta' : 'faltas'}
                                 </span>
                               </button>
@@ -1709,13 +2525,13 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                       const alumno = alumnosConAusencias.find((a) => a.matriculaId === justifAlumnoSeleccionado);
                       if (!alumno) return null;
                       return (
-                        <div className="space-y-2">
+                        <div id="justif-paso-dias" className="space-y-2 scroll-mt-4">
                           <p className="text-xs font-semibold uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
                             <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary text-white text-[10px] font-bold">2</span>
                             Días a justificar —
                             <span className="text-slate-300 normal-case font-medium">{formatoNombreLegible(alumno.alumno)}</span>
                           </p>
-                          <div className="rounded-lg border border-slate-700/60 bg-[#0d1b2e] p-3">
+                          <div className="rounded-lg border border-slate-700/60 bg-[#0d1b2e] p-3 max-lg:border-slate-200 max-lg:bg-slate-50 dark:max-lg:border-slate-700/60 dark:max-lg:bg-[#0d1b2e]">
                             {!alumno.dias.length ? (
                               <p className="text-sm text-slate-500">
                                 Este alumno no tiene inasistencias sin justificar registradas.
@@ -1732,9 +2548,9 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                                       onClick={() => setJustifDiasSeleccionados((prev) =>
                                         checked ? prev.filter((k) => k !== diaKey) : [...prev, diaKey]
                                       )}
-                                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium ${checked
-                                          ? 'bg-primary/20 border-primary text-[#e7eef9]'
-                                          : 'border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'}`}
+                                      className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium max-lg:min-h-11 max-lg:px-4 ${checked
+                                          ? 'border-primary bg-primary/20 text-[#e7eef9] max-lg:text-slate-900 dark:max-lg:text-[#e7eef9]'
+                                          : 'border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200 max-lg:border-slate-300 max-lg:bg-white max-lg:text-slate-600 max-lg:hover:border-slate-400 dark:max-lg:border-slate-700 dark:max-lg:bg-transparent'}`}
                                     >
                                       <span className={`material-symbols-outlined text-[15px] ${checked ? 'text-primary' : 'text-slate-600'}`}>
                                         {checked ? 'check_box' : 'check_box_outline_blank'}
@@ -1763,73 +2579,85 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                         <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary text-white text-[10px] font-bold">3</span>
                         Completar datos
                       </p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <label className="flex flex-col gap-1 text-sm">
-                          <span className="text-slate-400 text-xs uppercase">Motivo</span>
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <label className="flex flex-col gap-1.5 text-sm">
+                          <span className="text-xs uppercase text-slate-500 max-lg:text-slate-600 lg:text-slate-400">Motivo</span>
                           <textarea
-                            className="px-3 py-2 rounded-lg bg-[#132a52] border border-[#4f8cdb] text-sm resize-none h-[80px] text-[#e7eef9]"
+                            className="min-h-[5.5rem] resize-none rounded-lg border px-3 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 max-lg:border-slate-300 max-lg:bg-white max-lg:text-slate-900 max-lg:placeholder:text-slate-400 md:min-h-[80px] lg:border-[#4f8cdb] lg:bg-[#132a52] lg:text-[#e7eef9]"
                             placeholder="Describe el motivo de la inasistencia..."
                             value={justifMotivo}
                             onChange={(e) => setJustifMotivo(e.target.value)}
                             maxLength={500}
                           />
                         </label>
-                        <div className="flex flex-col gap-1 text-sm">
-                          <span className="text-slate-400 text-xs uppercase">Documento justificativo (PDF)</span>
+                        <div className="flex min-w-0 flex-col gap-1.5 text-sm">
+                          <span className="text-xs uppercase text-slate-500 max-lg:text-slate-600 lg:text-slate-400">
+                            Documento justificativo (PDF)
+                          </span>
                           <div
-                            className={`relative flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-dashed h-[80px] min-w-0
-                              ${justifArchivo ? 'border-emerald-500/50 bg-emerald-500/5 dark:bg-emerald-500/10' : 'border-slate-600 bg-[#0d1b2e] hover:border-slate-500 hover:bg-[#132a52]'}`}
+                            className={`app-file-upload-zone max-lg:border-slate-300 max-lg:bg-slate-50 max-lg:hover:border-slate-400 max-lg:hover:bg-slate-100 dark:max-lg:border-slate-600 dark:max-lg:bg-[#0d1b2e] dark:max-lg:hover:border-slate-500 dark:max-lg:hover:bg-[#132a52] lg:min-h-[80px] lg:border-slate-600 lg:bg-[#0d1b2e] lg:hover:border-slate-500 lg:hover:bg-[#132a52] ${
+                              justifArchivo
+                                ? 'app-file-upload-zone--filled max-lg:border-emerald-400 max-lg:bg-emerald-50 max-lg:hover:bg-emerald-50 dark:max-lg:border-emerald-500/50 dark:max-lg:bg-emerald-500/10'
+                                : ''
+                            }`}
                           >
-                            <label
-                              htmlFor="justif-file-input"
-                              className="flex min-w-0 flex-1 cursor-pointer items-center gap-3"
-                            >
-                              <span className={`material-symbols-outlined shrink-0 text-[24px] ${justifArchivo ? 'text-emerald-400' : 'text-slate-500'}`}>
+                            <input
+                              id="justif-file-input"
+                              type="file"
+                              accept="application/pdf"
+                              aria-label="Seleccionar PDF justificativo"
+                              disabled={Boolean(justifArchivo)}
+                              className="absolute inset-0 z-[1] h-full w-full cursor-pointer opacity-0 disabled:pointer-events-none"
+                              onChange={(e) => {
+                                const f = e.target.files?.[0] ?? null;
+                                setJustifArchivo(f);
+                                e.target.value = '';
+                              }}
+                            />
+                            <div className="app-file-upload-zone__label pointer-events-none">
+                              <span
+                                className={`material-symbols-outlined shrink-0 text-[26px] ${
+                                  justifArchivo ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'
+                                }`}
+                              >
                                 {justifArchivo ? 'task' : 'upload_file'}
                               </span>
-                              <div className="min-w-0">
+                              <div className="min-w-0 flex-1">
                                 {justifArchivo ? (
                                   <>
-                                    <p className="text-emerald-300 font-medium text-sm truncate">{justifArchivo.name}</p>
-                                    <p className="text-slate-500 text-xs">{(justifArchivo.size / 1024).toFixed(1)} KB</p>
+                                    <p className="app-file-upload-zone__name">{justifArchivo.name}</p>
+                                    <p className="app-file-upload-zone__meta">
+                                      {(justifArchivo.size / 1024).toFixed(1)} KB
+                                    </p>
                                   </>
                                 ) : (
                                   <>
-                                    <p className="text-slate-300 text-sm">Haz clic para adjuntar</p>
-                                    <p className="text-slate-500 text-xs">PDF · máx. 10 MB</p>
+                                    <p className="app-file-upload-zone__hint-title">Tocá para adjuntar PDF</p>
+                                    <p className="app-file-upload-zone__meta">Máximo 10 MB</p>
                                   </>
                                 )}
                               </div>
-                            </label>
+                            </div>
                             {justifArchivo ? (
                               <button
                                 type="button"
-                                className="ml-auto shrink-0 text-slate-500 hover:text-rose-400"
+                                className="app-file-upload-zone__remove relative z-[2]"
+                                aria-label="Quitar archivo"
                                 onClick={() => setJustifArchivo(null)}
                               >
-                                <span className="material-symbols-outlined text-[20px]">close</span>
+                                <span className="material-symbols-outlined text-[22px]">close</span>
                               </button>
                             ) : null}
                           </div>
-                          <input
-                            id="justif-file-input"
-                            type="file"
-                            accept="application/pdf"
-                            className="sr-only"
-                            onChange={(e) => {
-                              const f = e.target.files?.[0] ?? null;
-                              setJustifArchivo(f);
-                              e.target.value = '';
-                            }}
-                          />
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex justify-end">
+                    <div className="flex justify-end max-lg:w-full max-lg:pt-2 app-mobile-cta-footer">
                       <button
+                        id="justif-submit-btn"
                         type="button"
-                        className="btn-modern btn-modern-primary"
+                        className="btn-modern btn-modern-primary btn-mobile-cta lg:w-auto"
                         onClick={() => void enviarJustificacion()}
                         disabled={subiendoJustif || !justifDiasSeleccionados.length || !justifMotivo.trim() || !justifArchivo}
                       >
@@ -1842,15 +2670,19 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                 ) : null}
               </div>
 
-              {/* Bandeja de revisión */}
-              <div className="rounded-xl border border-slate-800 bg-[#132a52] overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 gap-3 flex-wrap">
-                  <div>
-                    <p className="text-xs uppercase text-slate-400">Historial</p>
-                    <h3 className="text-lg font-semibold">Bandeja de revisión y resolución</h3>
+              {/* Bandeja de revisión — en móvil no se monta con el formulario abierto (evita hueco blanco) */}
+              {(!viewportEsMovil || !mostrarFormJustif) ? (
+              <div className={JUSTIF_PANEL_CLASS}>
+                <div className={`${JUSTIF_PANEL_HEADER_CLASS} max-lg:flex-col max-lg:items-stretch`}>
+                  <div className="min-w-0">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Historial</p>
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-[#f0f4f8]">
+                      Bandeja de revisión y resolución
+                    </h3>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="btn-mobile-stack flex w-full min-w-0 flex-col gap-2 lg:w-auto lg:flex-row lg:items-center">
                     <AppSelect
+                      className="w-full min-w-0 lg:w-auto"
                       aria-label="Filtrar justificaciones por estado"
                       value={justificacionEstado}
                       onChange={(v) => setJustificacionEstado(v as '' | JustificacionEstado)}
@@ -1861,11 +2693,11 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                         { value: 'aprobada', label: 'Aprobada' },
                         { value: 'rechazada', label: 'Rechazada' },
                       ]}
-                      triggerClassName="px-3 py-2 rounded-lg bg-white border border-slate-300 text-sm text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                      triggerClassName="w-full rounded-lg border border-slate-300 bg-white py-2 pl-3 pr-3 text-sm text-slate-900 dark:border-slate-600 dark:bg-[#0b2147] dark:text-[#e7eef9]"
                     />
                     <button
                       type="button"
-                      className="btn-modern btn-modern-ghost btn-modern-sm"
+                      className="btn-modern btn-modern-ghost btn-modern-sm btn-mobile-cta border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-[#0b2147] dark:text-[#e7eef9] dark:hover:bg-[#091c3d] lg:w-auto"
                       onClick={() => void cargarJustificaciones()}
                       disabled={justificacionesLoading}
                     >
@@ -1873,24 +2705,148 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                     </button>
                   </div>
                 </div>
-                <div className="overflow-auto max-h-[420px]">
+                {/* Historial — tarjetas en móvil */}
+                <ul className="divide-y divide-slate-200 dark:divide-slate-800 lg:hidden">
+                  {justificacionesLoading ? (
+                    <li className="flex items-center justify-center gap-2 px-4 py-10 text-sm text-slate-500">
+                      <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
+                      Cargando justificaciones...
+                    </li>
+                  ) : null}
+                  {!justificacionesLoading && !justificaciones.length ? (
+                    <li className="px-4 py-10 text-center text-sm text-slate-500">
+                      <span className="material-symbols-outlined mb-2 block text-[36px] text-slate-400">inbox</span>
+                      {cursoId
+                        ? 'No hay justificaciones para el filtro actual.'
+                        : 'Selecciona una planilla para revisar justificaciones.'}
+                    </li>
+                  ) : null}
+                  {!justificacionesLoading &&
+                    agruparJustificacionesPorCarga(justificaciones, claveGrupoJustificacionCarga).map((g) => {
+                      const j = g.representante;
+                      const pendiente = j.estado_revision === 'pendiente';
+                      const resolviendo = g.ids.some((id) => resolviendoId === id);
+                      return (
+                        <li key={g.ids.join('-')} className="space-y-3 p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="break-words text-[15px] font-semibold leading-snug text-slate-900 dark:text-[#e7eef9]">
+                                {formatoNombreLegible(j.alumno)}
+                              </p>
+                              <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-500">
+                                Matrícula #{j.matricula_id}
+                              </p>
+                            </div>
+                            <span
+                              className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold capitalize ${claseBadgeEstadoJustificacion(j.estado_revision)}`}
+                            >
+                              {j.estado_revision}
+                            </span>
+                          </div>
+                          <div className="space-y-2 text-sm">
+                            <p className="text-slate-600 dark:text-[#9fb3d4]">
+                              <span className="font-medium text-slate-700 dark:text-slate-400">Curso: </span>
+                              {j.materia}
+                              <span className="text-xs text-slate-500"> (#{j.curso_id})</span>
+                            </p>
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Motivo</p>
+                              <p className="mt-0.5 break-words text-slate-800 dark:text-[#9fb3d4]">{j.motivo}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Fechas</p>
+                              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                {[...g.fechas].sort().map((f) => (
+                                  <span
+                                    key={f}
+                                    className="inline-block rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs text-slate-700 dark:border-slate-700/60 dark:bg-slate-700/60 dark:text-slate-300"
+                                  >
+                                    {new Date(`${normalizeDate(f)}T00:00:00`).toLocaleDateString('es-AR', {
+                                      day: '2-digit',
+                                      month: 'short',
+                                    })}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            {j.documento_url ? (
+                              <a
+                                href="#"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  void abrirDocumento(j.documento_url).catch((err) =>
+                                    toast.error(err instanceof Error ? err.message : 'No se pudo abrir el PDF')
+                                  );
+                                }}
+                                className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-blue-700 dark:border-slate-700 dark:bg-[#0d1b2e] dark:text-blue-400"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
+                                Ver documento PDF
+                              </a>
+                            ) : null}
+                            {!pendiente && j.comentarios_revision ? (
+                              <p className="text-xs text-slate-600 dark:text-slate-500">
+                                <span className="font-medium">Comentario: </span>
+                                {j.comentarios_revision}
+                              </p>
+                            ) : null}
+                          </div>
+                          {puedeResolverJustificaciones && pendiente ? (
+                            <div className="space-y-2.5 border-t border-slate-200 pt-3 dark:border-slate-800">
+                              <input
+                                className="w-full rounded-lg border px-3 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 max-lg:min-h-11 max-lg:border-slate-300 max-lg:bg-white max-lg:text-slate-900 lg:border-[#4f8cdb] lg:bg-[#132a52] lg:text-xs lg:text-[#e7eef9]"
+                                placeholder="Comentario (opcional)"
+                                value={comentariosRevision[j.id] ?? ''}
+                                onChange={(e) =>
+                                  setComentariosRevision((prev) => ({ ...prev, [j.id]: e.target.value }))
+                                }
+                              />
+                              <div className="btn-mobile-row flex gap-2">
+                                <button
+                                  type="button"
+                                  className="btn-modern btn-modern-success btn-modern-xs btn-mobile-cta"
+                                  onClick={() => void Promise.all(g.ids.map((id) => resolver(id, 'aprobar')))}
+                                  disabled={resolviendo}
+                                >
+                                  Aprobar
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-modern btn-modern-danger btn-modern-xs btn-mobile-cta"
+                                  onClick={() => void Promise.all(g.ids.map((id) => resolver(id, 'rechazar')))}
+                                  disabled={resolviendo}
+                                >
+                                  Rechazar
+                                </button>
+                              </div>
+                            </div>
+                          ) : null}
+                        </li>
+                      );
+                    })}
+                </ul>
+
+                {/* Historial — tabla en escritorio (sin cambios) */}
+                <div className="scroll-region-at-lg hidden lg:block lg:max-h-[420px]">
                   <table className="min-w-full text-sm">
-                    <thead className="bg-[#0d1b2e] text-[#9fb3d4] sticky top-0 z-10">
+                    <thead className={JUSTIF_TABLE_HEAD_CLASS}>
                       <tr>
-                        <th className="text-left px-4 py-3 font-semibold">Alumno</th>
-                        <th className="text-left px-4 py-3 font-semibold">Curso</th>
-                        <th className="text-left px-4 py-3 font-semibold">Motivo</th>
-                        <th className="text-left px-4 py-3 font-semibold">Fechas</th>
-                        <th className="text-left px-4 py-3 font-semibold">Estado</th>
+                        <th className="px-4 py-3 text-left font-semibold">Alumno</th>
+                        <th className="px-4 py-3 text-left font-semibold">Curso</th>
+                        <th className="px-4 py-3 text-left font-semibold">Motivo</th>
+                        <th className="px-4 py-3 text-left font-semibold">Fechas</th>
+                        <th className="px-4 py-3 text-left font-semibold">Estado</th>
                         {puedeResolverJustificaciones ? (
-                          <th className="text-right px-4 py-3 font-semibold">Acciones</th>
+                          <th className="px-4 py-3 text-right font-semibold">Acciones</th>
                         ) : null}
                       </tr>
                     </thead>
                     <tbody>
                       {justificacionesLoading ? (
                         <tr>
-                          <td colSpan={puedeResolverJustificaciones ? 6 : 5} className="px-4 py-6 text-center text-slate-400">Cargando justificaciones...</td>
+                          <td colSpan={puedeResolverJustificaciones ? 6 : 5} className="px-4 py-6 text-center text-slate-400">
+                            Cargando justificaciones...
+                          </td>
                         </tr>
                       ) : null}
                       {!justificacionesLoading && !justificaciones.length ? (
@@ -1906,16 +2862,16 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                           const pendiente = j.estado_revision === 'pendiente';
                           const resolviendo = g.ids.some((id) => resolviendoId === id);
                           return (
-                            <tr key={g.ids.join('-')} className="border-t border-slate-800 hover:bg-[#0d1b2e]/60 align-top">
-                              <td className="px-4 py-3 text-[#e7eef9]">
+                            <tr key={g.ids.join('-')} className={JUSTIF_TABLE_ROW_CLASS}>
+                              <td className="px-4 py-3 text-slate-900 dark:text-[#e7eef9]">
                                 <div className="font-medium">{formatoNombreLegible(j.alumno)}</div>
-                                <div className="text-xs text-slate-500">Matrícula #{j.matricula_id}</div>
+                                <div className="text-xs text-slate-500 dark:text-slate-400">Matrícula #{j.matricula_id}</div>
                               </td>
-                              <td className="px-4 py-3 text-[#9fb3d4]">
+                              <td className="px-4 py-3 text-slate-700 dark:text-[#9fb3d4]">
                                 <div>#{j.curso_id}</div>
                                 <div className="text-xs text-slate-500">{j.materia}</div>
                               </td>
-                              <td className="px-4 py-3 text-[#9fb3d4] max-w-[240px]">
+                              <td className="max-w-[240px] px-4 py-3 text-slate-700 dark:text-[#9fb3d4]">
                                 <p className="line-clamp-2">{j.motivo}</p>
                                 {j.documento_url ? (
                                   <a
@@ -1928,34 +2884,31 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                                     }}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 mt-1"
+                                    className="mt-1 inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
                                   >
                                     <span className="material-symbols-outlined text-[14px]">picture_as_pdf</span>
                                     Ver PDF
                                   </a>
                                 ) : null}
                               </td>
-                              <td className="px-4 py-3 text-[#9fb3d4] text-xs">
+                              <td className="px-4 py-3 text-xs text-slate-600 dark:text-[#9fb3d4]">
                                 {[...g.fechas].sort().map((f) => (
-                                  <span key={f} className="inline-block mr-1 mb-1 px-1.5 py-0.5 rounded bg-slate-700/60 text-slate-300">
+                                  <span
+                                    key={f}
+                                    className="mb-1 mr-1 inline-block rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 text-slate-700 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-300"
+                                  >
                                     {new Date(`${normalizeDate(f)}T00:00:00`).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })}
                                   </span>
                                 ))}
                               </td>
                               <td className="px-4 py-3">
                                 <span
-                                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] border ${
-                                    j.estado_revision === 'aprobada'
-                                      ? 'bg-emerald-500/10 text-emerald-100 border-emerald-500/30'
-                                      : j.estado_revision === 'rechazada'
-                                        ? 'bg-rose-500/10 text-rose-100 border-rose-500/30'
-                                        : 'bg-amber-500/10 text-amber-100 border-amber-500/30'
-                                  }`}
+                                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium capitalize ${claseBadgeEstadoJustificacion(j.estado_revision)}`}
                                 >
                                   {j.estado_revision}
                                 </span>
                                 {!pendiente && j.comentarios_revision ? (
-                                  <p className="text-xs text-slate-500 mt-1">{j.comentarios_revision}</p>
+                                  <p className="mt-1 text-xs text-slate-500">{j.comentarios_revision}</p>
                                 ) : null}
                               </td>
                               {puedeResolverJustificaciones ? (
@@ -1963,7 +2916,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                                   {pendiente ? (
                                     <div className="space-y-2">
                                       <input
-                                        className="w-full px-2 py-1 rounded-lg bg-[#132a52] border border-[#4f8cdb] text-xs text-[#e7eef9]"
+                                        className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900 focus:border-primary focus:outline-none dark:border-[#4f8cdb] dark:bg-[#0b2147] dark:text-[#e7eef9]"
                                         placeholder="Comentario (opcional)"
                                         value={comentariosRevision[j.id] ?? ''}
                                         onChange={(e) =>
@@ -1972,6 +2925,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                                       />
                                       <div className="inline-flex gap-2">
                                         <button
+                                          type="button"
                                           className="btn-modern btn-modern-success btn-modern-xs"
                                           onClick={() => void Promise.all(g.ids.map((id) => resolver(id, 'aprobar')))}
                                           disabled={resolviendo}
@@ -1979,6 +2933,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                                           Aprobar
                                         </button>
                                         <button
+                                          type="button"
                                           className="btn-modern btn-modern-danger btn-modern-xs"
                                           onClick={() => void Promise.all(g.ids.map((id) => resolver(id, 'rechazar')))}
                                           disabled={resolviendo}
@@ -1999,7 +2954,9 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                   </table>
                 </div>
               </div>
-            </div> : null}
+              ) : null}
+            </div>
+            ) : null}
           </section>
         </main>
       </div>

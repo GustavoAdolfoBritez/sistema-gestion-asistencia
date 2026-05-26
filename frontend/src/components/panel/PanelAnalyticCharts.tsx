@@ -1,4 +1,4 @@
-import { memo, type ReactNode } from 'react';
+import { memo, useEffect, useState, type ReactNode } from 'react';
 import {
   Area,
   Bar,
@@ -26,6 +26,20 @@ import type {
 } from '../../utils/panel-chart-data';
 import { getPanelChartTheme, type PanelChartTheme } from '../../utils/panel-chart-theme';
 
+/** lg = 1024px — alineado con `max-lg:` del resto de la app. */
+function usePanelChartMobile(): boolean {
+  const [mobile, setMobile] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1023px)');
+    const onChange = () => setMobile(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return mobile;
+}
+
 type PanelChartShellProps = {
   theme: PanelChartTheme;
   title: string;
@@ -35,6 +49,12 @@ type PanelChartShellProps = {
   empty: boolean;
   emptyMessage: string;
   height?: number;
+  /** Altura del gráfico en móvil/tablet (opcional). */
+  mobileHeight?: number;
+  /** Ancho mínimo del canvas en móvil para scroll horizontal sin comprimir etiquetas. */
+  mobileChartMinWidth?: number;
+  /** Vista alternativa en móvil/tablet (reemplaza el canvas Recharts). */
+  mobileAlternate?: ReactNode;
   children: ReactNode;
 };
 
@@ -47,29 +67,61 @@ function PanelChartShell({
   empty,
   emptyMessage,
   height = 260,
+  mobileHeight,
+  mobileChartMinWidth,
+  mobileAlternate,
   children,
 }: PanelChartShellProps) {
+  const isMobile = usePanelChartMobile();
+  const chartHeight = isMobile && mobileHeight != null ? mobileHeight : height;
+  const useMobileAlternate = isMobile && mobileAlternate != null;
+
   return (
     <div className={theme.card}>
       <p className={theme.kicker}>{title}</p>
       <h2 className={theme.title}>{subtitle}</h2>
-      {hint ? <p className={theme.hint}>{hint}</p> : <div className="mb-3" />}
+      {hint ? <p className={`${theme.hint} max-lg:text-[11px] max-lg:leading-snug`}>{hint}</p> : <div className="mb-3" />}
       {statsLoading ? (
-        <div className={`flex items-center justify-center text-sm ${theme.muted}`} style={{ height }}>
+        <div className={`flex items-center justify-center text-sm ${theme.muted}`} style={{ height: chartHeight }}>
           Cargando...
         </div>
       ) : empty ? (
         <div
           className={`flex flex-col items-center justify-center gap-2 ${theme.muted}`}
-          style={{ height }}
+          style={{ height: chartHeight }}
         >
           <span className="material-symbols-outlined text-[36px] opacity-40">insights</span>
           <p className="text-sm">{emptyMessage}</p>
         </div>
+      ) : useMobileAlternate ? (
+        <div
+          className="scroll-region-at-lg min-w-0 w-full lg:max-h-[min(70dvh,520px)]"
+          style={{ minHeight: chartHeight }}
+        >
+          {mobileAlternate}
+        </div>
       ) : (
-        <ResponsiveContainer width="100%" height={height}>
-          {children}
-        </ResponsiveContainer>
+        <div
+          className={
+            isMobile
+              ? `panel-chart-canvas-wrap${mobileChartMinWidth ? ' panel-chart-canvas-wrap--h-scroll' : ''}`
+              : 'scroll-region min-w-0 w-full'
+          }
+          style={{ height: chartHeight }}
+        >
+          <div
+            className="h-full w-full"
+            style={
+              isMobile && mobileChartMinWidth
+                ? { minWidth: mobileChartMinWidth, width: '100%' }
+                : undefined
+            }
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              {children}
+            </ResponsiveContainer>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -85,8 +137,11 @@ function ChartTooltipBox({
   children: ReactNode;
 }) {
   return (
-    <div className="text-xs rounded-lg px-3 py-2 max-w-[280px]" style={theme.tooltip}>
-      <p className={theme.tooltipTitle}>{title}</p>
+    <div
+      className="max-w-[min(92vw,280px)] rounded-lg px-3 py-2 text-xs break-words"
+      style={theme.tooltip}
+    >
+      <p className={`${theme.tooltipTitle} break-words leading-snug`}>{title}</p>
       <div className={`space-y-0.5 mt-1 ${theme.tooltipBody}`}>{children}</div>
     </div>
   );
@@ -225,6 +280,54 @@ export const PanelScatterAsistenciaRiesgoChart = memo(function PanelScatterAsist
   );
 });
 
+function CarreraInhabilitadosMobileList({
+  data,
+  theme,
+}: {
+  data: CarreraInhabilitadosRow[];
+  theme: PanelChartTheme;
+}) {
+  const maxPct = Math.max(100, ...data.map((row) => row.pctInhabilitados), 1);
+
+  return (
+    <ul className="flex flex-col gap-4 px-0.5 py-2">
+      {data.map((row) => {
+        const barPct = maxPct > 0 ? (row.pctInhabilitados / maxPct) * 100 : 0;
+        return (
+          <li key={row.carreraId} className="min-w-0">
+            <div className="mb-1.5 flex items-start justify-between gap-3">
+              <p className="min-w-0 flex-1 break-words text-sm font-medium leading-snug text-slate-800 dark:text-slate-100">
+                {row.carrera}
+              </p>
+              <span
+                className="shrink-0 text-sm font-semibold tabular-nums"
+                style={{ color: theme.barInhabilitados }}
+              >
+                {row.pctInhabilitados}%
+              </span>
+            </div>
+            <div
+              className="h-3 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800/70"
+              role="presentation"
+            >
+              <div
+                className="h-full min-w-0 rounded-full transition-[width] duration-500"
+                style={{
+                  width: `${barPct}%`,
+                  backgroundColor: theme.barInhabilitados,
+                }}
+              />
+            </div>
+            <p className={`mt-1 text-[11px] ${theme.muted}`}>
+              Asist. prom. {row.pctAsistencia}% · {row.matriculas} matrículas
+            </p>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 export const PanelCarreraInhabilitadosChart = memo(function PanelCarreraInhabilitadosChart({
   statsLoading,
   data,
@@ -237,6 +340,9 @@ export const PanelCarreraInhabilitadosChart = memo(function PanelCarreraInhabili
   isDark: boolean;
 }) {
   const theme = getPanelChartTheme(isDark);
+  const isMobile = usePanelChartMobile();
+  const chartHeight = Math.max(220, data.length * 44);
+  const mobileHeight = Math.max(280, data.length * 76);
 
   return (
     <PanelChartShell
@@ -247,13 +353,16 @@ export const PanelCarreraInhabilitadosChart = memo(function PanelCarreraInhabili
       statsLoading={statsLoading}
       empty={!data.length}
       emptyMessage="Sin carreras con datos en el alcance"
-      height={Math.max(220, data.length * 44)}
+      height={chartHeight}
+      mobileHeight={mobileHeight}
+      mobileAlternate={<CarreraInhabilitadosMobileList data={data} theme={theme} />}
     >
       <BarChart
         key={chartKey}
         data={data}
         layout="vertical"
         margin={{ top: 8, right: 24, left: 8, bottom: 4 }}
+        barCategoryGap="10%"
       >
         <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
         <XAxis
@@ -291,7 +400,7 @@ export const PanelCarreraInhabilitadosChart = memo(function PanelCarreraInhabili
           name="% inhabilitados"
           fill={theme.barInhabilitados}
           radius={[0, 6, 6, 0]}
-          isAnimationActive
+          isAnimationActive={!isMobile}
           animationDuration={1400}
         />
       </BarChart>
@@ -311,6 +420,12 @@ export const PanelAsistenciaAlertasChart = memo(function PanelAsistenciaAlertasC
   isDark: boolean;
 }) {
   const theme = getPanelChartTheme(isDark);
+  const isMobile = usePanelChartMobile();
+  const barSize = isMobile
+    ? Math.min(44, Math.max(22, Math.floor(240 / Math.max(data.length, 1))))
+    : 18;
+  const chartHeight = isMobile ? 380 : 300;
+  const chartMinWidth = isMobile ? Math.max(340, data.length * 72) : undefined;
 
   return (
     <PanelChartShell
@@ -321,31 +436,50 @@ export const PanelAsistenciaAlertasChart = memo(function PanelAsistenciaAlertasC
       statsLoading={statsLoading}
       empty={!data.length}
       emptyMessage="Sin historial mensual para comparar"
-      height={300}
+      height={chartHeight}
+      mobileHeight={chartHeight}
+      mobileChartMinWidth={chartMinWidth}
     >
-      <ComposedChart key={chartKey} data={data} margin={{ top: 8, right: 48, left: 0, bottom: 4 }}>
+      <ComposedChart
+        key={chartKey}
+        data={data}
+        margin={
+          isMobile
+            ? { top: 12, right: 44, left: 6, bottom: 56 }
+            : { top: 8, right: 48, left: 0, bottom: 4 }
+        }
+        barCategoryGap={isMobile ? '20%' : undefined}
+      >
         <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
         <XAxis
           dataKey="periodo"
-          tick={{ fill: theme.axisTick, fontSize: 11 }}
+          tick={{ fill: theme.axisTick, fontSize: isMobile ? 10 : 11 }}
           axisLine={false}
           tickLine={false}
+          interval={0}
+          angle={isMobile ? -32 : 0}
+          textAnchor={isMobile ? 'end' : 'middle'}
+          height={isMobile ? 52 : 30}
         />
         <YAxis
           yAxisId="left"
-          tick={{ fill: theme.axisTick, fontSize: 11 }}
+          width={isMobile ? 36 : 60}
+          tick={{ fill: theme.axisTick, fontSize: isMobile ? 10 : 11 }}
           unit="%"
           domain={[0, 100]}
+          ticks={isMobile ? [0, 50, 100] : undefined}
           axisLine={false}
           tickLine={false}
         />
         <YAxis
           yAxisId="right"
           orientation="right"
-          tick={{ fill: theme.axisAlertas, fontSize: 11 }}
+          width={isMobile ? 32 : 60}
+          tick={{ fill: theme.axisAlertas, fontSize: isMobile ? 10 : 11 }}
           axisLine={false}
           tickLine={false}
           allowDecimals={false}
+          tickCount={isMobile ? 4 : 5}
         />
         <ReTooltip
           contentStyle={theme.tooltip}
@@ -357,7 +491,11 @@ export const PanelAsistenciaAlertasChart = memo(function PanelAsistenciaAlertasC
             return [String(value ?? 0), String(name)];
           }}
         />
-        <Legend formatter={(v) => <span className={theme.legend}>{v}</span>} />
+        <Legend
+          formatter={(v) => <span className={theme.legend}>{v}</span>}
+          verticalAlign="bottom"
+          wrapperStyle={isMobile ? { paddingTop: 12, fontSize: 11 } : undefined}
+        />
         <Area
           yAxisId="left"
           type="monotone"
@@ -366,7 +504,7 @@ export const PanelAsistenciaAlertasChart = memo(function PanelAsistenciaAlertasC
           stroke={theme.areaStroke}
           fill={theme.areaFill}
           fillOpacity={isDark ? 0.28 : 0.2}
-          strokeWidth={2}
+          strokeWidth={isMobile ? 2.5 : 2}
           isAnimationActive
           animationDuration={1600}
         />
@@ -375,7 +513,7 @@ export const PanelAsistenciaAlertasChart = memo(function PanelAsistenciaAlertasC
           dataKey="alertas"
           name="Alertas"
           fill={theme.barAlertas}
-          barSize={18}
+          barSize={barSize}
           radius={[4, 4, 0, 0]}
           fillOpacity={isDark ? 0.9 : 0.85}
           isAnimationActive

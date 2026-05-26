@@ -98,7 +98,7 @@ export function ImportConfirmOverlay({
 
   return (
     <div
-      className={`absolute inset-0 z-30 flex flex-col items-center justify-center px-6 transition-opacity duration-200 ${
+      className={`absolute inset-0 z-30 flex min-w-0 flex-col items-center justify-center overflow-hidden px-4 sm:px-6 transition-opacity duration-200 ${
         showPanel ? 'opacity-100' : 'opacity-0 pointer-events-none'
       }`}
       role="status"
@@ -110,7 +110,7 @@ export function ImportConfirmOverlay({
         aria-hidden="true"
       />
 
-      <div className={`relative w-full max-w-[320px] rounded-2xl border p-6 animate-fade-in ${cardClass}`}>
+      <div className={`relative w-full min-w-0 max-w-[min(100%,20rem)] sm:max-w-[320px] rounded-2xl border p-4 sm:p-6 animate-fade-in ${cardClass}`}>
         <div className="flex flex-col items-center text-center">
           <div className="relative w-[88px] h-[88px] mb-5" aria-hidden="true">
             {isBusy ? (
@@ -143,7 +143,7 @@ export function ImportConfirmOverlay({
             {isSuccess ? 'Listo' : isError ? 'Error' : 'Confirmando importación'}
           </h4>
           <p
-            className={`text-xs mb-4 leading-relaxed max-h-28 overflow-y-auto px-1 ${
+            className={`scroll-region text-xs mb-4 leading-relaxed max-h-28 px-1 w-full min-w-0 ${
               isError
                 ? 'text-rose-800 dark:text-rose-100'
                 : 'text-slate-600 dark:text-slate-400'

@@ -105,6 +105,334 @@
     @apply hover:border-sky-600 hover:bg-sky-600 active:bg-sky-700;
     @apply dark:border-[#4a6fa5] dark:bg-[#5a89b3] dark:text-white dark:hover:border-[#5f94c0] dark:hover:bg-[#6898c3];
   }
+
+  /**
+   * Botones táctiles (móvil/tablet < lg). Escritorio lg+ sin cambios.
+   */
+  @media (max-width: 1023px) {
+    .btn-modern:hover {
+      transform: none;
+    }
+
+    .btn-modern,
+    .btn-modern.btn-modern-sm {
+      min-height: 2.75rem;
+    }
+
+    .btn-modern.btn-modern-xs {
+      min-height: 2.5rem;
+      padding-top: 0.5rem;
+      padding-bottom: 0.5rem;
+    }
+  }
+
+  /** CTA principal/secundario a ancho completo en móvil */
+  .btn-mobile-cta {
+    @apply max-lg:min-h-12 max-lg:w-full max-lg:rounded-xl max-lg:justify-center max-lg:gap-2 max-lg:px-4 max-lg:py-3 max-lg:text-sm;
+  }
+
+  /** Par Editar/Eliminar bajo el contenido de una tarjeta */
+  .btn-mobile-row {
+    @apply max-lg:flex max-lg:w-full max-lg:gap-2 max-lg:pt-2;
+  }
+
+  .btn-mobile-row > .btn-modern,
+  .btn-mobile-row > button.btn-modern {
+    @apply max-lg:min-h-10 max-lg:flex-1 max-lg:justify-center max-lg:rounded-xl;
+  }
+
+  /** Cancelar + Guardar (primario abajo) */
+  .btn-mobile-stack {
+    @apply max-lg:flex max-lg:w-full max-lg:flex-col-reverse max-lg:gap-2.5;
+  }
+
+  .btn-mobile-stack > .btn-modern,
+  .btn-mobile-stack > button.btn-modern {
+    @apply max-lg:w-full max-lg:min-h-11 max-lg:justify-center max-lg:rounded-xl;
+  }
+
+  /** Pestañas / segmentos de navegación en móvil */
+  .btn-mobile-tabs {
+    @apply max-lg:flex max-lg:w-full max-lg:flex-col max-lg:gap-2;
+  }
+
+  .btn-mobile-tabs > button {
+    @apply max-lg:min-h-11 max-lg:w-full max-lg:justify-center max-lg:rounded-xl max-lg:px-4 max-lg:py-3 max-lg:text-sm max-lg:font-semibold;
+  }
+
+  /**
+   * Zona de carga de archivo (PDF, Excel, etc.) — móvil legible en claro/oscuro.
+   * Escritorio: consumidor puede añadir lg: overrides locales si hace falta.
+   */
+  .app-file-upload-zone {
+    @apply relative flex w-full min-w-0 items-center gap-3 rounded-xl border-2 border-dashed px-4 py-3 transition-colors;
+    @apply min-h-[5rem] border-slate-300 bg-slate-50;
+    @apply hover:border-slate-400 hover:bg-slate-100;
+    @apply dark:border-slate-600 dark:bg-[#0d1b2e] dark:hover:border-slate-500 dark:hover:bg-[#132a52];
+  }
+
+  .app-file-upload-zone--filled {
+    @apply min-h-0 border-emerald-400 bg-emerald-50 py-3;
+    @apply hover:border-emerald-500 hover:bg-emerald-50;
+    @apply dark:border-emerald-500/50 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/10;
+  }
+
+  .app-file-upload-zone__label {
+    @apply flex min-h-[2.75rem] min-w-0 flex-1 cursor-pointer items-center gap-3;
+  }
+
+  .app-file-upload-zone__name {
+    @apply truncate text-sm font-medium text-emerald-800 dark:text-emerald-300;
+  }
+
+  .app-file-upload-zone__meta {
+    @apply text-xs text-slate-600 dark:text-slate-500;
+  }
+
+  .app-file-upload-zone__hint-title {
+    @apply text-sm text-slate-700 dark:text-slate-300;
+  }
+
+  .app-file-upload-zone__remove {
+    @apply ml-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-200/80 hover:text-rose-600 dark:hover:bg-slate-800/60 dark:hover:text-rose-400;
+  }
+
+  /** Variante centrada (importaciones Excel). */
+  .app-file-upload-zone--stacked {
+    @apply min-h-0 flex-col items-center py-6 text-center sm:py-10;
+  }
+
+  /**
+   * Formulario de justificación en móvil: sin estirar el panel ni dejar hueco blanco
+   * tras el selector de archivos (iOS/Android).
+   */
+  @media (max-width: 1023px) {
+    .justif-movil-form-panel {
+      height: auto !important;
+      min-height: 0 !important;
+      flex: 0 0 auto !important;
+      overflow: visible !important;
+    }
+
+    /* Sin scroll interno: solo desplaza la sección principal */
+    .justif-movil-form-scroll {
+      height: auto;
+      min-height: 0;
+      max-height: none;
+      overflow: visible;
+      flex: none;
+    }
+
+    .justif-movil-scroll-section {
+      overflow-anchor: none;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /**
+     * Margen inferior bajo la barra de navegación del celular (≈36px + safe-area).
+     * Aplica a áreas con scroll y a barras/CTA pegadas abajo.
+     */
+    :root {
+      --app-mobile-bottom-inset: max(env(safe-area-inset-bottom, 0px), 2.25rem);
+    }
+
+    .app-mobile-bottom-inset,
+    .app-mobile-cta-footer {
+      padding-bottom: var(--app-mobile-bottom-inset) !important;
+    }
+
+    .app-mobile-bottom-bar {
+      padding-bottom: var(--app-mobile-bottom-inset) !important;
+    }
+
+    /**
+     * Panel / inicio: el dedo debe seguir bajando la página aunque pase por un gráfico.
+     * scroll-region + overscroll-contain bloqueaba el scroll vertical del padre.
+     */
+    .panel-chart-canvas-wrap {
+      min-width: 0;
+      width: 100%;
+      overflow-x: auto;
+      overflow-y: visible;
+      overscroll-behavior-x: contain;
+      overscroll-behavior-y: auto;
+      touch-action: pan-y;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .panel-chart-canvas-wrap--h-scroll {
+      touch-action: pan-x pan-y;
+    }
+
+    .panel-chart-canvas-wrap .recharts-responsive-container,
+    .panel-chart-canvas-wrap .recharts-wrapper,
+    .panel-chart-canvas-wrap .recharts-surface {
+      touch-action: inherit;
+    }
+  }
+
+  /**
+   * Fase 0 — contenedor de scroll local para tablas/listas masivas.
+   * El desplazamiento queda dentro del bloque; no propaga ancho al layout padre.
+   */
+  .scroll-region {
+    @apply min-h-0 min-w-0 max-w-full overflow-auto overscroll-contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /**
+   * Scroll interno solo en lg+. En móvil/tablet no captura la rueda táctil
+   * (el desplazamiento lo maneja el contenedor padre).
+   */
+  .scroll-region-at-lg {
+    @apply min-h-0 min-w-0 max-w-full max-lg:overflow-visible max-lg:max-h-none;
+  }
+  @media (min-width: 1024px) {
+    .scroll-region-at-lg {
+      overflow: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+  }
+
+  /**
+   * Planillas / tablas anchas (solo móvil/tablet): deslizamiento horizontal táctil.
+   * En lg+ se usa .scroll-region estándar sin alterar escritorio.
+   */
+  @media (max-width: 1023px) {
+    .scroll-region-table {
+      @apply min-h-0 min-w-0 max-w-full overflow-x-auto overflow-y-visible overscroll-x-contain;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-x pan-y;
+    }
+  }
+
+  /** Fila sidebar + área principal (flex horizontal del shell de app). */
+  .app-layout-row {
+    @apply flex h-full w-full min-w-0 overflow-hidden;
+  }
+
+  /** Columna principal de contenido dinámico (obliga contracción de hijos en flex). */
+  .app-layout-main {
+    @apply flex min-w-0 flex-1 flex-col h-full overflow-hidden;
+  }
+
+  @media (max-width: 1023px) {
+    .app-layout-main {
+      @apply bg-background-light dark:bg-background-dark;
+    }
+
+    /**
+     * App bar siempre visible: menú ☰ + título no deben perderse al scrollear listas largas.
+     */
+    .app-layout-main > header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 40;
+      flex-shrink: 0;
+    }
+
+    .app-layout-main {
+      /* Reserva espacio para el header fixed (min-h-16 ≈ 4rem). */
+      padding-top: 4rem;
+    }
+
+    /**
+     * El scroll queda en main/contenido, no en el documento (evita que el header salga de pantalla).
+     */
+    html:has(.system-bg.h-screen.overflow-hidden),
+    body:has(.system-bg.h-screen.overflow-hidden) {
+      overflow: hidden;
+      height: 100%;
+      overscroll-behavior: none;
+    }
+
+    /** Viewport móvil estable (Chrome/Android) en pantallas con shell de app. */
+    .app-shell-viewport {
+      height: 100svh;
+      max-height: 100svh;
+    }
+
+    /** Área de scroll principal bajo el header sticky + margen sobre barra del celular. */
+    .app-scroll-content {
+      overscroll-behavior-y: contain;
+      touch-action: pan-y;
+      padding-bottom: var(--app-mobile-bottom-inset) !important;
+    }
+  }
+
+  /* Móvil oscuro: fondo #0D1830 para todos los módulos */
+  @media (max-width: 1023px) {
+    .dark .app-layout-main {
+      background-color: #0D1830;
+    }
+  }
+
+  /* lg+ sin inset extra de barra del sistema */
+  @media (min-width: 1024px) {
+    .app-scroll-content,
+    .app-mobile-bottom-inset,
+    .app-mobile-bottom-bar {
+      padding-bottom: 0;
+    }
+  }
+
+  /**
+   * Cualquier .scroll-region móvil hereda el inset si no usa scroll-region-at-lg.
+   */
+  @media (max-width: 1023px) {
+    .scroll-region:not(.scroll-region-at-lg):not(.app-scroll-content) {
+      padding-bottom: var(--app-mobile-bottom-inset, max(env(safe-area-inset-bottom, 0px), 2.25rem));
+    }
+
+    /* Académico: un poco más de aire al final para que no se corten las tarjetas inferiores. */
+    .academico-mobile-cards-inset {
+      padding-bottom: max(var(--app-mobile-bottom-inset, 2.25rem), 3.75rem) !important;
+    }
+  }
+
+  /**
+   * Velo del menú lateral en móvil: por encima del contenido (z-45), debajo del sidebar (z-50).
+   * Opacidad + blur para que bordes vivos de inputs no “traspasen” el fondo.
+   */
+  .app-sidebar-scrim {
+    @apply fixed inset-0 z-[45] cursor-pointer bg-slate-950/85 backdrop-blur-[4px] lg:hidden;
+  }
+
+  /** Contenido detrás del menú: sin interacción y bordes discretos mientras el drawer está abierto. */
+  @media (max-width: 1023px) {
+    html.mobile-sidebar-open .app-layout-main {
+      pointer-events: none;
+      user-select: none;
+    }
+
+    html.mobile-sidebar-open .app-layout-main :is(input, textarea, select, button[aria-haspopup='listbox']) {
+      border-color: rgb(51 65 85) !important;
+      box-shadow: none !important;
+      --tw-ring-shadow: 0 0 #0000 !important;
+      --tw-ring-offset-shadow: 0 0 #0000 !important;
+    }
+
+    html.mobile-sidebar-open .app-layout-main button[aria-haspopup='listbox'].border-primary {
+      border-color: rgb(51 65 85) !important;
+    }
+  }
+
+  /**
+   * Desplegables (AppSelect, autocompletados): el texto largo hace salto de línea
+   * en lugar de truncarse con ellipsis.
+   */
+  .app-dropdown-panel [role='option'] button,
+  .app-dropdown-panel [role='option'],
+  .app-dropdown-panel .app-dropdown-option-line {
+    @apply whitespace-normal break-words;
+  }
+
+  ul[role='listbox'] button {
+    @apply whitespace-normal break-words;
+  }
 }
 
 :root {
@@ -118,6 +446,8 @@ html,
 body,
 #root {
   min-height: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   background-color: #0d1f3c;
 }
 
@@ -129,6 +459,8 @@ body {
 .system-bg {
   background-color: #0e2a47;
   min-height: 100vh;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .app-sidebar-shell {
@@ -229,10 +561,28 @@ html:not(.dark) ::-webkit-scrollbar-corner {
    ═══════════════════════════════════════════════════════════════ */
 
 /* ── Fondo general: quitar imagen, poner gris azulado suave ── */
+html:not(.dark) html,
 html:not(.dark) body,
 html:not(.dark) #root { background-color: #f5f7fa !important; background-image: none !important; color: #1e293b; }
 html:not(.dark) .system-bg { background-color: #f5f7fa !important; background-image: none !important; }
+@media (max-width: 1023px) {
+  html:not(.dark) .app-layout-main {
+    background-color: #f5f7fa;
+  }
+}
 html:not(.dark) .text-\[\#e7eef9\] { color: #1e293b !important; }
+
+/* Login: fondo azul institucional + SVG (no usar override claro de bg-slate-900) */
+.login-shell-bg {
+  background-color: #0e2a47;
+  background-image: url('/login-bg.svg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+html:not(.dark) .login-shell-bg {
+  background-color: #0e2a47 !important;
+}
 
 /* ── Sidebar: blanco limpio con texto oscuro ── */
 html:not(.dark) .app-sidebar-shell {

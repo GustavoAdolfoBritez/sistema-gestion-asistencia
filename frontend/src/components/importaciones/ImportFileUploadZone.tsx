@@ -59,7 +59,7 @@ export function ImportFileUploadZone({
       : 'bg-primary';
 
   return (
-    <div className="w-full relative group">
+    <div className="relative w-full min-w-0 group">
       <input
         ref={fileInputRef}
         type="file"
@@ -71,15 +71,15 @@ export function ImportFileUploadZone({
       />
 
       <div
-        className={`w-full border-2 border-dashed rounded-xl p-10 flex flex-col items-center text-center transition-all group-hover:border-primary group-hover:bg-slate-50 dark:group-hover:bg-slate-800/40 ${
+        className={`app-file-upload-zone app-file-upload-zone--stacked group-hover:border-primary group-hover:bg-slate-50 dark:group-hover:bg-slate-800/40 ${
           isError
-            ? 'border-rose-400/80 bg-rose-50/50 dark:border-rose-500/40 dark:bg-[#132a52]'
-            : 'border-slate-300 bg-white dark:border-slate-700 dark:bg-[#132a52]'
+            ? 'border-rose-400 bg-rose-50 dark:border-rose-500/40 dark:bg-rose-950/30'
+            : ''
         }`}
       >
-        <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform shrink-0">
           <span
-            className={`material-symbols-outlined text-[32px] text-primary ${
+            className={`material-symbols-outlined text-[28px] sm:text-[32px] text-primary ${
               isLoading ? 'animate-pulse' : ''
             }`}
           >
@@ -87,23 +87,23 @@ export function ImportFileUploadZone({
           </span>
         </div>
 
-        <h3 className="text-slate-900 font-medium text-lg mb-1 dark:text-[#f0f4f8]">
+        <h3 className="text-slate-900 font-medium text-base sm:text-lg mb-1 dark:text-[#f0f4f8] max-w-full px-1">
           Haz clic o arrastra tu archivo
         </h3>
-        <p className="text-slate-600 text-sm mb-6 dark:text-slate-400">
+        <p className="text-slate-600 text-sm mb-4 sm:mb-6 dark:text-slate-400 max-w-full px-1">
           Formato soportado: Excel (.xlsx) (máx. 25 MB)
         </p>
 
-        <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+        <div className="flex w-full max-w-full min-w-0 flex-col items-stretch justify-center gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 text-xs text-slate-500 dark:text-slate-400">
           <button
             type="button"
-            className="px-3 py-1 rounded-full bg-primary/10 text-primary disabled:opacity-60 disabled:cursor-not-allowed relative z-[11]"
+            className="px-3 py-1 rounded-full bg-primary/10 text-primary disabled:opacity-60 disabled:cursor-not-allowed relative z-[11] w-full sm:w-auto shrink-0"
             onClick={onManualTrigger}
             disabled={disabled || uploadBusy}
           >
             Seleccionar archivo
           </button>
-          <span className={isError ? 'text-rose-800 dark:text-rose-200 max-w-md' : ''}>{statusText}</span>
+          <span className={`min-w-0 text-center sm:text-left ${isError ? 'text-rose-800 dark:text-rose-200' : ''}`}>{statusText}</span>
           {isLoading || isSuccess ? (
             <span className="font-semibold text-slate-800 dark:text-[#f0f4f8] tabular-nums">{pct}%</span>
           ) : null}
@@ -133,7 +133,7 @@ export function ImportFileUploadZone({
           <p className="text-xs text-slate-500 mt-2 dark:text-slate-500">Último archivo: {fileName}</p>
         ) : null}
 
-        <div className="w-full max-w-md h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden mt-4">
+        <div className="w-full min-w-0 max-w-md h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden mt-4">
           <div
             className={`h-full transition-all duration-200 ease-out ${barColor}`}
             style={{ width: `${barPercent}%` }}

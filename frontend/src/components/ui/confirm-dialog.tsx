@@ -37,12 +37,12 @@ export function ConfirmDialog({
           <DialogTitle>{title}</DialogTitle>
           {description ? <DialogDescription>{description}</DialogDescription> : null}
         </DialogHeader>
-        <DialogFooter className="mt-4 flex flex-row justify-end gap-3">
+        <DialogFooter className="btn-mobile-stack mt-4 flex flex-row justify-end gap-3 max-lg:mt-3">
           <button
             type="button"
             onClick={onCancel}
             disabled={loading}
-            className="btn-modern btn-modern-ghost"
+            className="btn-modern btn-modern-ghost max-lg:w-full"
           >
             {cancelLabel}
           </button>
@@ -50,7 +50,7 @@ export function ConfirmDialog({
             type="button"
             onClick={onConfirm}
             disabled={loading}
-            className={confirmClasses}
+            className={`${confirmClasses} max-lg:w-full`}
           >
             {loading ? 'Procesando...' : confirmLabel}
           </button>

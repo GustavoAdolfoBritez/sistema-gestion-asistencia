@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { cn } from '../lib/utils';
 import { AppSelect } from './ui/app-select';
 import { Skeleton } from './ui/skeleton';
 
@@ -83,7 +84,9 @@ export function ScopeSelector({
   emptyOptionsHint,
 }: ScopeSelectorProps) {
   const unica = options.length === 1 ? options[0] : null;
-  const wrapClass = hideLabel ? className : `space-y-2 ${className}`;
+  const wrapClass = hideLabel
+    ? cn('min-w-0 w-full max-w-full', className)
+    : cn('min-w-0 w-full max-w-full space-y-2', className);
 
   if (unica) {
     return (
@@ -114,6 +117,7 @@ export function ScopeSelector({
         <label className="text-xs uppercase text-slate-500 dark:text-slate-400">{label}</label>
       )}
       <AppSelect
+        className="w-full"
         options={selectOptions}
         value={value}
         onChange={onChange}

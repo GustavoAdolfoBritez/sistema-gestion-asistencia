@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { AppSidebar } from '../components/AppSidebar';
 import { AppSelect } from '../components/ui/app-select';
@@ -54,6 +54,8 @@ const ACCIONES_SUGERIDAS_POR_MODULO: Record<string, string[]> = {
 
 type RangoRapido = '' | 'ultimos_7_dias' | 'este_mes' | 'este_anio';
 
+const ZONA_AUDITORIA = 'America/Asuncion';
+
 function toInputDate(date: Date): string {
   const year = date.getFullYear();
   const month = `${date.getMonth() + 1}`.padStart(2, '0');
@@ -104,16 +106,84 @@ function normalizarTexto(valor: string): string {
 }
 
 function obtenerActor(evento: EventoAuditoria): string {
+  const partes = parsearActor(evento);
+  if (partes.detalle) return `${partes.nombre} (${partes.detalle})`;
+  return partes.nombre;
+}
+
+function parsearActor(evento: EventoAuditoria): { nombre: string; detalle?: string } {
   const nombreCompleto = obtenerTexto(evento.actor_nombre_completo);
   const correo = obtenerTexto(evento.actor_email);
   const usuario = obtenerTexto(evento.actor_username);
 
-  if (nombreCompleto && correo) return `${nombreCompleto} (${correo})`;
-  if (nombreCompleto && usuario) return `${nombreCompleto} (${usuario})`;
-  if (nombreCompleto) return nombreCompleto;
-  if (correo) return correo;
-  if (usuario) return usuario;
-  return 'Sistema';
+  if (nombreCompleto && correo) return { nombre: nombreCompleto, detalle: correo };
+  if (nombreCompleto && usuario) return { nombre: nombreCompleto, detalle: usuario };
+  if (nombreCompleto) return { nombre: nombreCompleto };
+  if (correo) return { nombre: correo };
+  if (usuario) return { nombre: usuario };
+  return { nombre: 'Sistema' };
+}
+
+function iconoModuloAuditoria(modulo: string): { icono: string; tono: string } {
+  const m = modulo.toLowerCase();
+  if (m === 'auth') {
+    return {
+      icono: 'login',
+      tono: 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300',
+    };
+  }
+  if (m === 'usuarios') {
+    return {
+      icono: 'group',
+      tono: 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300',
+    };
+  }
+  if (m === 'asistencias') {
+    return {
+      icono: 'fact_check',
+      tono: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+    };
+  }
+  if (m === 'reportes') {
+    return {
+      icono: 'summarize',
+      tono: 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
+    };
+  }
+  if (m === 'importaciones') {
+    return {
+      icono: 'upload_file',
+      tono: 'bg-orange-100 text-orange-800 dark:bg-orange-500/15 dark:text-orange-300',
+    };
+  }
+  if (m === 'academico') {
+    return {
+      icono: 'school',
+      tono: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300',
+    };
+  }
+  return {
+    icono: 'history',
+    tono: 'bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300',
+  };
+}
+
+function formatearFechaHoraAuditoria(fechaISO: string): { fecha: string; hora: string } {
+  const fecha = new Date(fechaISO);
+  if (Number.isNaN(fecha.getTime())) return { fecha: '-', hora: '' };
+  const fechaTxt = new Intl.DateTimeFormat('en-GB', {
+    timeZone: ZONA_AUDITORIA,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(fecha);
+  const horaTxt = new Intl.DateTimeFormat('en-GB', {
+    timeZone: ZONA_AUDITORIA,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(fecha);
+  return { fecha: fechaTxt, hora: horaTxt };
 }
 
 function obtenerUsuarioObjetivo(evento: EventoAuditoria): string {
@@ -159,8 +229,6 @@ function formatearRoles(roles: string[]): string {
   return visibles.length ? visibles.join(', ') : '(sin roles)';
 }
 
-const ZONA_AUDITORIA = 'America/Asuncion';
-
 function formatearFechaLarga(fechaISO: string): string {
   const fecha = new Date(fechaISO);
   if (Number.isNaN(fecha.getTime())) return '-';
@@ -177,6 +245,125 @@ function formatearFechaLarga(fechaISO: string): string {
     hour12: false,
   }).format(fecha);
   return `${fechaTxt}, ${horaTxt}`;
+}
+
+function claseBadgeResultadoAuditoria(resultado: 'ok' | 'error'): string {
+  if (resultado === 'ok') {
+    return 'border border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-transparent dark:bg-emerald-600/25 dark:text-emerald-200';
+  }
+  return 'border border-rose-200 bg-rose-50 text-rose-800 dark:border-transparent dark:bg-rose-600/25 dark:text-rose-200';
+}
+
+function DetalleCampoMovil({ etiqueta, valor }: { etiqueta: string; valor: ReactNode }) {
+  return (
+    <div className="border-b border-slate-200/90 px-4 py-3 last:border-b-0 dark:border-slate-700/70">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">{etiqueta}</p>
+      <div className="mt-1.5 text-sm leading-relaxed text-slate-800 dark:text-slate-100">{valor}</div>
+    </div>
+  );
+}
+
+function DetalleEventoEncabezadoMovil({ evento }: { evento: EventoAuditoria }) {
+  const actor = parsearActor(evento);
+  const { icono, tono } = iconoModuloAuditoria(evento.modulo);
+  const { fecha, hora } = formatearFechaHoraAuditoria(evento.fecha_hora);
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-sky-50/60 p-4 shadow-sm dark:border-slate-700 dark:from-[#152d55] dark:via-[#132a52] dark:to-[#0f2244]">
+      <div className="flex items-start gap-3">
+        <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${tono}`}>
+          <span className="material-symbols-outlined text-[28px]">{icono}</span>
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <h3 className="min-w-0 break-words text-lg font-bold leading-tight text-slate-900 dark:text-white">
+              {etiquetaAccion(evento.accion)}
+            </h3>
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase ${claseBadgeResultadoAuditoria(evento.resultado)}`}
+            >
+              {evento.resultado}
+            </span>
+          </div>
+          <p className="mt-1 text-sm font-medium text-slate-800 dark:text-slate-200">{actor.nombre}</p>
+          {actor.detalle ? (
+            <p className="break-all text-xs text-slate-500 dark:text-slate-400">{actor.detalle}</p>
+          ) : null}
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <span className="rounded-lg bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-sm dark:bg-slate-900/50 dark:text-slate-300">
+          {formatearEtiqueta(evento.modulo)}
+        </span>
+        <span className="rounded-lg bg-white/80 px-2.5 py-1 text-[11px] tabular-nums text-slate-600 shadow-sm dark:bg-slate-900/50 dark:text-slate-300">
+          {fecha}
+          {hora ? ` · ${hora}` : ''}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function EventoAuditoriaTarjetaMovil({
+  evento,
+  onSeleccionar,
+}: {
+  evento: EventoAuditoria;
+  onSeleccionar: () => void;
+}) {
+  const actor = parsearActor(evento);
+  const { icono, tono } = iconoModuloAuditoria(evento.modulo);
+  const { fecha, hora } = formatearFechaHoraAuditoria(evento.fecha_hora);
+
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onSeleccionar}
+        className="group w-full rounded-2xl border border-slate-200/90 bg-gradient-to-br from-white via-white to-slate-50 p-3.5 text-left shadow-sm transition-all active:scale-[0.99] hover:border-sky-200/80 hover:shadow-md dark:border-slate-700/80 dark:from-[#152d55] dark:via-[#132a52] dark:to-[#0f2244] dark:hover:border-sky-500/30"
+      >
+        <div className="flex items-start gap-3">
+          <div
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-inner ${tono}`}
+            aria-hidden
+          >
+            <span className="material-symbols-outlined text-[24px]">{icono}</span>
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <p className="min-w-0 break-words text-[15px] font-bold leading-tight text-slate-900 dark:text-white">
+                {etiquetaAccion(evento.accion)}
+              </p>
+              <span
+                className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${claseBadgeResultadoAuditoria(evento.resultado)}`}
+              >
+                {evento.resultado}
+              </span>
+            </div>
+            <p className="mt-1 break-words text-sm font-medium text-slate-800 dark:text-slate-200">{actor.nombre}</p>
+            {actor.detalle ? (
+              <p className="break-all text-xs text-slate-500 dark:text-slate-400">{actor.detalle}</p>
+            ) : null}
+            <div className="mt-2.5 flex flex-wrap items-center gap-2">
+              <span className="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800/80 dark:text-slate-300">
+                {formatearEtiqueta(evento.modulo)}
+              </span>
+              <span className="text-[11px] tabular-nums text-slate-500 dark:text-slate-400">
+                {fecha}
+                {hora ? ` · ${hora}` : ''}
+              </span>
+            </div>
+          </div>
+          <span
+            className="material-symbols-outlined mt-1 shrink-0 text-[20px] text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-sky-500 dark:text-slate-600 dark:group-hover:text-sky-400"
+            aria-hidden
+          >
+            chevron_right
+          </span>
+        </div>
+      </button>
+    </li>
+  );
 }
 
 function construirResumenCambio(evento: EventoAuditoria): string {
@@ -416,19 +603,16 @@ export function AuditoriaPage({ onLogout }: Props) {
     if (!target) return;
 
     requestAnimationFrame(() => {
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      setTimeout(() => {
-        window.scrollBy({ top: 80, behavior: 'smooth' });
-      }, 180);
+      target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
   }, [mostrarDatosTecnicos]);
 
   return (
-    <div className="system-bg text-[#e7eef9] min-h-screen h-screen overflow-hidden">
-      <div className="flex h-full w-full overflow-hidden">
+    <div className="system-bg app-shell-viewport text-[#e7eef9] min-h-screen h-screen overflow-hidden">
+      <div className="app-layout-row">
         {sidebarOpen ? (
           <div
-            className="fixed inset-0 bg-black/70 z-20 lg:hidden"
+            className="app-sidebar-scrim"
             onClick={() => setSidebarOpen(false)}
             aria-hidden="true"
           />
@@ -436,26 +620,34 @@ export function AuditoriaPage({ onLogout }: Props) {
 
         <AppSidebar sidebarOpen={sidebarOpen} onLogout={onLogout} onClose={() => setSidebarOpen(false)} />
 
-        <main className="flex-1 flex flex-col h-full overflow-hidden">
-          <header className="flex-shrink-0 h-16 bg-[#132a52]/90 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-6 z-10">
-            <div className="flex items-center gap-3">
-              <button className="lg:hidden text-slate-400" onClick={() => setSidebarOpen((prev) => !prev)} aria-label="Abrir menú">
+        <main className="app-layout-main">
+          <header className="flex-shrink-0 min-h-16 bg-[#132a52]/90 backdrop-blur-md border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3 z-10">
+            <div className="flex min-w-0 items-center gap-3">
+              <button className="lg:hidden shrink-0 text-slate-400" onClick={() => setSidebarOpen((prev) => !prev)} aria-label="Abrir menú">
                 <span className="material-symbols-outlined">menu</span>
               </button>
-              <span className="material-symbols-outlined text-[#6b8bc3]">policy</span>
-              <div>
+              <span className="material-symbols-outlined shrink-0 text-[#6b8bc3]">policy</span>
+              <div className="min-w-0">
                 <p className="text-xs uppercase text-slate-400">Control</p>
-                <h1 className="text-xl font-semibold">Auditoría del sistema</h1>
+                <h1 className="text-xl font-semibold truncate">Auditoría del sistema</h1>
               </div>
             </div>
-            <div className="text-xs text-slate-400">Total eventos: {eventosFiltrados.length} / {total}</div>
+            <div className="w-full shrink-0 text-xs text-slate-400 sm:w-auto">Total eventos: {eventosFiltrados.length} / {total}</div>
           </header>
 
-          <section className="flex-1 overflow-y-auto p-6 space-y-5">
-            <div className="rounded-xl border border-slate-800 bg-[#132a52] p-4 flex flex-col gap-3">
+          <section
+            className={`flex min-h-0 flex-1 flex-col gap-5 p-4 sm:p-6 lg:min-h-0 lg:overflow-y-auto lg:scroll-region ${
+              seleccionado ? 'max-lg:overflow-hidden' : 'scroll-region app-scroll-content overflow-y-auto'
+            }`}
+          >
+            <div
+              className={`min-w-0 flex flex-col gap-3 rounded-xl border border-slate-800 bg-[#132a52] p-4 ${
+                seleccionado ? 'max-lg:hidden' : ''
+              }`}
+            >
               {/* Fila 1: selectores */}
-              <div className="flex flex-wrap gap-3">
-                <label className="flex flex-col gap-1 text-xs text-slate-400 min-w-[150px] flex-1">
+              <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap">
+                <label className="flex w-full min-w-0 flex-col gap-1 text-xs text-slate-400 lg:min-w-[150px] lg:flex-1">
                   Período rápido
                   <AppSelect
                     value={rangoRapido}
@@ -467,11 +659,11 @@ export function AuditoriaPage({ onLogout }: Props) {
                       { value: 'este_mes', label: 'Este mes' },
                       { value: 'este_anio', label: 'Este año' },
                     ]}
-                    triggerClassName="px-3 py-2 rounded-lg bg-white border border-slate-300 text-sm text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                    triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-sm text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                   />
                 </label>
 
-                <label className="flex flex-col gap-1 text-xs text-slate-400 min-w-[140px] flex-1">
+                <label className="flex w-full min-w-0 flex-col gap-1 text-xs text-slate-400 lg:min-w-[140px] lg:flex-1">
                   Desde
                   <input
                     type="date"
@@ -480,11 +672,11 @@ export function AuditoriaPage({ onLogout }: Props) {
                       setDesde(e.target.value);
                       setRangoRapido('');
                     }}
-                    className="px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-sm text-[#f0f4f8]"
+                    className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-sm text-[#f0f4f8]"
                   />
                 </label>
 
-                <label className="flex flex-col gap-1 text-xs text-slate-400 min-w-[140px] flex-1">
+                <label className="flex w-full min-w-0 flex-col gap-1 text-xs text-slate-400 lg:min-w-[140px] lg:flex-1">
                   Hasta
                   <input
                     type="date"
@@ -493,11 +685,11 @@ export function AuditoriaPage({ onLogout }: Props) {
                       setHasta(e.target.value);
                       setRangoRapido('');
                     }}
-                    className="px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-sm text-[#f0f4f8]"
+                    className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-sm text-[#f0f4f8]"
                   />
                 </label>
 
-                <label className="flex flex-col gap-1 text-xs text-slate-400 min-w-[140px] flex-1">
+                <label className="flex w-full min-w-0 flex-col gap-1 text-xs text-slate-400 lg:min-w-[140px] lg:flex-1">
                   Módulo
                   <AppSelect
                     value={modulo}
@@ -511,11 +703,11 @@ export function AuditoriaPage({ onLogout }: Props) {
                       value: item,
                       label: formatearEtiqueta(item),
                     }))}
-                    triggerClassName="px-3 py-2 rounded-lg bg-white border border-slate-300 text-sm text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                    triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-sm text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                   />
                 </label>
 
-                <label className="flex flex-col gap-1 text-xs text-slate-400 min-w-[200px] flex-[2]">
+                <label className="flex w-full min-w-0 flex-col gap-1 text-xs text-slate-400 lg:min-w-[200px] lg:flex-[2]">
                   Acción
                   <AppSelect
                     value={accion}
@@ -526,11 +718,11 @@ export function AuditoriaPage({ onLogout }: Props) {
                       value: item,
                       label: etiquetaAccion(item),
                     }))}
-                    triggerClassName="px-3 py-2 rounded-lg bg-white border border-slate-300 text-sm text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                    triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-sm text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                   />
                 </label>
 
-                <label className="flex flex-col gap-1 text-xs text-slate-400 min-w-[110px] flex-1">
+                <label className="flex w-full min-w-0 flex-col gap-1 text-xs text-slate-400 lg:min-w-[110px] lg:flex-1">
                   Resultado
                   <AppSelect
                     value={resultado}
@@ -541,27 +733,27 @@ export function AuditoriaPage({ onLogout }: Props) {
                       value: item,
                       label: item.toUpperCase(),
                     }))}
-                    triggerClassName="px-3 py-2 rounded-lg bg-white border border-slate-300 text-sm text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                    triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-sm text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                   />
                 </label>
               </div>
 
               {/* Fila 2: búsqueda + botones */}
-              <div className="flex flex-wrap gap-3 items-end">
-                <label className="flex flex-col gap-1 text-xs text-slate-400 flex-1 min-w-[200px]">
+              <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
+                <label className="flex w-full min-w-0 flex-col gap-1 text-xs text-slate-400 lg:flex-1 lg:min-w-[200px]">
                   Búsqueda
                   <input
                     value={q}
                     onChange={(e) => setQ(e.target.value)}
                     placeholder="correo, recurso, detalle..."
-                    className="px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-sm text-[#f0f4f8]"
+                    className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-sm text-[#f0f4f8]"
                   />
                 </label>
-                <div className="flex gap-2">
+                <div className="btn-mobile-stack flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap lg:flex-row lg:items-center">
                   <button
                     type="button"
                     onClick={() => void cargarEventos()}
-                    className="btn-modern btn-modern-primary"
+                    className="btn-modern btn-modern-primary btn-mobile-cta w-full sm:w-auto"
                   >
                     {loading ? 'Cargando...' : 'Aplicar filtros'}
                   </button>
@@ -576,14 +768,14 @@ export function AuditoriaPage({ onLogout }: Props) {
                       setResultado('');
                       setQ('');
                     }}
-                    className="rounded-lg px-4 py-2 border border-slate-600 bg-slate-900 hover:bg-slate-800 text-sm text-slate-200"
+                    className="btn-modern btn-modern-ghost btn-mobile-cta w-full rounded-lg border border-slate-600 bg-slate-900 text-sm text-slate-200 hover:bg-slate-800 sm:w-auto"
                   >
                     Limpiar
                   </button>
                   <button
                     type="button"
                     onClick={() => void exportarPdf()}
-                    className="btn-modern btn-modern-info"
+                    className="btn-modern btn-modern-info btn-mobile-cta w-full sm:w-auto"
                     disabled={loading || exportandoPdf}
                   >
                     {exportandoPdf ? 'Generando PDF...' : 'Exportar PDF'}
@@ -592,9 +784,38 @@ export function AuditoriaPage({ onLogout }: Props) {
               </div>
             </div>
 
-            <div className="rounded-xl border border-slate-800 bg-[#132a52] overflow-hidden">
-              <div className="overflow-auto max-h-[45vh]">
-                <table className="w-full min-w-[720px] table-auto text-sm">
+            <div
+              className={`flex min-h-0 flex-col gap-5 lg:gap-5 ${
+                seleccionado ? 'max-lg:flex-1 max-lg:overflow-hidden' : ''
+              }`}
+            >
+            <div
+              className={`min-w-0 rounded-xl border border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-[#132a52] ${
+                seleccionado ? 'max-lg:hidden' : ''
+              }`}
+            >
+              <div className="min-w-0 max-lg:max-h-none max-lg:overflow-visible lg:scroll-region lg:max-h-[45vh]">
+                <ul className="flex flex-col gap-2.5 p-3 lg:hidden">
+                  {loading ? (
+                    <li className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-[#132a52] dark:text-slate-400">
+                      Cargando eventos…
+                    </li>
+                  ) : eventosFiltrados.length === 0 ? (
+                    <li className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-[#132a52] dark:text-slate-400">
+                      No hay eventos con esos filtros
+                    </li>
+                  ) : (
+                    eventosFiltrados.map((evento) => (
+                      <EventoAuditoriaTarjetaMovil
+                        key={evento.id}
+                        evento={evento}
+                        onSeleccionar={() => setSeleccionado(evento)}
+                      />
+                    ))
+                  )}
+                </ul>
+
+                <table className="hidden w-full table-auto text-sm lg:table">
                   <colgroup>
                     <col className="w-[1%]" />
                     <col className="w-[1%]" />
@@ -603,14 +824,14 @@ export function AuditoriaPage({ onLogout }: Props) {
                     <col />
                     <col className="w-[1%]" />
                   </colgroup>
-                  <thead className="bg-[#0c1a3b] text-slate-300 sticky top-0">
+                  <thead className="sticky top-0 bg-[#0c1a3b] text-slate-300">
                     <tr>
-                      <th className="text-left px-3 py-2 align-bottom whitespace-nowrap">Fecha</th>
-                      <th className="text-left px-3 py-2 align-bottom whitespace-nowrap">Actor</th>
-                      <th className="text-left px-3 py-2 align-bottom whitespace-nowrap">Módulo</th>
-                      <th className="text-left px-3 py-2 align-bottom">Acción</th>
-                      <th className="text-left px-3 py-2 align-bottom">Recurso</th>
-                      <th className="text-left px-3 py-2 align-bottom whitespace-nowrap">Resultado</th>
+                      <th className="whitespace-nowrap px-3 py-2 text-left align-bottom">Fecha</th>
+                      <th className="whitespace-nowrap px-3 py-2 text-left align-bottom">Actor</th>
+                      <th className="whitespace-nowrap px-3 py-2 text-left align-bottom">Módulo</th>
+                      <th className="px-3 py-2 text-left align-bottom">Acción</th>
+                      <th className="px-3 py-2 text-left align-bottom">Recurso</th>
+                      <th className="whitespace-nowrap px-3 py-2 text-left align-bottom">Resultado</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -620,24 +841,24 @@ export function AuditoriaPage({ onLogout }: Props) {
                         onClick={() => setSeleccionado(evento)}
                         className={`cursor-pointer border-t border-slate-800 hover:bg-[#162b52] ${seleccionado?.id === evento.id ? 'bg-[#162b52]' : ''}`}
                       >
-                        <td className="px-3 py-2 align-top text-slate-200 whitespace-nowrap">
+                        <td className="whitespace-nowrap px-3 py-2 align-top text-slate-200">
                           {formatearFechaLarga(evento.fecha_hora)}
                         </td>
-                        <td className="px-3 py-2 align-top text-slate-300 whitespace-nowrap">
+                        <td className="whitespace-nowrap px-3 py-2 align-top text-slate-300">
                           {obtenerActor(evento)}
                         </td>
-                        <td className="px-3 py-2 align-top text-slate-300 whitespace-nowrap">
-                          {evento.modulo}
-                        </td>
-                        <td className="px-3 py-2 align-top text-slate-200 whitespace-normal break-words min-w-[10rem]">
+                        <td className="whitespace-nowrap px-3 py-2 align-top text-slate-300">{evento.modulo}</td>
+                        <td className="min-w-[10rem] whitespace-normal break-words px-3 py-2 align-top text-slate-200">
                           {etiquetaAccion(evento.accion)}
                         </td>
-                        <td className="px-3 py-2 align-top text-slate-400 whitespace-normal break-words min-w-[12rem]">
+                        <td className="min-w-[12rem] whitespace-normal break-words px-3 py-2 align-top text-slate-400">
                           {formatearRecurso(evento)}
                         </td>
-                        <td className="px-3 py-2 align-top whitespace-nowrap">
-                          <span className={`px-2 py-1 rounded text-xs font-semibold ${evento.resultado === 'ok' ? 'bg-emerald-600/20 text-emerald-300' : 'bg-rose-600/20 text-rose-300'}`}>
-                            {evento.resultado.toUpperCase()}
+                        <td className="whitespace-nowrap px-3 py-2 align-top">
+                          <span
+                            className={`rounded px-2 py-1 text-xs font-semibold uppercase ${claseBadgeResultadoAuditoria(evento.resultado)}`}
+                          >
+                            {evento.resultado}
                           </span>
                         </td>
                       </tr>
@@ -654,73 +875,165 @@ export function AuditoriaPage({ onLogout }: Props) {
               </div>
             </div>
 
-            <div className="rounded-xl border border-slate-800 bg-[#132a52] p-4">
-              <div className="mb-2 flex items-center justify-between">
-                <h2 className="text-base font-semibold">Detalle del evento</h2>
+            <div
+              className={`rounded-xl border border-slate-200 bg-slate-50/90 dark:border-slate-800 dark:bg-[#132a52] lg:bg-white lg:p-4 ${
+                seleccionado ? 'max-lg:flex max-lg:min-h-0 max-lg:flex-1 max-lg:flex-col max-lg:overflow-hidden max-lg:p-3' : 'max-lg:hidden p-4'
+              }`}
+            >
+              {seleccionado ? (
+                <button
+                  type="button"
+                  onClick={() => setSeleccionado(null)}
+                  className="mb-3 flex w-full shrink-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:bg-slate-800 lg:hidden"
+                >
+                  <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+                  Volver al listado
+                </button>
+              ) : null}
+              <div className="mb-3 flex shrink-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">Detalle del evento</h2>
                 {seleccionado ? (
                   <button
                     type="button"
                     onClick={() => setMostrarDatosTecnicos((prev) => !prev)}
-                    className="mr-6 rounded-lg border border-slate-700 bg-slate-900/50 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-800"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:w-auto dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-200 dark:hover:bg-slate-800 lg:mr-6"
                   >
                     {mostrarDatosTecnicos ? 'Ocultar datos técnicos' : 'Datos técnicos avanzados'}
                   </button>
                 ) : null}
               </div>
               {!seleccionado ? (
-                <p className="text-sm text-slate-400">Selecciona un evento para ver más información.</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 max-lg:hidden">
+                  Selecciona un evento para ver más información.
+                </p>
               ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 text-sm">
-                  <div className="space-y-1 text-slate-300">
-                    <p><strong>Qué se hizo:</strong> {construirResumenCambio(seleccionado)}</p>
-                    <p><strong>Quién lo hizo:</strong> {obtenerActor(seleccionado)}</p>
-                    <p><strong>Cuándo:</strong> {formatearFechaLarga(seleccionado.fecha_hora)}</p>
-                    <p><strong>Módulo / Acción:</strong> {seleccionado.modulo} / {etiquetaAccion(seleccionado.accion)}</p>
-                    <p><strong>Recurso:</strong> {formatearRecurso(seleccionado)}</p>
-                    <p>
-                      <strong>Resultado:</strong>{' '}
-                      <span className={`px-2 py-0.5 rounded text-xs font-semibold ${seleccionado.resultado === 'ok' ? 'bg-emerald-600/20 text-emerald-300' : 'bg-rose-600/20 text-rose-300'}`}>
-                        {seleccionado.resultado.toUpperCase()}
-                      </span>
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    {mostrarDatosTecnicos ? (
-                      <div ref={panelDatosTecnicosRef} className="rounded-lg border border-slate-700 bg-slate-900/40 p-3">
-                        <div className="space-y-2 text-xs text-slate-300">
-                          <p><strong>ID:</strong> {seleccionado.id}</p>
-                          <p><strong>IP:</strong> {seleccionado.ip ?? '-'}</p>
-                          <p><strong>User-Agent:</strong> {seleccionado.user_agent ?? '-'}</p>
-                          <p><strong>Roles:</strong> {(seleccionado.actor_roles ?? []).join(', ') || '-'}</p>
-                          {tieneContenidoTecnico(seleccionado.detalle) ? (
-                            <div>
-                              <p className="text-xs uppercase text-slate-400 mb-1">Detalle JSON</p>
-                              <pre className="text-xs bg-slate-900 border border-slate-700 rounded-lg p-3 overflow-auto max-h-40 text-slate-200">{JSON.stringify(seleccionado.detalle, null, 2)}</pre>
-                            </div>
-                          ) : null}
-                          {tieneContenidoTecnico(seleccionado.antes) ? (
-                            <div>
-                              <p className="text-xs uppercase text-slate-400 mb-1">Antes</p>
-                              <pre className="text-xs bg-slate-900 border border-slate-700 rounded-lg p-3 overflow-auto max-h-32 text-slate-200">{JSON.stringify(seleccionado.antes, null, 2)}</pre>
-                            </div>
-                          ) : null}
-                          {tieneContenidoTecnico(seleccionado.despues) ? (
-                            <div>
-                              <p className="text-xs uppercase text-slate-400 mb-1">Después</p>
-                              <pre className="text-xs bg-slate-900 border border-slate-700 rounded-lg p-3 overflow-auto max-h-32 text-slate-200">{JSON.stringify(seleccionado.despues, null, 2)}</pre>
-                            </div>
-                          ) : null}
-                          {!tieneContenidoTecnico(seleccionado.detalle) && !tieneContenidoTecnico(seleccionado.antes) && !tieneContenidoTecnico(seleccionado.despues) ? (
-                            <div className="rounded-lg border border-slate-700 bg-slate-900/40 p-3 text-xs text-slate-400">
-                              Este evento no incluye campos técnicos adicionales para mostrar.
-                            </div>
-                          ) : null}
+                <div className="scroll-region app-scroll-content min-h-0 flex-1 overflow-y-auto text-sm">
+                  <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-2">
+                    <div className="w-full min-w-0 text-slate-700 dark:text-slate-300">
+                      <div className="w-full space-y-2 lg:hidden">
+                        <DetalleEventoEncabezadoMovil evento={seleccionado} />
+                        <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white/80 dark:border-slate-700/60 dark:bg-slate-900/25">
+                          <DetalleCampoMovil
+                            etiqueta="Qué se hizo"
+                            valor={<span className="break-words">{construirResumenCambio(seleccionado)}</span>}
+                          />
+                          <DetalleCampoMovil
+                            etiqueta="Quién lo hizo"
+                            valor={<span className="break-words">{obtenerActor(seleccionado)}</span>}
+                          />
+                          <DetalleCampoMovil
+                            etiqueta="Cuándo"
+                            valor={<span className="tabular-nums">{formatearFechaLarga(seleccionado.fecha_hora)}</span>}
+                          />
+                          <DetalleCampoMovil
+                            etiqueta="Módulo / Acción"
+                            valor={
+                              <span className="break-words">
+                                {seleccionado.modulo} / {etiquetaAccion(seleccionado.accion)}
+                              </span>
+                            }
+                          />
+                          <DetalleCampoMovil
+                            etiqueta="Recurso"
+                            valor={<span className="break-words">{formatearRecurso(seleccionado)}</span>}
+                          />
+                          <DetalleCampoMovil
+                            etiqueta="Resultado"
+                            valor={
+                              <span
+                                className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold uppercase ${claseBadgeResultadoAuditoria(seleccionado.resultado)}`}
+                              >
+                                {seleccionado.resultado}
+                              </span>
+                            }
+                          />
                         </div>
                       </div>
-                    ) : null}
+                      <div className="hidden space-y-1 lg:block">
+                        <p>
+                          <strong>Qué se hizo:</strong> {construirResumenCambio(seleccionado)}
+                        </p>
+                        <p>
+                          <strong>Quién lo hizo:</strong> {obtenerActor(seleccionado)}
+                        </p>
+                        <p>
+                          <strong>Cuándo:</strong> {formatearFechaLarga(seleccionado.fecha_hora)}
+                        </p>
+                        <p>
+                          <strong>Módulo / Acción:</strong> {seleccionado.modulo} /{' '}
+                          {etiquetaAccion(seleccionado.accion)}
+                        </p>
+                        <p>
+                          <strong>Recurso:</strong> {formatearRecurso(seleccionado)}
+                        </p>
+                        <p>
+                          <strong>Resultado:</strong>{' '}
+                          <span
+                            className={`rounded px-2 py-0.5 text-xs font-semibold ${claseBadgeResultadoAuditoria(seleccionado.resultado)}`}
+                          >
+                            {seleccionado.resultado.toUpperCase()}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                    <div className="w-full min-w-0 space-y-2 max-lg:mt-0">
+                      {mostrarDatosTecnicos ? (
+                        <div
+                          ref={panelDatosTecnicosRef}
+                          className="w-full rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900/40"
+                        >
+                          <div className="space-y-2 text-xs text-slate-700 dark:text-slate-300">
+                            <p className="break-words">
+                              <strong>ID:</strong> {seleccionado.id}
+                            </p>
+                            <p className="break-words">
+                              <strong>IP:</strong> {seleccionado.ip ?? '-'}
+                            </p>
+                            <p className="break-all leading-snug">
+                              <strong>User-Agent:</strong> {seleccionado.user_agent ?? '-'}
+                            </p>
+                            <p className="break-words">
+                              <strong>Roles:</strong> {(seleccionado.actor_roles ?? []).join(', ') || '-'}
+                            </p>
+                            {tieneContenidoTecnico(seleccionado.detalle) ? (
+                              <div>
+                                <p className="mb-1 text-xs uppercase text-slate-400">Detalle JSON</p>
+                                <pre className="scroll-region max-h-40 rounded-lg border border-slate-700 bg-slate-900 p-3 text-xs text-slate-200">
+                                  {JSON.stringify(seleccionado.detalle, null, 2)}
+                                </pre>
+                              </div>
+                            ) : null}
+                            {tieneContenidoTecnico(seleccionado.antes) ? (
+                              <div>
+                                <p className="mb-1 text-xs uppercase text-slate-400">Antes</p>
+                                <pre className="scroll-region max-h-32 rounded-lg border border-slate-700 bg-slate-900 p-3 text-xs text-slate-200">
+                                  {JSON.stringify(seleccionado.antes, null, 2)}
+                                </pre>
+                              </div>
+                            ) : null}
+                            {tieneContenidoTecnico(seleccionado.despues) ? (
+                              <div>
+                                <p className="mb-1 text-xs uppercase text-slate-400">Después</p>
+                                <pre className="scroll-region max-h-32 rounded-lg border border-slate-700 bg-slate-900 p-3 text-xs text-slate-200">
+                                  {JSON.stringify(seleccionado.despues, null, 2)}
+                                </pre>
+                              </div>
+                            ) : null}
+                            {!tieneContenidoTecnico(seleccionado.detalle) &&
+                            !tieneContenidoTecnico(seleccionado.antes) &&
+                            !tieneContenidoTecnico(seleccionado.despues) ? (
+                              <div className="rounded-lg border border-slate-700 bg-slate-900/40 p-3 text-xs text-slate-400">
+                                Este evento no incluye campos técnicos adicionales para mostrar.
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               )}
+            </div>
             </div>
           </section>
         </main>

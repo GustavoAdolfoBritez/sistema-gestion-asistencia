@@ -156,13 +156,17 @@ function KpiCard({
   label, value, borderColor, icon,
 }: { label: string; value: number | string; borderColor: string; icon: string }) {
   return (
-    <div className={`rounded-xl border ${borderColor} bg-[#132a52] p-4 flex items-center gap-4`}>
-      <div className="rounded-lg p-2 bg-white/5 shrink-0">
-        <span className="material-symbols-outlined text-[22px] text-slate-300">{icon}</span>
+    <div
+      className={`flex min-w-0 items-center gap-3 rounded-xl border bg-[#132a52] p-3 max-lg:flex-col max-lg:items-start max-lg:gap-2 lg:gap-4 lg:p-4 ${borderColor}`}
+    >
+      <div className="shrink-0 rounded-lg bg-white/5 p-1.5 max-lg:p-1 sm:p-2">
+        <span className="material-symbols-outlined text-[20px] text-slate-300 sm:text-[22px]">{icon}</span>
       </div>
-      <div className="min-w-0">
-        <p className="text-xs uppercase tracking-wider text-slate-400 leading-tight">{label}</p>
-        <p className="text-2xl font-bold text-[#e7eef9] leading-tight">{value}</p>
+      <div className="min-w-0 w-full max-lg:w-full">
+        <p className="text-[10px] font-semibold uppercase leading-tight tracking-wide text-slate-400 max-lg:line-clamp-2 sm:text-xs sm:tracking-wider">
+          {label}
+        </p>
+        <p className="text-xl font-bold leading-tight text-[#e7eef9] tabular-nums lg:text-2xl">{value}</p>
       </div>
     </div>
   );
@@ -174,13 +178,13 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
   const currentUser = readStoredUser() as CurrentUser | null;
   const puedeAprobar = puedeAprobarJustificaciones(currentUser?.roles ?? []);
 
-  /** Estilo de controles de alcance/filtros del panel (`pr-12` deja aire al chevron de AppSelect). */
+  /** Estilo de controles de alcance/filtros del panel (chevron alineado vía AppSelect `ml-auto`). */
   const panelNativeSelectClass = isDark
-    ? `rounded-lg pl-3 pr-12 ${appSelectDarkSurfaceClass}`
-    : 'rounded-lg border border-slate-300 bg-white text-black shadow-sm pl-3 pr-12';
+    ? `rounded-lg pl-3 pr-3 ${appSelectDarkSurfaceClass}`
+    : 'rounded-lg border border-slate-300 bg-white text-black shadow-sm pl-3 pr-3';
 
   /** Selects de la barra 'Ver estadísticas de:' (nombres largos de carrera/facultad). */
-  const panelStatsFilterSelectClass = `${panelNativeSelectClass} min-w-[12rem] w-full max-w-md sm:w-auto sm:min-w-[14rem]`;
+  const panelStatsFilterSelectClass = `${panelNativeSelectClass} min-w-[12rem] w-full max-w-md max-lg:min-w-0 max-lg:max-w-full sm:min-w-[14rem] sm:w-auto`;
 
   const [alertas, setAlertas] = useState<Alerta[]>([]);
   const [estadisticas, setEstadisticas] = useState<Estadistica[]>([]);
@@ -481,38 +485,38 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
   }, []);
 
   return (
-    <div className="system-bg text-[#e7eef9] min-h-screen h-screen overflow-hidden">
-      <div className="flex h-full w-full overflow-hidden">
+    <div className="system-bg app-shell-viewport text-[#e7eef9] min-h-screen h-screen overflow-hidden">
+      <div className="app-layout-row">
         {sidebarOpen ? (
-          <div className="fixed inset-0 bg-black/70 z-20 lg:hidden" onClick={() => setSidebarOpen(false)} />
+          <div className="app-sidebar-scrim" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
         ) : null}
 
         <AppSidebar sidebarOpen={sidebarOpen} onLogout={onLogout} onClose={() => setSidebarOpen(false)} />
 
-        <main className="flex-1 flex flex-col h-full overflow-hidden">
-          <header className="flex-shrink-0 h-16 bg-[#132a52]/90 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-6 z-10">
-            <div className="flex items-center gap-3">
+        <main className="app-layout-main">
+          <header className="flex-shrink-0 min-h-16 bg-[#132a52]/90 backdrop-blur-md border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3 z-10">
+            <div className="flex min-w-0 items-center gap-3">
               <button
-                className="lg:hidden text-slate-400"
+                className="lg:hidden shrink-0 text-slate-400"
                 onClick={() => setSidebarOpen(true)}
                 aria-label="Abrir menu"
               >
                 <span className="material-symbols-outlined">menu</span>
               </button>
-              <span className="material-symbols-outlined text-[#6b8bc3]">dashboard</span>
-              <div>
-                <p className="text-xs uppercase text-slate-400">{getGreeting()}, {primerNombre}</p>
-                <h1 className="text-xl font-semibold">Panel de control</h1>
+              <span className="material-symbols-outlined shrink-0 text-[#6b8bc3]">dashboard</span>
+              <div className="min-w-0">
+                <p className="text-xs uppercase text-slate-400 truncate">{getGreeting()}, {primerNombre}</p>
+                <h1 className="text-xl font-semibold truncate">Panel de control</h1>
               </div>
             </div>
           </header>
 
-          <section className="flex-1 overflow-auto p-6 space-y-5">
+          <section className="scroll-region app-scroll-content flex-1 min-h-0 min-w-0 space-y-5 p-4 sm:p-6 max-lg:space-y-4 max-lg:p-3">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 max-lg:mb-1.5">
                 Resumen general
               </p>
-              <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 lg:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
                 {esVistaInstitucional ? (
                   <KpiCard
                     label="Usuarios activos"
@@ -539,8 +543,6 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
                   borderColor="border-violet-400/20"
                   icon="domain"
                 />
-              </div>
-              <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 mt-3">
                 <KpiCard
                   label="Materias"
                   value={generalLoading ? '...' : (resumenGeneral?.total_materias ?? 0)}
@@ -568,15 +570,15 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
               </div>
             </div>
 
-            <div className="rounded-lg border border-slate-800 bg-slate-900/40 px-4 py-3 flex flex-wrap items-center gap-3 min-w-0">
-              <span className="material-symbols-outlined text-slate-800 dark:text-white text-[18px]">filter_list</span>
+            <div className="flex min-w-0 flex-col gap-3 rounded-lg border border-slate-800 bg-slate-900/40 px-4 py-3 max-lg:px-3 max-lg:py-2.5 sm:flex-row sm:flex-wrap sm:items-center">
+              <span className="material-symbols-outlined text-slate-800 dark:text-white text-[18px] shrink-0">filter_list</span>
               <p className="text-xs font-semibold text-slate-800 dark:text-white uppercase tracking-wider shrink-0">Ver estadísticas de:</p>
               {!contextoFiltrosListo ? (
                 <ScopeSelectorSkeleton
                   soloCarrera={alcanceListo && alcanceFiltrosPanel === 'carrera'}
                   hideLabel
-                  gridClassName="flex flex-wrap gap-3 flex-1 min-w-[12rem]"
-                  className="flex-1"
+                  gridClassName="grid min-w-0 w-full grid-cols-1 gap-3 lg:flex lg:flex-1 lg:flex-wrap"
+                  className="w-full min-w-0 lg:flex-1"
                 />
               ) : alcanceFiltrosPanel === 'carrera' ? (
                 <>
@@ -691,10 +693,10 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
 
             {/* Banner de justificaciones pendientes para aprobadores */}
             {puedeAprobar && pendientesAgrupados.solicitudes > 0 ? (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-center justify-between gap-3 shadow-sm dark:border-amber-500/40 dark:bg-amber-500/10 dark:shadow-none">
-                <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-amber-700 text-[22px] dark:text-amber-300">pending_actions</span>
-                  <div>
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex flex-col gap-3 shadow-sm max-lg:gap-3 sm:flex-row sm:items-center sm:justify-between dark:border-amber-500/40 dark:bg-amber-500/10 dark:shadow-none">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="material-symbols-outlined shrink-0 text-amber-700 text-[22px] dark:text-amber-300">pending_actions</span>
+                  <div className="min-w-0">
                     <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">
                       {pendientesAgrupados.solicitudes === 1
                         ? pendientesAgrupados.registros > 1
@@ -706,7 +708,7 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
                 </div>
                 <button
                   type="button"
-                  className="shrink-0 rounded-lg border border-amber-400 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 shadow-sm hover:bg-amber-100 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-100 dark:shadow-none dark:hover:bg-amber-500/25"
+                  className="btn-mobile-cta shrink-0 rounded-lg border border-amber-400 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 shadow-sm hover:bg-amber-100 max-lg:min-h-11 max-lg:w-full dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-100 dark:shadow-none dark:hover:bg-amber-500/25 sm:w-auto"
                   onClick={abrirBandejaJustificacionesPendientes}
                 >
                   Ver pendientes
@@ -753,7 +755,7 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
                   <p className="text-slate-500 text-sm">No hay justificaciones para el filtro seleccionado.</p>
                 </div>
               ) : (
-              <div className="overflow-auto max-h-[520px] divide-y divide-slate-800">
+              <div className="scroll-region-at-lg divide-y divide-slate-800 lg:max-h-[520px]">
                 {justLoading ? (
                   <div className="px-4 py-10 text-center text-slate-400 text-sm">Cargando justificaciones...</div>
                 ) : (() => {
@@ -869,31 +871,33 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
 
                       {/* Acciones */}
                       {pendiente ? (
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex flex-col gap-2 max-lg:gap-2.5 lg:flex-row lg:flex-wrap lg:items-center">
                           <input
-                            className="flex-1 min-w-[180px] px-3 py-1.5 rounded-lg bg-[#07101f] border border-slate-700 text-xs text-[#e7eef9] placeholder-slate-500 focus:outline-none focus:border-[#4f8cdb]"
+                            className="w-full min-w-0 flex-1 px-3 py-1.5 rounded-lg bg-[#07101f] border border-slate-700 text-xs text-[#e7eef9] placeholder-slate-500 focus:outline-none focus:border-[#4f8cdb] max-lg:min-h-11 lg:min-w-[180px]"
                             placeholder="Comentario (opcional)"
                             value={comentarios[primerIdKey] ?? ''}
                             onChange={(e) => setComentarios((prev) => ({ ...prev, [primerIdKey]: e.target.value }))}
                           />
-                          <button
-                            type="button"
-                            className="btn-modern btn-modern-success btn-modern-xs"
-                            onClick={() => void Promise.all(ids.map((id) => resolver(id, 'aprobar')))}
-                            disabled={resolviendo}
-                          >
-                            <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                            Aprobar
-                          </button>
-                          <button
-                            type="button"
-                            className="btn-modern btn-modern-danger btn-modern-xs"
-                            onClick={() => void Promise.all(ids.map((id) => resolver(id, 'rechazar')))}
-                            disabled={resolviendo}
-                          >
-                            <span className="material-symbols-outlined text-[14px]">cancel</span>
-                            Rechazar
-                          </button>
+                          <div className="btn-mobile-row flex gap-2 flex-wrap lg:contents">
+                            <button
+                              type="button"
+                              className="btn-modern btn-modern-success btn-modern-xs btn-mobile-cta lg:min-h-0 lg:w-auto"
+                              onClick={() => void Promise.all(ids.map((id) => resolver(id, 'aprobar')))}
+                              disabled={resolviendo}
+                            >
+                              <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                              Aprobar
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-modern btn-modern-danger btn-modern-xs btn-mobile-cta lg:min-h-0 lg:w-auto"
+                              onClick={() => void Promise.all(ids.map((id) => resolver(id, 'rechazar')))}
+                              disabled={resolviendo}
+                            >
+                              <span className="material-symbols-outlined text-[14px]">cancel</span>
+                              Rechazar
+                            </button>
+                          </div>
                         </div>
                       ) : j.comentarios_revision ? (
                         <div className="flex items-start gap-1.5 text-xs text-slate-500 italic">
@@ -914,7 +918,7 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">
                 Alertas de asistencia{filtroCarreraId || filtroFacultadId ? ' · filtrado' : ''}
               </p>
-              <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
                 {puedeAprobar ? (
                   <KpiCard
                     label="Solicitudes pend."
@@ -953,7 +957,7 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
                   </span>
                 ) : null}
               </p>
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+              <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-2">
                 <PanelFunnelRetencionChart
                   statsLoading={statsLoading}
                   data={funnelRetencionData}

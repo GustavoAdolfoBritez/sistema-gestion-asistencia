@@ -49,7 +49,7 @@ const btnEliminarAlumnoClass = `${btnEliminarPromocionClass} shrink-0 text-xs px
 const btnEliminarGrupoClass = `${btnEliminarPromocionClass} text-[11px] px-2 py-0.5 rounded-lg`;
 
 function etiquetaSemestreOrdinal(n: number): string {
-  return `${n}º Semestre`;
+  return `${n}° semestre`;
 }
 
 function claveCohorte(row: AlumnoSemestreRow): CohorteGrupoKey {
@@ -376,15 +376,15 @@ export function PromocionSemestrePage({ onLogout }: Props) {
   };
 
   return (
-    <div className="system-bg text-slate-800 dark:text-[#e7eef9] min-h-screen h-screen overflow-hidden">
-      <div className="flex h-full w-full overflow-hidden">
+    <div className="system-bg app-shell-viewport text-slate-800 dark:text-[#e7eef9] min-h-screen h-screen overflow-hidden">
+      <div className="app-layout-row">
         {sidebarOpen ? (
-          <div className="fixed inset-0 bg-black/70 z-20 lg:hidden" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
+          <div className="app-sidebar-scrim" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
         ) : null}
         <AppSidebar sidebarOpen={sidebarOpen} onLogout={onLogout} onClose={() => setSidebarOpen(false)} />
-        <main className="flex-1 flex flex-col h-full overflow-hidden">
+        <main className="app-layout-main">
           <header className="flex-shrink-0 flex flex-col gap-2 py-2.5 px-6 bg-white/95 backdrop-blur-md border-b border-slate-200 z-10 dark:bg-[#132a52]/90 dark:border-slate-800">
-            <div className="flex items-center justify-between gap-3 min-h-10">
+            <div className="flex items-center justify-between gap-3 min-h-10 min-w-0">
               <div className="flex items-center gap-3 min-w-0">
                 <button
                   type="button"
@@ -397,14 +397,14 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                 <span className="material-symbols-outlined text-[#6b8bc3] shrink-0">upgrade</span>
                 <div className="min-w-0">
                   <p className="text-xs uppercase text-slate-400">Académico</p>
-                  <h1 className="text-xl font-semibold truncate">Promoción de semestre curricular</h1>
+                  <h1 className="text-xl font-semibold truncate">Promoción de semestre</h1>
                 </div>
               </div>
             </div>
             <AcademicoSubnav />
           </header>
 
-          <section className="flex-1 overflow-auto p-6 space-y-6">
+          <section className="scroll-region app-scroll-content flex-1 min-h-0 min-w-0 overflow-auto p-6 space-y-6 max-lg:space-y-5 max-lg:px-4 max-lg:pt-14 max-lg:pb-0">
             {!ocultarFacultad ? (
               <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4 text-black shadow-sm dark:border-slate-800 dark:bg-[#132a52] dark:text-[#e7eef9] dark:shadow-none">
                 <h2 className="text-lg font-semibold text-black dark:text-[#e7eef9]">Promoción por facultad</h2>
@@ -447,7 +447,7 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                     }}
                     options={Array.from({ length: 9 }, (_, i) => i + 1).map((n) => ({
                       value: String(n),
-                      label: `Semestre ${n}`,
+                      label: etiquetaSemestreOrdinal(n),
                     }))}
                     triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 focus:border-primary focus:outline-none text-sm text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9] disabled:opacity-50 disabled:cursor-not-allowed"
                   />
@@ -472,12 +472,12 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                     triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 focus:border-primary focus:outline-none text-sm text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9] disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
-                <div className="flex items-end">
+                <div className="app-mobile-cta-footer flex items-end max-lg:w-full">
                   <button
                     type="button"
                     disabled={!facultadMasivaId || !cohorteAnioMasivo || loadingPreviewMasiva}
                     onClick={() => void vistaPreviaMasiva()}
-                    className="w-full md:w-auto px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-medium disabled:opacity-50"
+                    className="btn-modern btn-modern-primary btn-mobile-cta w-full px-4 py-2 text-sm font-medium md:w-auto"
                   >
                     {loadingPreviewMasiva ? 'Calculando…' : 'Vista previa'}
                   </button>
@@ -486,23 +486,25 @@ export function PromocionSemestrePage({ onLogout }: Props) {
 
               {previewMasiva && previewMasiva.length > 0 ? (
                 <div className="space-y-3 border border-slate-200 rounded-lg p-3 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/25">
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                    <div className="flex flex-col gap-3 text-sm max-lg:items-stretch sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                     <span className="text-slate-600 dark:text-slate-300">
                       Total a promocionar:{' '}
                       <strong className="text-black dark:text-[#e7eef9]">{totalMasivaEfectivo}</strong> alumno(s) del año de ingreso{' '}
                       <strong className="text-black dark:text-[#e7eef9]">{cohorteAnioMasivo}</strong> → semestre{' '}
                       {Number(semestreMasivo) + 1}
                     </span>
+                    <div className="app-mobile-cta-footer max-lg:w-full">
                     <button
                       type="button"
                       disabled={!puedeEjecutarMasiva}
                       onClick={() => setConfirmMasivaOpen(true)}
-                      className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-medium disabled:opacity-50"
+                      className="btn-modern btn-modern-success btn-mobile-cta shrink-0 px-3 py-1.5 text-sm font-medium max-lg:w-full"
                     >
                       Promocionar todo (facultad)
                     </button>
+                    </div>
                   </div>
-                  <div className="max-h-[min(280px,40vh)] overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-md">
+                  <div className="rounded-md border border-slate-200 dark:border-slate-800 max-lg:max-h-none max-lg:overflow-visible lg:max-h-[min(280px,40vh)] lg:overflow-y-auto lg:overscroll-contain">
                     <table className="w-full text-sm">
                       <thead className="bg-slate-100 dark:bg-slate-950/50 text-left text-xs uppercase text-slate-500 dark:text-slate-400">
                         <tr>
@@ -609,7 +611,7 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                     }}
                     options={Array.from({ length: 9 }, (_, i) => i + 1).map((n) => ({
                       value: String(n),
-                      label: `Semestre ${n}`,
+                      label: etiquetaSemestreOrdinal(n),
                     }))}
                     triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 focus:border-primary focus:outline-none text-sm text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9] disabled:opacity-50 disabled:cursor-not-allowed"
                   />
@@ -634,12 +636,12 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                     triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 focus:border-primary focus:outline-none text-sm text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9] disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
-                <div className="flex items-end md:col-span-2">
+                <div className="app-mobile-cta-footer flex items-end max-lg:w-full md:col-span-2">
                   <button
                     type="button"
                     disabled={!carreraId || !anioIngresoCarrera || loadingLista}
                     onClick={handleCargarLista}
-                    className="w-full md:w-auto px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="btn-modern btn-modern-primary btn-mobile-cta w-full px-4 py-2 text-sm font-medium md:w-auto"
                   >
                     {loadingLista ? 'Cargando…' : 'Cargar lista'}
                   </button>
@@ -650,16 +652,18 @@ export function PromocionSemestrePage({ onLogout }: Props) {
             {lista.length > 0 ? (
               <div
                 ref={listaAlumnosRef}
-                className="rounded-xl border border-slate-200 bg-white p-5 space-y-3 text-black shadow-sm dark:border-slate-800 dark:bg-[#132a52] dark:text-[#e7eef9] dark:shadow-none scroll-mt-4"
+                className="scroll-mt-4 space-y-3 rounded-xl border border-slate-200 bg-white p-5 text-black shadow-sm dark:border-slate-800 dark:bg-[#132a52] dark:text-[#e7eef9] dark:shadow-none max-lg:p-3 max-lg:space-y-2.5"
               >
-                <div className="rounded-lg border border-slate-200 bg-gradient-to-br from-slate-50 to-white px-4 py-3.5 dark:border-slate-700 dark:from-[#0b2147]/55 dark:to-[#132a52]">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0 space-y-2">
+                <div className="rounded-lg border border-slate-200 bg-gradient-to-br from-slate-50 to-white px-4 py-3.5 dark:border-slate-700 dark:from-[#0b2147]/55 dark:to-[#132a52] max-lg:px-3 max-lg:py-3">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between max-lg:gap-3">
+                    <div className="min-w-0 space-y-2 max-lg:w-full">
                       <p className="text-xs font-semibold tracking-wide text-slate-600 dark:text-[#8fb4e8]">
                         Alumnos a promocionar
                       </p>
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-                        <span className="text-sm text-slate-600 dark:text-slate-300">De</span>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 max-lg:flex-col max-lg:items-stretch max-lg:gap-2">
+                        <span className="text-sm text-slate-600 dark:text-slate-300 max-lg:sr-only">De</span>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 max-lg:w-full">
+                        <span className="text-sm text-slate-600 dark:text-slate-300 lg:hidden">De</span>
                         <span className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-base font-bold tabular-nums text-slate-900 shadow-sm dark:border-slate-600 dark:bg-[#0b2147] dark:text-[#e7eef9] dark:shadow-none">
                           <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-[#8fb4e8]" aria-hidden>
                             school
@@ -676,8 +680,9 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                           </span>
                           {etiquetaSemestreOrdinal(Number(semestre) + 1)}
                         </span>
+                        </div>
                       </div>
-                      <p className="flex flex-wrap items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                      <p className="flex flex-wrap items-center gap-2 text-sm text-slate-600 dark:text-slate-300 max-lg:w-full">
                         <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-0.5 font-medium tabular-nums text-slate-800 dark:border-slate-600 dark:bg-[#0b2147] dark:text-[#e7eef9]">
                           <span className="material-symbols-outlined text-[16px] text-primary dark:text-[#8fb4e8]" aria-hidden>
                             groups
@@ -686,11 +691,11 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                         </span>
                       </p>
                     </div>
-                    <div className="flex flex-wrap gap-2 shrink-0">
+                    <div className="app-mobile-cta-footer btn-mobile-stack flex shrink-0 flex-wrap gap-2 max-lg:w-full max-lg:flex-col-reverse">
                       <button
                         type="button"
                         onClick={restaurarTodos}
-                        className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 shadow-sm hover:bg-slate-50 hover:border-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 dark:border-slate-600 dark:bg-[#0b2147] dark:text-[#e7eef9] dark:shadow-none dark:hover:bg-[#091c3d] dark:hover:border-slate-500 dark:focus-visible:ring-[#4a6fa5]/40"
+                        className="btn-modern btn-modern-ghost btn-mobile-cta inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium max-lg:w-full"
                       >
                         <span className="material-symbols-outlined text-[18px]" aria-hidden>
                           group_add
@@ -701,7 +706,7 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                         type="button"
                         disabled={!puedePromocionar || cantIncluidos === 0}
                         onClick={() => setConfirmOpen(true)}
-                        className="inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-2 rounded-lg bg-emerald-600 text-white shadow-sm hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-emerald-700 dark:hover:bg-emerald-600 dark:shadow-[0_1px_3px_rgba(0,0,0,0.25)]"
+                        className="btn-modern btn-modern-success btn-mobile-cta inline-flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-semibold max-lg:w-full max-lg:py-3"
                       >
                         <span className="material-symbols-outlined text-[18px]" aria-hidden>
                           upgrade
@@ -711,7 +716,7 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                     </div>
                   </div>
                 </div>
-                <div className="border border-slate-800 rounded-lg overflow-hidden max-h-[min(420px,50vh)] overflow-y-auto">
+                <div className="rounded-lg border border-slate-800 max-lg:max-h-none max-lg:overflow-visible lg:max-h-[min(420px,50vh)] lg:overflow-hidden lg:overflow-y-auto lg:overscroll-contain">
                   {listaPorCohorte.map(({ cohorte, filas }) => {
                     const variasCohortes = listaPorCohorte.length > 1;
                     const badgeReciente =
@@ -728,8 +733,8 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                     const idsGrupo = filas.map((r) => r.id);
                     return (
                       <div key={String(cohorte)} className="border-b border-slate-200 dark:border-slate-800 last:border-b-0">
-                        <div className="sticky top-0 z-[1] px-3 py-2 bg-slate-50/95 dark:bg-slate-950/95 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center gap-2 gap-y-1">
-                          <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                        <div className="sticky top-0 z-[1] flex flex-wrap items-center gap-2 gap-y-1 border-b border-slate-200 bg-slate-50/95 px-3 py-2 dark:border-slate-800 dark:bg-slate-950/95 max-lg:flex-col max-lg:items-stretch max-lg:gap-1.5 max-lg:px-4 max-lg:py-2.5">
+                          <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 max-lg:break-words">
                             {cohorte === 'sin'
                               ? 'Sin año de ingreso registrado'
                               : `Año de ingreso ${cohorte}`}
@@ -744,11 +749,11 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                               Año de ingreso anterior
                             </span>
                           ) : null}
-                          <span className="text-xs text-slate-500 tabular-nums">
+                          <span className="text-xs tabular-nums text-slate-500 max-lg:w-full">
                             {inclEnGrupo}/{filas.length} incluidos
                           </span>
                           {variasCohortes ? (
-                            <div className="ml-auto flex gap-1.5 shrink-0">
+                            <div className="ml-auto flex shrink-0 gap-1.5 max-lg:ml-0 max-lg:w-full max-lg:flex-wrap">
                               <button
                                 type="button"
                                 className="text-[11px] px-2 py-0.5 rounded border border-emerald-700/70 text-emerald-300 hover:bg-emerald-900/40"
@@ -804,17 +809,23 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                             return (
                               <li
                                 key={row.id}
-                                className={`flex items-center justify-between gap-3 px-3 py-2.5 text-sm ${incl ? 'bg-white dark:bg-slate-900/30' : 'bg-slate-50 dark:bg-slate-950/40 opacity-60'}`}
+                                className={`flex gap-3 px-3 py-2.5 text-sm max-lg:flex-col max-lg:items-stretch max-lg:gap-2 max-lg:px-4 max-lg:py-3 lg:items-center lg:justify-between ${
+                                  incl ? 'bg-white dark:bg-slate-900/30' : 'bg-slate-50 opacity-60 dark:bg-slate-950/40'
+                                }`}
                               >
-                                <div className="min-w-0">
-                                  <p className="font-medium truncate">{row.nombre_completo || '—'}</p>
-                                  <p className="text-xs text-slate-500 dark:text-slate-400">CI {row.numero_documento}</p>
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-medium leading-snug max-lg:break-words max-lg:text-[15px] max-lg:whitespace-normal lg:truncate">
+                                    {row.nombre_completo || '—'}
+                                  </p>
+                                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                                    CI {row.numero_documento}
+                                  </p>
                                 </div>
                                 {incl ? (
                                   <button
                                     type="button"
                                     onClick={() => quitarDePromocion(row.id)}
-                                    className={btnEliminarAlumnoClass}
+                                    className={`${btnEliminarAlumnoClass} max-lg:w-full max-lg:justify-center max-lg:py-2`}
                                     title="Eliminar de la promoción"
                                   >
                                     <span className="material-symbols-outlined text-[16px]" aria-hidden>
@@ -826,7 +837,7 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                                   <button
                                     type="button"
                                     onClick={() => setIdsIncluidos((prev) => new Set(prev).add(row.id))}
-                                    className="shrink-0 inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg border border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800/50 dark:text-slate-200 dark:hover:bg-slate-800"
+                                    className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800/50 dark:text-slate-200 dark:hover:bg-slate-800 max-lg:w-full max-lg:justify-center max-lg:py-2"
                                   >
                                     <span className="material-symbols-outlined text-[16px]" aria-hidden>
                                       person_add

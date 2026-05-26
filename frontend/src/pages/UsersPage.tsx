@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { FormEvent, SyntheticEvent } from 'react';
+import type { FormEvent, ReactNode, SyntheticEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { AppSidebar } from '../components/AppSidebar';
@@ -16,6 +16,56 @@ import { etiquetaRol, etiquetasRoles } from '../utils/role-labels';
 /** Checkbox de carreras: círculo y punto como rol/facultad (ver .scope-radio-dot en index.css). */
 const SCOPE_CARRERA_CHOICE_CLASS =
   'scope-radio-dot size-5 rounded-full border-slate-600 text-primary focus:ring-primary';
+
+const USUARIO_PANEL_CARD_CLASS =
+  'rounded-2xl border border-slate-200 bg-white shadow-sm max-lg:shadow-md dark:border-slate-700/80 dark:bg-[#0e1e38] dark:max-lg:shadow-none';
+
+const USUARIO_PANEL_HERO_CLASS =
+  'overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-sky-50/70 p-2.5 shadow-sm dark:border-slate-700 dark:from-[#152d55] dark:via-[#132a52] dark:to-[#0f2244]';
+
+/** Campos de formulario (móvil y escritorio, claro/oscuro). */
+const USUARIO_INP =
+  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 dark:border-slate-700 dark:bg-[#0b2147] dark:text-[#e7eef9] dark:placeholder:text-slate-500 dark:shadow-none';
+
+const USUARIO_LABEL = 'block space-y-1.5 text-xs font-medium text-slate-600 dark:text-slate-400';
+
+const USUARIO_SCOPE_IDLE =
+  'border-slate-200 bg-slate-50 hover:border-slate-300 dark:border-slate-700 dark:bg-surface-darker dark:hover:border-slate-600';
+
+const USUARIO_SCOPE_ACTIVE = 'border-primary/50 bg-primary/5 dark:border-primary/60 dark:bg-primary/10';
+
+function UsuarioCampoLecturaMovil({ etiqueta, valor }: { etiqueta: string; valor: ReactNode }) {
+  return (
+    <div className="border-b border-slate-200/90 px-4 py-3 last:border-b-0 dark:border-slate-700/70">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{etiqueta}</p>
+      <div className="mt-1.5 text-sm leading-relaxed text-slate-800 dark:text-slate-100">{valor}</div>
+    </div>
+  );
+}
+
+function UsuarioFormCardMovil({
+  titulo,
+  badge,
+  children,
+}: {
+  titulo: string;
+  badge?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section
+      className={`${USUARIO_PANEL_CARD_CLASS} overflow-hidden lg:rounded-none lg:border-0 lg:bg-transparent lg:shadow-none`}
+    >
+      <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-700/60 lg:hidden">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          {titulo}
+        </p>
+        {badge ?? null}
+      </div>
+      <div className="space-y-4 p-4 max-lg:space-y-3 lg:p-0">{children}</div>
+    </section>
+  );
+}
 
 function normalizeRolSesion(value: string): string {
   return value
@@ -149,6 +199,20 @@ const ESTADO_USUARIO_OPTIONS: { value: EstadoUsuario; label: string }[] = [
   { value: 'inactivo', label: 'Inactivo' },
   { value: 'suspendido', label: 'Suspendido' },
 ];
+
+function etiquetaEstadoUsuario(estado: EstadoUsuario): string {
+  return ESTADO_USUARIO_OPTIONS.find((o) => o.value === estado)?.label ?? estado;
+}
+
+function claseEstadoUsuarioMovil(estado: EstadoUsuario): string {
+  if (estado === 'activo') {
+    return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300';
+  }
+  if (estado === 'suspendido') {
+    return 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300';
+  }
+  return 'border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-600 dark:bg-slate-700/40 dark:text-slate-400';
+}
 
 const ROLE_OPTIONS = [
   {
@@ -314,6 +378,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
   }, [requestedAction]);
 
   const selectedUser = users.find((user) => user.id === selectedUserId) ?? null;
+  const panelDetalleAbierto = Boolean(selectedUser) || isCreateOpen;
 
   const hydrateDraftFromSelected = useCallback(() => {
     if (!selectedUser) {
@@ -417,6 +482,10 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
   };
 
   const handleInlineEditClick = (userId: string) => {
+    setIsCreateOpen(false);
+    if (location.pathname.endsWith('/usuarios/nuevo')) {
+      navigate('/app/usuarios', { replace: true });
+    }
     if (selectedUserId === userId) {
       setIsEditing(true);
       return;
@@ -605,7 +674,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
         method: 'PATCH',
         body: JSON.stringify({ estado }),
       });
-      await loadUsers(user.id);
+      await loadUsers();
       toast.success(`Estado actualizado a ${estado}`);
     } catch (err) {
       const mensaje = err instanceof Error ? err.message : 'No se pudo actualizar el estado';
@@ -665,16 +734,34 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
     setIsEditing(false);
   };
 
+  const cerrarPanelDetalle = () => {
+    clearSelection();
+    setIsCreateOpen(false);
+    if (location.pathname.endsWith('/usuarios/nuevo')) {
+      navigate('/app/usuarios', { replace: true });
+    }
+  };
+
+  const seleccionarUsuario = (userId: string) => {
+    setIsCreateOpen(false);
+    if (location.pathname.endsWith('/usuarios/nuevo')) {
+      navigate('/app/usuarios', { replace: true });
+    }
+    autoEditRef.current = false;
+    setIsEditing(false);
+    setSelectedUserId(userId);
+  };
+
   const stopRowSelection = (event: SyntheticEvent) => {
     event.stopPropagation();
   };
 
   return (
-    <div className="system-bg text-[#e7eef9] min-h-screen h-screen overflow-hidden">
-      <div className="flex h-full w-full overflow-hidden">
+    <div className="system-bg app-shell-viewport min-h-screen h-screen overflow-hidden text-slate-800 dark:text-[#e7eef9]">
+      <div className="app-layout-row">
         {sidebarOpen ? (
           <div
-            className="fixed inset-0 bg-black/70 z-20 lg:hidden"
+            className="app-sidebar-scrim"
             onClick={() => setSidebarOpen(false)}
             aria-hidden="true"
           />
@@ -682,22 +769,26 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
 
         <AppSidebar sidebarOpen={sidebarOpen} onLogout={onLogout} onClose={() => setSidebarOpen(false)} />
 
-        <main className="flex-1 flex flex-col h-full overflow-hidden">
-          <header className="flex-shrink-0 h-16 bg-[#132a52]/90 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-6 z-10">
-            <div className="flex items-center gap-3">
+        <main className="app-layout-main">
+          <header className="z-10 flex min-h-16 flex-shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white/95 px-6 py-3 backdrop-blur-md dark:border-slate-800 dark:bg-[#132a52]/90 max-lg:gap-2 max-lg:px-4 max-lg:py-2.5">
+            <div className="flex min-w-0 flex-1 items-center gap-3 max-lg:gap-2">
               <button
-                className="lg:hidden text-slate-400"
+                type="button"
+                className="shrink-0 rounded-lg p-1 text-slate-600 hover:text-slate-900 lg:hidden dark:text-slate-400 dark:hover:text-slate-200"
                 onClick={() => setSidebarOpen(true)}
                 aria-label="Abrir menú"
               >
                 <span className="material-symbols-outlined">menu</span>
               </button>
-              <span className="material-symbols-outlined text-[#6b8bc3]">manage_accounts</span>
-              <div className="flex flex-col">
-                <h2 className="text-lg font-bold text-[#f0f4f8] tracking-tight">Gestión de usuarios y RBAC</h2>
+              <span className="material-symbols-outlined shrink-0 text-blue-600 dark:text-[#6b8bc3]">manage_accounts</span>
+              <div className="min-w-0 flex flex-col">
+                <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Administración</p>
+                <h2 className="truncate text-lg font-bold tracking-tight text-slate-900 dark:text-[#f0f4f8] max-lg:text-[15px]">
+                  Usuarios y permisos
+                </h2>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="shrink-0 max-lg:hidden">
               <button
                 type="button"
                 onClick={() => {
@@ -709,53 +800,84 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                 className="btn-modern btn-modern-primary btn-modern-sm"
               >
                 <span className="material-symbols-outlined text-[18px]">person_add</span>
-                NUEVO USUARIO
+                Nuevo usuario
               </button>
             </div>
           </header>
+          <div className="lg:hidden shrink-0 px-4 pt-3 pb-0">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedUserId(null);
+                setDraft(null);
+                setIsEditing(false);
+                navigate(appPath('usuarios', { usersAction: 'create' }));
+              }}
+              className="btn-modern btn-modern-primary btn-modern-sm w-full"
+            >
+              <span className="material-symbols-outlined text-[18px]">person_add</span>
+              Nuevo usuario
+            </button>
+          </div>
 
-          <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
-            <section className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide">
-              <div className="space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="relative w-full max-w-md">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[20px]">search</span>
+          <div
+            className={`grid min-h-0 min-w-0 flex-1 grid-cols-1 overflow-hidden max-lg:flex max-lg:flex-col ${
+              panelDetalleAbierto ? 'lg:grid-cols-[minmax(0,1fr)_min(100%,28.125rem)]' : ''
+            }`}
+          >
+            <section
+              className={`min-w-0 flex min-h-0 flex-col overflow-hidden ${
+                panelDetalleAbierto ? 'max-lg:hidden' : 'max-lg:flex max-lg:min-h-0 max-lg:flex-1'
+              }`}
+            >
+              <div className="shrink-0 space-y-4 p-4 max-lg:space-y-2.5 max-lg:p-3 sm:p-6 sm:space-y-6">
+              <div className="min-w-0 space-y-4 max-lg:space-y-2.5">
+                <div className="max-lg:rounded-2xl max-lg:border max-lg:border-slate-200/90 max-lg:bg-white max-lg:p-3 max-lg:shadow-sm dark:max-lg:border-slate-700/80 dark:max-lg:bg-[#0e1e38]">
+                <div className="flex flex-wrap items-center justify-between gap-4 max-lg:flex-col max-lg:gap-3">
+                  <div className="relative w-full min-w-0 max-w-md max-lg:max-w-none">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[20px] text-slate-400 max-lg:left-2.5 max-lg:text-[18px]">
+                      search
+                    </span>
                     <input
-                      className="w-full bg-surface-dark border border-slate-700 text-[#c9d7ed] text-sm rounded-xl pl-10 pr-4 py-2 focus:ring-primary focus:border-primary"
-                      placeholder="Buscar por nombre, correo o rol..."
-                      type="text"
+                      type="search"
+                      aria-label="Buscar usuarios"
+                      className={`${USUARIO_INP} rounded-xl py-2.5 pl-10 pr-4 max-lg:min-h-10 max-lg:rounded-lg max-lg:py-2 max-lg:pl-9 max-lg:text-sm`}
+                      placeholder="Nombre, correo o rol…"
                       value={searchTerm}
                       onChange={(event) => setSearchTerm(event.target.value)}
                     />
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 max-lg:btn-mobile-row max-lg:w-full max-lg:gap-2">
                     <button
                       type="button"
                       onClick={() => setFiltersOpen((prev) => !prev)}
-                      className="btn-modern btn-modern-ghost btn-modern-sm"
+                      className={`btn-modern btn-modern-ghost btn-modern-sm max-lg:min-h-10 max-lg:flex-1 max-lg:rounded-lg max-lg:py-2 max-lg:text-xs ${
+                        filtersOpen ? 'border-primary/40 bg-primary/5 dark:bg-primary/10' : ''
+                      }`}
                     >
-                      <span className="material-symbols-outlined text-[18px]">filter_list</span>
+                      <span className="material-symbols-outlined text-[18px] max-lg:text-[17px]">filter_list</span>
                       Filtrar
                     </button>
                     <button
                       type="button"
-                      className="btn-modern btn-modern-ghost btn-modern-sm"
+                      className="btn-modern btn-modern-ghost btn-modern-sm max-lg:min-h-10 max-lg:flex-1 max-lg:rounded-lg max-lg:py-2 max-lg:text-xs"
                       disabled={exportLoading}
                       onClick={() => {
                         void handleExport();
                       }}
                     >
-                      <span className="material-symbols-outlined text-[18px]">download</span>
+                      <span className="material-symbols-outlined text-[18px] max-lg:text-[17px]">download</span>
                       {exportLoading ? 'Exportando…' : 'Exportar'}
                     </button>
                   </div>
                 </div>
 
                 {filtersOpen ? (
-                  <div className="bg-surface-dark border border-slate-800 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <label className="text-xs text-slate-400 uppercase tracking-widest space-y-2">
+                  <div className="grid grid-cols-1 gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-surface-dark max-lg:mt-2.5 max-lg:gap-3 max-lg:border-slate-200 max-lg:bg-slate-50/80 max-lg:p-3 max-lg:shadow-none dark:max-lg:border-slate-700 dark:max-lg:bg-[#0b2147]/40 lg:mt-5 lg:flex lg:flex-wrap lg:items-end lg:gap-x-6 lg:gap-y-3 lg:p-4">
+                    <label className={`${USUARIO_LABEL} lg:w-52 lg:shrink-0`}>
                       <span>Rol</span>
                       <AppSelect
+                        className="lg:max-w-[13rem]"
                         value={roleFilter}
                         onChange={setRoleFilter}
                         clearOption={{ value: 'all', label: 'Todos los roles' }}
@@ -763,39 +885,186 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                           value: role.value,
                           label: role.label,
                         }))}
-                        triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                        triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9] lg:max-w-[13rem]"
                       />
                     </label>
-                    <label className="text-xs text-slate-400 uppercase tracking-widest space-y-2">
+                    <label className={`${USUARIO_LABEL} lg:w-52 lg:shrink-0`}>
                       <span>Estado</span>
                       <AppSelect
+                        className="lg:max-w-[13rem]"
                         value={statusFilter}
                         onChange={(v) => setStatusFilter(v as 'all' | EstadoUsuario)}
                         clearOption={{ value: 'all', label: 'Todos los estados' }}
                         options={ESTADO_USUARIO_OPTIONS}
-                        triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                        triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9] lg:max-w-[13rem]"
                       />
                     </label>
                   </div>
                 ) : null}
+                </div>
+              </div>
               </div>
 
-              <div className="bg-surface-dark border border-slate-800 rounded-xl overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">Directorio de usuarios</p>
-                    <p className="text-sm text-[#c9d7ed]">Se encontraron {filteredUsers.length} registros</p>
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col px-4 pb-4 max-lg:px-3 max-lg:pb-3 sm:px-6 sm:pb-6">
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none dark:border-slate-800 dark:bg-surface-dark dark:max-lg:bg-transparent dark:shadow-none">
+                <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-800 max-lg:flex-col max-lg:items-stretch max-lg:gap-1 max-lg:border-0 max-lg:px-0 max-lg:py-0 max-lg:pb-2">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 max-lg:text-[10px] max-lg:tracking-wider">
+                      <span className="max-lg:hidden">Directorio de usuarios</span>
+                      <span className="lg:hidden">Directorio</span>
+                    </p>
+                    <p className="text-sm text-[#c9d7ed] max-lg:text-[13px] max-lg:font-medium max-lg:text-slate-800 dark:max-lg:text-[#c9d7ed]">
+                      <span className="max-lg:hidden">Se encontraron {filteredUsers.length} registros</span>
+                      <span className="lg:hidden">
+                        {filteredUsers.length} {filteredUsers.length === 1 ? 'usuario' : 'usuarios'}
+                      </span>
+                    </p>
                   </div>
-                  <span className="text-xs text-slate-500">Actualizado {formatDateOnly(new Date(), 'es-AR')}</span>
+                  <span className="shrink-0 text-xs text-slate-500 max-lg:hidden">
+                    Actualizado {formatDateOnly(new Date(), 'es-AR')}
+                  </span>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse min-w-[640px]">
+                <div className="scroll-region app-scroll-content flex min-h-0 flex-1 flex-col">
+                  <ul className="space-y-2.5 p-0 max-lg:pt-1 lg:hidden">
+                    {loading ? (
+                      Array.from({ length: 4 }).map((_, i) => (
+                        <li key={i} className="overflow-hidden rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-[#0e1e38]">
+                          <div className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800/60" />
+                        </li>
+                      ))
+                    ) : error ? (
+                      <li className="rounded-xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-[#0e1e38]">
+                        {error}
+                        <button
+                          type="button"
+                          className="btn-modern btn-modern-ghost btn-modern-xs mt-3"
+                          onClick={() => loadUsers()}
+                        >
+                          Reintentar
+                        </button>
+                      </li>
+                    ) : filteredUsers.length ? (
+                      filteredUsers.map((user) => {
+                        const rolesVisibles = etiquetasRoles(user.roles);
+                        const seleccionado = selectedUserId === user.id;
+                        return (
+                          <li key={user.id}>
+                            <article
+                              className={`overflow-hidden rounded-xl border bg-white shadow-sm transition-shadow dark:bg-[#0e1e38] dark:shadow-none ${
+                                seleccionado
+                                  ? 'border-primary/40 ring-2 ring-primary/15 dark:border-primary/50'
+                                  : 'border-slate-200/90 hover:shadow-md dark:border-slate-700/80'
+                              }`}
+                            >
+                              <button
+                                type="button"
+                                className="flex w-full items-center gap-3 p-3 text-left active:bg-slate-50 dark:active:bg-slate-800/40"
+                                onClick={() => seleccionarUsuario(user.id)}
+                              >
+                                <UserAvatar nombres={user.nombres} apellidos={user.apellidos} size="sm" />
+                                <div className="min-w-0 flex-1">
+                                  <p className="break-words text-[15px] font-semibold leading-snug text-slate-900 dark:text-[#f0f4f8]">
+                                    {formatName(user)}
+                                  </p>
+                                  <p className="mt-0.5 truncate text-xs text-slate-500">{user.email}</p>
+                                </div>
+                                <span
+                                  className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize ${claseEstadoUsuarioMovil(user.estado)}`}
+                                >
+                                  {etiquetaEstadoUsuario(user.estado)}
+                                </span>
+                              </button>
+
+                              {rolesVisibles.length ? (
+                                <div className="flex flex-wrap gap-1 px-3 pb-2">
+                                  {rolesVisibles.map((role) => (
+                                    <span
+                                      key={role}
+                                      className="max-w-full truncate rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800/80 dark:text-slate-300"
+                                    >
+                                      {role}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : null}
+
+                              <div
+                                className="flex items-center gap-2 border-t border-slate-100 bg-slate-50/50 px-2 py-2 dark:border-slate-800/80 dark:bg-[#0a1628]/50"
+                                onClick={stopRowSelection}
+                                onMouseDown={stopRowSelection}
+                                onPointerDown={stopRowSelection}
+                              >
+                                <AppSelect
+                                  className="min-w-0 flex-1"
+                                  aria-label={`Cambiar estado de ${formatName(user)}`}
+                                  value={user.estado}
+                                  disabled={togglingUserId === user.id}
+                                  size="xs"
+                                  onChange={(v) => {
+                                    handleChangeUserStatus(user, v as EstadoUsuario);
+                                  }}
+                                  options={ESTADO_USUARIO_OPTIONS}
+                                  triggerClassName="w-full min-h-9 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-800 focus:border-primary dark:border-slate-600 dark:bg-[#0b2147] dark:text-[#e7eef9]"
+                                />
+                                <button
+                                  type="button"
+                                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary dark:border-slate-600 dark:bg-[#0b2147] dark:text-slate-300 dark:hover:text-primary"
+                                  onClick={() => handleInlineEditClick(user.id)}
+                                  aria-label={`Editar ${formatName(user)}`}
+                                >
+                                  <span className="material-symbols-outlined text-[20px]">edit</span>
+                                </button>
+                              </div>
+                            </article>
+                          </li>
+                        );
+                      })
+                    ) : (
+                      <li className="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-sm text-slate-500 dark:border-slate-600 dark:bg-[#0e1e38]">
+                        <div className="mx-auto flex max-w-sm flex-col items-center gap-3">
+                          <span className="material-symbols-outlined text-[40px] text-slate-600">
+                            {users.length === 0 ? 'group_off' : 'filter_alt_off'}
+                          </span>
+                          <p>
+                            {users.length === 0
+                              ? 'Todavía no hay usuarios registrados en el sistema.'
+                              : 'Ningún usuario coincide con los filtros o la búsqueda actual.'}
+                          </p>
+                          {users.length === 0 ? (
+                            <button
+                              type="button"
+                              className="btn-modern btn-modern-primary btn-modern-sm btn-mobile-cta mt-1 w-full max-w-xs"
+                              onClick={() => {
+                                setSelectedUserId(null);
+                                setDraft(null);
+                                setIsEditing(false);
+                                navigate(appPath('usuarios', { usersAction: 'create' }));
+                              }}
+                            >
+                              <span className="material-symbols-outlined text-[18px]">person_add</span>
+                              Crear primer usuario
+                            </button>
+                          ) : null}
+                        </div>
+                      </li>
+                    )}
+                  </ul>
+
+                  <table className="hidden w-full min-w-[640px] border-separate border-spacing-0 text-left lg:table">
                     <thead>
-                      <tr className="bg-[#132a52] border-b border-slate-800 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                        <th className="px-6 py-4">Nombre e identificación</th>
-                        <th className="px-6 py-4">Rol</th>
-                        <th className="px-6 py-4">Estado</th>
-                        <th className="px-6 py-4 text-right">Acciones</th>
+                      <tr className="text-xs font-semibold uppercase tracking-wider text-slate-900 dark:text-white">
+                        <th className="sticky top-0 z-10 bg-slate-50 px-6 py-4 dark:bg-[#0b2147]">
+                          Nombre e identificación
+                        </th>
+                        <th className="sticky top-0 z-10 bg-slate-50 px-6 py-4 dark:bg-[#0b2147]">
+                          Rol
+                        </th>
+                        <th className="sticky top-0 z-10 bg-slate-50 px-6 py-4 dark:bg-[#0b2147]">
+                          Estado
+                        </th>
+                        <th className="sticky top-0 z-10 bg-slate-50 px-6 py-4 text-right dark:bg-[#0b2147]">
+                          Acciones
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800 text-sm">
@@ -826,13 +1095,12 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                           return (
                             <tr
                               key={user.id}
-                              className={`${isSelected ? 'bg-primary/5 border-l-2 border-l-primary' : 'hover:bg-slate-800/30 cursor-pointer'}`}
-                              onClick={() => {
-                                setSelectedUserId(user.id);
-                                setIsEditing(false);
-                              }}
+                              className={isSelected ? 'bg-primary/5 border-l-2 border-l-primary' : 'hover:bg-slate-800/30'}
                             >
-                              <td className="px-6 py-4">
+                              <td
+                                className="cursor-pointer px-6 py-4"
+                                onClick={() => seleccionarUsuario(user.id)}
+                              >
                                 <div className="flex items-center gap-3">
                                   <UserAvatar nombres={user.nombres} apellidos={user.apellidos} size="sm" />
                                   <div className="flex flex-col">
@@ -841,7 +1109,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                                   </div>
                                 </div>
                               </td>
-                              <td className="px-6 py-4">
+                              <td className="cursor-pointer px-6 py-4" onClick={() => seleccionarUsuario(user.id)}>
                                 <div className="flex flex-wrap gap-2">
                                   {etiquetasRoles(user.roles).slice(0, 2).map((role) => (
                                     <span
@@ -858,22 +1126,24 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                                   ) : null}
                                 </div>
                               </td>
-                              <td className="px-6 py-4">
+                              <td className="w-[1%] whitespace-nowrap px-4 py-4">
                                 <div
+                                  className="inline-block w-auto max-w-[10.5rem]"
                                   onClick={stopRowSelection}
                                   onMouseDown={stopRowSelection}
-                                  onFocus={stopRowSelection}
+                                  onPointerDown={stopRowSelection}
                                 >
                                   <AppSelect
                                     aria-label={`Cambiar estado de ${formatName(user)}`}
                                     value={user.estado}
                                     disabled={togglingUserId === user.id}
                                     size="xs"
+                                    className="!w-auto"
                                     onChange={(v) => {
                                       handleChangeUserStatus(user, v as EstadoUsuario);
                                     }}
                                     options={ESTADO_USUARIO_OPTIONS}
-                                    triggerClassName="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide bg-white border border-slate-300 text-black focus:outline-none focus:border-primary dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                                    triggerClassName="!w-auto max-w-full rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wide bg-white border border-slate-300 text-black focus:outline-none focus:border-primary dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                                   />
                                 </div>
                               </td>
@@ -927,103 +1197,181 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                   </table>
                 </div>
               </div>
+              </div>
             </section>
 
             {selectedUser ? (
-              <div className="w-full lg:w-[450px] bg-surface-dark border-l border-slate-800 flex flex-col h-full z-10 shadow-xl">
-                <div className="p-6 border-b border-slate-800 bg-[#132a52]">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">Perfil y permisos</p>
-                    <h3 className="text-[#f0f4f8] font-semibold text-lg">{formatName(draft ?? selectedUser)}</h3>
-                    <p className="text-sm text-primary font-medium">
-                      {etiquetasRoles(selectedUser.roles).join(' · ') || 'Sin rol'}
-                    </p>
+              <div className="z-10 flex h-full w-full min-w-0 max-h-[min(55dvh,100%)] flex-col border-t border-slate-200 bg-white shadow-xl max-lg:flex-1 max-lg:max-h-none max-lg:min-h-0 max-lg:overflow-hidden dark:border-slate-800 dark:bg-[#0e1e38] lg:max-h-none lg:border-t-0 lg:border-l">
+                <div className="shrink-0 border-b border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800/80 dark:bg-[#132a52] lg:hidden">
+                  <button
+                    type="button"
+                    onClick={cerrarPanelDetalle}
+                    className="btn-mobile-cta flex w-full min-h-11 items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-[#f0f4f8]"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+                    Volver al listado
+                  </button>
+                </div>
+
+                <div className="hidden shrink-0 border-b border-slate-800 bg-[#132a52] p-4 sm:p-6 lg:block">
+                  <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Perfil y permisos</p>
+                      <h3 className="text-lg font-semibold text-[#f0f4f8]">{formatName(draft ?? selectedUser)}</h3>
+                      <p className="text-sm font-medium text-primary">
+                        {etiquetasRoles(selectedUser.roles).join(' · ') || 'Sin rol'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={isEditing ? handleCancelEditing : handleStartEditing}
+                        className={`flex size-10 items-center justify-center rounded-lg border border-slate-700 ${
+                          isEditing ? 'border-primary/40 bg-primary/10 text-primary' : 'text-[#9fb3d4] hover:text-[#f0f4f8]'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[20px]">edit</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cerrarPanelDetalle}
+                        className="flex size-10 items-center justify-center rounded-lg border border-slate-700 text-slate-400 hover:text-[#f0f4f8]"
+                      >
+                        <span className="material-symbols-outlined text-[22px]">close</span>
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={isEditing ? handleCancelEditing : handleStartEditing}
-                      className={`size-10 rounded-lg border border-slate-700 flex items-center justify-center ${
-                        isEditing ? 'bg-primary/10 border-primary/40 text-primary' : 'text-[#9fb3d4] hover:text-[#f0f4f8]'
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-[20px]">edit</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={clearSelection}
-                      className="size-10 rounded-lg border border-slate-700 text-slate-400 hover:text-[#f0f4f8] flex items-center justify-center"
-                    >
-                      <span className="material-symbols-outlined text-[22px]">close</span>
-                    </button>
+                  <div className="flex items-center gap-4">
+                    <div className="relative flex size-16 items-center justify-center rounded-2xl border border-primary/30 bg-primary/20">
+                      <span className="material-symbols-outlined text-3xl text-primary">person</span>
+                      <div
+                        className={`absolute -bottom-1 -right-1 size-4 rounded-full border-2 border-surface-dark ${
+                          selectedUser.estado === 'activo' ? 'bg-emerald-500' : 'bg-amber-500'
+                        }`}
+                      />
+                    </div>
+                    <div className="flex flex-col">
+                      <p className="text-sm text-slate-400">{selectedUser.email}</p>
+                      <p className="mt-1 font-mono text-[11px] text-slate-500">UUID · {selectedUser.id}</p>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <div className="size-16 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center relative">
-                    <span className="material-symbols-outlined text-primary text-3xl">person</span>
-                    <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-surface-dark ${
-                      selectedUser.estado === 'activo' ? 'bg-emerald-500' : 'bg-amber-500'
-                    }`} />
-                  </div>
-                  <div className="flex flex-col">
-                    <p className="text-sm text-slate-400">{selectedUser.email}</p>
-                    <p className="text-[11px] text-slate-500 font-mono mt-1">UUID · {selectedUser.id}</p>
-                  </div>
-                </div>
-              </div>
 
-                <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-hide">
-
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest">Información básica</label>
-                        {isEditing ? (
-                          <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">Modo edición</span>
-                        ) : null}
+                <div className="shrink-0 px-3 pb-2 pt-0.5 lg:hidden">
+                  <div className={USUARIO_PANEL_HERO_CLASS}>
+                    <div className="flex items-center gap-2.5">
+                      <div className="relative shrink-0">
+                        <UserAvatar nombres={selectedUser.nombres} apellidos={selectedUser.apellidos} size="md" />
+                        <div
+                          className={`absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border border-white dark:border-[#132a52] ${
+                            selectedUser.estado === 'activo' ? 'bg-emerald-500' : 'bg-amber-500'
+                          }`}
+                        />
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <label className="text-xs text-[#9fb3d4] space-y-1">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Perfil y permisos</p>
+                        <h3 className="mt-0.5 line-clamp-2 text-[15px] font-semibold leading-tight text-slate-900 dark:text-white">
+                          {formatName(draft ?? selectedUser)}
+                        </h3>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          <span className="inline-flex max-w-full rounded-full border border-blue-200 bg-blue-50 px-2 py-px text-[10px] font-semibold leading-tight text-blue-800 dark:border-primary/25 dark:bg-primary/10 dark:text-primary">
+                            {etiquetasRoles(selectedUser.roles).join(' · ') || 'Sin rol'}
+                          </span>
+                          {isEditing ? (
+                            <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
+                              <span className="material-symbols-outlined text-[12px]">edit</span>
+                              Editando
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="mt-1 truncate text-xs text-slate-600 dark:text-slate-400">{selectedUser.email}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="scroll-region app-scroll-content flex-1 space-y-5 p-3 scrollbar-hide sm:space-y-8 sm:p-6">
+
+                    <UsuarioFormCardMovil
+                      titulo="Información básica"
+                      badge={
+                        isEditing ? (
+                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
+                            Edición
+                          </span>
+                        ) : null
+                      }
+                    >
+                      <label className="hidden text-xs font-bold uppercase tracking-widest text-slate-400 lg:block">
+                        Información básica
+                      </label>
+                      {!isEditing ? (
+                        <div className="divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 lg:hidden dark:divide-slate-700 dark:border-slate-700 dark:bg-[#0a1628]/80">
+                          <UsuarioCampoLecturaMovil etiqueta="Nombres" valor={selectedUser.nombres} />
+                          <UsuarioCampoLecturaMovil etiqueta="Apellidos" valor={selectedUser.apellidos} />
+                          <UsuarioCampoLecturaMovil etiqueta="Correo" valor={selectedUser.email} />
+                          <UsuarioCampoLecturaMovil etiqueta="Usuario" valor={selectedUser.usuario} />
+                          <UsuarioCampoLecturaMovil
+                            etiqueta="Teléfono"
+                            valor={selectedUser.telefono?.trim() || '—'}
+                          />
+                          <UsuarioCampoLecturaMovil
+                            etiqueta="Estado"
+                            valor={
+                              <span className="capitalize">
+                                {ESTADO_USUARIO_OPTIONS.find((o) => o.value === selectedUser.estado)?.label ??
+                                  selectedUser.estado}
+                              </span>
+                            }
+                          />
+                        </div>
+                      ) : null}
+                      <div
+                        className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${
+                          isEditing ? '' : 'hidden lg:grid'
+                        }`}
+                      >
+                        <label className={USUARIO_LABEL}>
                           <span>Nombres</span>
                           <input
                             type="text"
                             value={draft?.nombres ?? ''}
                             disabled={!isEditing}
                             onChange={(event) => setDraft((prev) => (prev ? { ...prev, nombres: event.target.value } : prev))}
-                            className="w-full bg-surface-darker border border-slate-700 rounded-lg px-3 py-2 text-sm text-[#f0f4f8] focus:border-primary disabled:opacity-50"
+                            className={`${USUARIO_INP} disabled:opacity-50`}
                           />
                         </label>
-                        <label className="text-xs text-[#9fb3d4] space-y-1">
+                        <label className={USUARIO_LABEL}>
                           <span>Apellidos</span>
                           <input
                             type="text"
                             value={draft?.apellidos ?? ''}
                             disabled={!isEditing}
                             onChange={(event) => setDraft((prev) => (prev ? { ...prev, apellidos: event.target.value } : prev))}
-                            className="w-full bg-surface-darker border border-slate-700 rounded-lg px-3 py-2 text-sm text-[#f0f4f8] focus:border-primary disabled:opacity-50"
+                            className={`${USUARIO_INP} disabled:opacity-50`}
                           />
                         </label>
-                        <label className="text-xs text-[#9fb3d4] space-y-1">
+                        <label className={USUARIO_LABEL}>
                           <span>Correo institucional</span>
                           <input
                             type="email"
                             value={draft?.email ?? ''}
                             disabled={!isEditing}
                             onChange={(event) => setDraft((prev) => (prev ? { ...prev, email: event.target.value } : prev))}
-                            className="w-full bg-surface-darker border border-slate-700 rounded-lg px-3 py-2 text-sm text-[#f0f4f8] focus:border-primary disabled:opacity-50"
+                            className={`${USUARIO_INP} disabled:opacity-50`}
                           />
                         </label>
-                        <label className="text-xs text-[#9fb3d4] space-y-1">
+                        <label className={USUARIO_LABEL}>
                           <span>Usuario</span>
                           <input
                             type="text"
                             value={draft?.usuario ?? ''}
                             disabled={!isEditing}
                             onChange={(event) => setDraft((prev) => (prev ? { ...prev, usuario: event.target.value } : prev))}
-                            className="w-full bg-surface-darker border border-slate-700 rounded-lg px-3 py-2 text-sm text-[#f0f4f8] focus:border-primary disabled:opacity-50"
+                            className={`${USUARIO_INP} disabled:opacity-50`}
                           />
                         </label>
-                        <label className="text-xs text-[#9fb3d4] space-y-1">
+                        <label className={USUARIO_LABEL}>
                           <span>Teléfono</span>
                           <input
                             type="tel"
@@ -1034,10 +1382,10 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                               const val = event.target.value.replace(/\D/g, '').slice(0, 10);
                               setDraft((prev) => (prev ? { ...prev, telefono: val } : prev));
                             }}
-                            className="w-full bg-surface-darker border border-slate-700 rounded-lg px-3 py-2 text-sm text-[#f0f4f8] focus:border-primary disabled:opacity-50"
+                            className={`${USUARIO_INP} disabled:opacity-50`}
                           />
                         </label>
-                        <label className="text-xs text-[#9fb3d4] space-y-1">
+                        <label className={USUARIO_LABEL}>
                           <span>Estado</span>
                           <AppSelect
                             value={draft?.estado ?? 'activo'}
@@ -1050,12 +1398,12 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                           />
                         </label>
                       </div>
-                    </div>
+                    </UsuarioFormCardMovil>
 
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Roles</label>
-                        {isEditing ? (
+                    <UsuarioFormCardMovil
+                      titulo="Roles"
+                      badge={
+                        isEditing ? (
                           <button
                             type="button"
                             onClick={() => {
@@ -1063,18 +1411,24 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                               setEditScopeFacultadIds([]);
                               setEditScopeCarreraIds([]);
                             }}
-                            className="text-[11px] text-primary hover:underline"
+                            className="text-[11px] font-medium text-primary hover:underline"
                           >
                             Limpiar
                           </button>
-                        ) : null}
-                      </div>
+                        ) : null
+                      }
+                    >
+                      <label className="hidden text-xs font-bold uppercase tracking-widest text-slate-400 lg:block">
+                        Roles
+                      </label>
                       <div className="space-y-2">
                         {ROLE_OPTIONS.map((role) => (
                           <label
                             key={role.value}
-                            className={`flex items-center gap-3 rounded-2xl border border-slate-800 px-4 py-3 ${
-                              draft?.roles.includes(role.value) ? 'bg-primary/5 border-primary/30' : 'bg-[#132a52]'
+                            className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${
+                              draft?.roles.includes(role.value)
+                                ? 'border-primary/30 bg-primary/5 dark:border-primary/30'
+                                : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-[#132a52]'
                             } ${isEditing ? 'cursor-pointer' : 'opacity-70 cursor-not-allowed'}`}
                           >
                             <input
@@ -1097,35 +1451,35 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                               className="size-5 border-slate-600 text-primary focus:ring-primary"
                             />
                             <div>
-                              <p className="text-sm text-[#f0f4f8] flex items-center gap-2">
+                              <p className="flex items-center gap-2 text-sm text-slate-800 dark:text-[#f0f4f8]">
                                 <span className="material-symbols-outlined text-base text-slate-400">{role.icon}</span>
                                 {role.label}
                               </p>
-                              <p className="text-xs text-slate-500">{role.description}</p>
+                              <p className="text-xs text-slate-600 dark:text-slate-500">{role.description}</p>
                             </div>
                           </label>
                         ))}
                       </div>
-                    </div>
+                    </UsuarioFormCardMovil>
 
                     {(esRolCoordinacionFacultad(rolEdicion) || rolEdicion === 'Jefe de Carrera') && (
-                      <div className="space-y-3 pt-4 border-t border-slate-800/50">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                      <UsuarioFormCardMovil titulo="Alcance de visibilidad">
+                        <label className="hidden text-xs font-bold uppercase tracking-widest text-slate-400 lg:block">
                           Alcance de visibilidad
                         </label>
                         {!isEditing ? (
                           selectedUser.scopes?.length ? (
-                            <ul className="space-y-2 text-sm text-slate-300">
+                            <ul className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
                               {selectedUser.scopes.map((s, idx) => (
                                 <li
                                   key={`${s.facultad_id ?? ''}-${s.carrera_id ?? ''}-${idx}`}
-                                  className="rounded-lg border border-slate-800 bg-[#132a52] px-3 py-2"
+                                  className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-[#132a52]"
                                 >
                                   {s.facultad_nombre ? (
-                                    <span className="text-[#f0f4f8]">Facultad: {s.facultad_nombre}</span>
+                                    <span className="text-slate-800 dark:text-[#f0f4f8]">Facultad: {s.facultad_nombre}</span>
                                   ) : null}
                                   {s.carrera_nombre ? (
-                                    <span className="text-[#f0f4f8]">
+                                    <span className="text-slate-800 dark:text-[#f0f4f8]">
                                       {s.facultad_nombre ? ' · ' : null}
                                       Carrera: {s.carrera_nombre}
                                     </span>
@@ -1157,8 +1511,8 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                                     key={f.id}
                                     className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer ${
                                       checked
-                                        ? 'border-primary/60 bg-primary/10'
-                                        : 'border-slate-700 hover:border-slate-600 bg-surface-darker'
+                                        ? USUARIO_SCOPE_ACTIVE
+                                        : USUARIO_SCOPE_IDLE
                                     }`}
                                   >
                                     <input
@@ -1169,7 +1523,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                                       className="size-5 border-slate-600 text-primary focus:ring-primary"
                                     />
                                     <div>
-                                      <p className="text-sm text-[#f0f4f8] flex items-center gap-2">
+                                      <p className="flex items-center gap-2 text-sm text-slate-800 dark:text-[#f0f4f8]">
                                         <span className="material-symbols-outlined text-base text-slate-400">{icon}</span>
                                         {f.nombre}
                                       </p>
@@ -1190,7 +1544,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                                       className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer ${
                                         checked
                                           ? 'border-primary/60 bg-primary/10'
-                                          : 'border-slate-700 hover:border-slate-600 bg-surface-darker'
+                                          : USUARIO_SCOPE_IDLE
                                       }`}
                                     >
                                       <input
@@ -1203,7 +1557,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                                         }
                                         className={SCOPE_CARRERA_CHOICE_CLASS}
                                       />
-                                      <p className="text-sm text-[#f0f4f8]">{c.nombre}</p>
+                                      <p className="text-sm text-slate-800 dark:text-[#f0f4f8]">{c.nombre}</p>
                                     </label>
                                   );
                                 })}
@@ -1211,14 +1565,16 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                             )}
                           </>
                         )}
-                      </div>
+                      </UsuarioFormCardMovil>
                     )}
 
-                    <div className="space-y-3 pt-4 border-t border-slate-800/50">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Seguridad</label>
+                    <UsuarioFormCardMovil titulo="Seguridad">
+                      <label className="hidden text-xs font-bold uppercase tracking-widest text-slate-400 lg:block">
+                        Seguridad
+                      </label>
                       {isEditing ? (
-                        <div className="grid grid-cols-1 gap-3 rounded-xl border border-slate-800 bg-[#132a52] p-3">
-                          <label className="text-xs text-[#9fb3d4] space-y-1">
+                        <div className="grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-[#132a52]">
+                          <label className={USUARIO_LABEL}>
                             <span>Nueva contraseña</span>
                             <input
                               type="password"
@@ -1226,10 +1582,10 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                               onChange={(event) => setNewPassword(event.target.value)}
                               placeholder="Minimo 8 caracteres"
                               autoComplete="new-password"
-                              className="w-full bg-surface-darker border border-slate-700 rounded-lg px-3 py-2 text-sm text-[#f0f4f8] focus:border-primary"
+                              className={USUARIO_INP}
                             />
                           </label>
-                          <label className="text-xs text-[#9fb3d4] space-y-1">
+                          <label className={USUARIO_LABEL}>
                             <span>Confirmar nueva contraseña</span>
                             <input
                               type="password"
@@ -1237,19 +1593,19 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                               onChange={(event) => setConfirmNewPassword(event.target.value)}
                               placeholder="Repite la contraseña"
                               autoComplete="new-password"
-                              className="w-full bg-surface-darker border border-slate-700 rounded-lg px-3 py-2 text-sm text-[#f0f4f8] focus:border-primary"
+                              className={USUARIO_INP}
                             />
                           </label>
                         </div>
                       ) : null}
-                      <div className="flex flex-col gap-3">
+                      <div className="btn-mobile-stack flex flex-col gap-2 max-lg:gap-2.5">
                         <button
                           type="button"
                           onClick={handleDisable}
                           disabled={!isEditing}
-                          className="w-full btn-modern btn-modern-danger justify-between"
+                          className="btn-modern btn-modern-danger btn-modern-sm btn-mobile-cta w-full justify-between lg:justify-between"
                         >
-                          <span className="text-xs font-bold uppercase tracking-wider">
+                          <span className="text-xs font-semibold">
                             {draft?.estado === 'inactivo' ? 'Reactivar acceso' : 'Deshabilitar acceso'}
                           </span>
                           <span className="material-symbols-outlined text-[18px]">lock</span>
@@ -1258,59 +1614,93 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                           type="button"
                           onClick={handleResetPassword}
                           disabled={resettingPassword}
-                          className="w-full btn-modern btn-modern-primary justify-between"
+                          className="btn-modern btn-modern-primary btn-modern-sm btn-mobile-cta w-full justify-between"
                         >
-                          <span className="text-xs font-bold uppercase tracking-wider">
-                            {resettingPassword ? 'Generando contraseña temporal' : 'Restablecer credenciales'}
+                          <span className="text-xs font-semibold">
+                            {resettingPassword ? 'Generando contraseña…' : 'Restablecer credenciales'}
                           </span>
                           <span className="material-symbols-outlined text-[18px]">lock_reset</span>
                         </button>
                       </div>
-                    </div>
+                    </UsuarioFormCardMovil>
               </div>
 
-                <div className="p-6 bg-[#132a52] border-t border-slate-800">
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={isEditing ? handleCancelEditing : clearSelection}
-                      className="btn-modern btn-modern-ghost"
-                    >
-                      {isEditing ? 'Cancelar' : 'Cerrar'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSaveChanges}
-                      disabled={!isEditing || saving}
-                      className="btn-modern btn-modern-primary"
-                    >
-                      {isEditing ? (saving ? 'Guardando...' : 'Guardar cambios') : 'Guardar cambios'}
-                    </button>
-                  </div>
+                <div className="app-mobile-bottom-bar shrink-0 border-t border-slate-200 bg-white/95 p-4 backdrop-blur-md max-lg:sticky max-lg:bottom-0 max-lg:z-10 max-lg:px-3 max-lg:py-3 sm:p-6 dark:border-slate-800 dark:bg-[#132a52]/95">
+                  {isEditing ? (
+                    <div className="btn-mobile-stack flex gap-2 max-lg:items-stretch lg:grid lg:grid-cols-2 lg:gap-3">
+                      <button
+                        type="button"
+                        onClick={handleCancelEditing}
+                        className="btn-modern btn-modern-ghost btn-modern-sm btn-mobile-cta w-full lg:flex-1"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveChanges}
+                        disabled={saving}
+                        className="btn-modern btn-modern-primary btn-modern-sm btn-mobile-cta w-full lg:flex-[1.35]"
+                      >
+                        {saving ? 'Guardando…' : 'Guardar'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="btn-mobile-stack space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
+                      <button
+                        type="button"
+                        onClick={handleStartEditing}
+                        className="btn-modern btn-modern-primary btn-modern-sm btn-mobile-cta w-full lg:hidden"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">edit</span>
+                        Editar datos
+                      </button>
+                      <button
+                        type="button"
+                        onClick={clearSelection}
+                        className="btn-modern btn-modern-ghost btn-modern-sm btn-mobile-cta w-full"
+                      >
+                        Cerrar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleStartEditing}
+                        className="btn-modern btn-modern-primary btn-modern-sm hidden w-full lg:inline-flex"
+                      >
+                        Editar datos
+                      </button>
+                    </div>
+                  )}
                   {puedeEliminarUsuario ? (
                     <button
                       type="button"
                       onClick={handleDeleteUser}
                       disabled={deletingUser}
-                      className="mt-3 w-full btn-modern btn-modern-danger"
+                      className="mt-2 w-full rounded-lg py-2 text-center text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50 hover:text-rose-700 disabled:opacity-50 max-lg:mt-2.5 dark:text-rose-400 dark:hover:bg-rose-500/10 dark:hover:text-rose-300 lg:btn-modern lg:btn-modern-danger lg:mt-3 lg:rounded-md lg:py-2.5"
                     >
-                      {deletingUser ? 'Eliminando usuario...' : 'Eliminar usuario'}
+                      {deletingUser ? 'Eliminando usuario…' : 'Eliminar usuario'}
                     </button>
                   ) : null}
                 </div>
               </div>
             ) : isCreateOpen ? (
-              <CreateUserModal
-                onClose={() => {
-                  setIsCreateOpen(false);
-                  if (location.pathname.endsWith('/usuarios/nuevo')) {
-                    navigate('/app/usuarios', { replace: true });
-                  }
-                }}
-                onSubmit={handleCreateUser}
-                saving={createLoading}
-                existingUsers={users}
-              />
+              <div className="z-10 flex h-full w-full min-w-0 max-h-[min(55dvh,100%)] flex-col border-t border-slate-200 bg-white shadow-xl max-lg:flex-1 max-lg:max-h-none max-lg:min-h-0 max-lg:overflow-hidden dark:border-slate-800 dark:bg-[#0e1e38] lg:max-h-none lg:border-t-0 lg:border-l">
+                <div className="shrink-0 border-b border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800/80 dark:bg-[#132a52] lg:hidden">
+                  <button
+                    type="button"
+                    onClick={cerrarPanelDetalle}
+                    className="btn-mobile-cta flex w-full min-h-11 items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-[#f0f4f8]"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+                    Volver al listado
+                  </button>
+                </div>
+                <CreateUserModal
+                  onClose={cerrarPanelDetalle}
+                  onSubmit={handleCreateUser}
+                  saving={createLoading}
+                  existingUsers={users}
+                />
+              </div>
             ) : null}
           </div>
         </main>
@@ -1452,91 +1842,114 @@ function CreateUserModal({ onClose, onSubmit, saving, existingUsers: _existingUs
   };
 
   return (
-    <div className="w-full lg:w-[450px] bg-surface-dark border-l border-slate-800 flex flex-col h-full z-10 shadow-xl">
-      <form onSubmit={handleSubmit} className="h-full flex flex-col">
-        <div className="p-6 border-b border-slate-800 bg-[#132a52]">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">Perfil y permisos</p>
-              <h3 className="text-[#f0f4f8] font-semibold text-lg">
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col bg-white max-lg:max-h-none max-lg:border-0 max-lg:shadow-none dark:bg-surface-dark lg:z-10 lg:max-h-none lg:border-t-0 lg:border-l lg:shadow-xl">
+      <form onSubmit={handleSubmit} className="flex h-full min-h-0 min-w-0 flex-col">
+        <div className="hidden shrink-0 border-b border-slate-800 bg-[#132a52] p-4 sm:p-6 lg:block">
+          <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Perfil y permisos</p>
+              <h3 className="text-lg font-semibold text-[#f0f4f8]">
                 {`${form.nombres} ${form.apellidos}`.trim() || 'Nuevo usuario'}
               </h3>
-              <p className="text-sm text-primary font-medium">{etiquetaRol(form.roles[0] ?? '') || 'Sin rol'}</p>
+              <p className="text-sm font-medium text-primary">{etiquetaRol(form.roles[0] ?? '') || 'Sin rol'}</p>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="size-10 btn-modern btn-modern-ghost text-slate-400 hover:text-[#f0f4f8]"
+              className="btn-modern btn-modern-ghost size-10 text-slate-400 hover:text-[#f0f4f8]"
             >
               <span className="material-symbols-outlined text-[22px]">close</span>
             </button>
           </div>
           <div className="flex items-center gap-4">
-            <div className="size-16 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center relative">
-              <span className="material-symbols-outlined text-primary text-3xl">person</span>
-              <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-surface-dark bg-emerald-500" />
+            <div className="relative flex size-16 items-center justify-center rounded-2xl border border-primary/30 bg-primary/20">
+              <span className="material-symbols-outlined text-3xl text-primary">person</span>
+              <div className="absolute -bottom-1 -right-1 size-4 rounded-full border-2 border-surface-dark bg-emerald-500" />
             </div>
             <div className="flex flex-col">
               <p className="text-sm text-slate-400">{form.email || 'Sin correo'}</p>
-              <p className="text-[11px] text-slate-500 font-mono mt-1">UUID · pendiente de creación</p>
+              <p className="mt-1 font-mono text-[11px] text-slate-500">UUID · pendiente de creación</p>
             </div>
           </div>
         </div>
 
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-hide">
+        <div className="shrink-0 px-3 pb-2 pt-0.5 lg:hidden">
+          <div className={USUARIO_PANEL_HERO_CLASS}>
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 dark:border-primary/30 dark:bg-primary/20">
+                <span className="material-symbols-outlined text-2xl text-blue-700 dark:text-primary">person_add</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Alta de usuario</p>
+                <h3 className="mt-0.5 line-clamp-2 text-[15px] font-semibold leading-tight text-slate-900 dark:text-white">
+                  {`${form.nombres} ${form.apellidos}`.trim() || 'Nuevo usuario'}
+                </h3>
+                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                  <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2 py-px text-[10px] font-semibold leading-tight text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
+                    Creación
+                  </span>
+                  {form.roles[0] ? (
+                    <span className="text-[10px] font-medium text-blue-700 dark:text-primary">{etiquetaRol(form.roles[0])}</span>
+                  ) : null}
+                </div>
+                <p className="mt-1 truncate text-xs text-slate-600 dark:text-slate-400">
+                  {form.email || 'Completá el correo institucional'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
 
-          <div className="space-y-4">
-            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest">Información básica</label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <label className="text-xs text-[#9fb3d4] space-y-1">
+        <div
+          ref={scrollContainerRef}
+          className="scroll-region app-scroll-content flex-1 space-y-5 p-3 scrollbar-hide sm:space-y-8 sm:p-6"
+        >
+          <UsuarioFormCardMovil titulo="Información básica">
+            <label className="hidden text-xs font-bold uppercase tracking-widest text-slate-400 lg:block">
+              Información básica
+            </label>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <label className={USUARIO_LABEL}>
                 <span>Nombres</span>
                 <input
                   type="text"
                   value={form.nombres}
                   onChange={(event) => setForm((prev) => ({ ...prev, nombres: event.target.value }))}
-                  className={`w-full bg-surface-darker border rounded-lg px-3 py-2 text-sm text-[#f0f4f8] focus:border-primary ${
-                    errors.nombres ? 'border-rose-400' : 'border-slate-700'
-                  }`}
+                  className={`${USUARIO_INP} ${errors.nombres ? 'border-rose-400' : ''}`}
                 />
                 {errors.nombres ? <p className="text-xs text-rose-400">{errors.nombres}</p> : null}
               </label>
-              <label className="text-xs text-[#9fb3d4] space-y-1">
+              <label className={USUARIO_LABEL}>
                 <span>Apellidos</span>
                 <input
                   type="text"
                   value={form.apellidos}
                   onChange={(event) => setForm((prev) => ({ ...prev, apellidos: event.target.value }))}
-                  className={`w-full bg-surface-darker border rounded-lg px-3 py-2 text-sm text-[#f0f4f8] focus:border-primary ${
-                    errors.apellidos ? 'border-rose-400' : 'border-slate-700'
-                  }`}
+                  className={`${USUARIO_INP} ${errors.apellidos ? 'border-rose-400' : ''}`}
                 />
                 {errors.apellidos ? <p className="text-xs text-rose-400">{errors.apellidos}</p> : null}
               </label>
-              <label className="text-xs text-[#9fb3d4] space-y-1">
+              <label className={USUARIO_LABEL}>
                 <span>Correo institucional</span>
                 <input
                   type="email"
                   value={form.email}
                   onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
-                  className={`w-full bg-surface-darker border rounded-lg px-3 py-2 text-sm text-[#f0f4f8] focus:border-primary ${
-                    errors.email ? 'border-rose-400' : 'border-slate-700'
-                  }`}
+                  className={`${USUARIO_INP} ${errors.email ? 'border-rose-400' : ''}`}
                 />
                 {errors.email ? <p className="text-xs text-rose-400">{errors.email}</p> : null}
               </label>
-              <label className="text-xs text-[#9fb3d4] space-y-1">
+              <label className={USUARIO_LABEL}>
                 <span>Usuario</span>
                 <input
                   type="text"
                   value={form.usuario}
                   onChange={(event) => setForm((prev) => ({ ...prev, usuario: event.target.value }))}
-                  className={`w-full bg-surface-darker border rounded-lg px-3 py-2 text-sm text-[#f0f4f8] focus:border-primary ${
-                    errors.usuario ? 'border-rose-400' : 'border-slate-700'
-                  }`}
+                  className={`${USUARIO_INP} ${errors.usuario ? 'border-rose-400' : ''}`}
                 />
                 {errors.usuario ? <p className="text-xs text-rose-400">{errors.usuario}</p> : null}
               </label>
-              <label className="text-xs text-[#9fb3d4] space-y-1">
+              <label className={USUARIO_LABEL}>
                 <span>Teléfono</span>
                 <input
                   type="tel"
@@ -1546,41 +1959,43 @@ function CreateUserModal({ onClose, onSubmit, saving, existingUsers: _existingUs
                     const val = event.target.value.replace(/\D/g, '').slice(0, 10);
                     setForm((prev) => ({ ...prev, telefono: val }));
                   }}
-                  className="w-full bg-surface-darker border border-slate-700 rounded-lg px-3 py-2 text-sm text-[#f0f4f8] focus:border-primary"
+                  className={USUARIO_INP}
                 />
               </label>
-              <label className="text-xs text-[#9fb3d4] space-y-1">
+              <label className={USUARIO_LABEL}>
                 <span>Contraseña inicial</span>
                 <input
                   type="password"
                   value={form.password}
                   onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
-                  className={`w-full bg-surface-darker border rounded-lg px-3 py-2 text-sm text-[#f0f4f8] focus:border-primary ${
-                    errors.password ? 'border-rose-400' : 'border-slate-700'
-                  }`}
+                  className={`${USUARIO_INP} ${errors.password ? 'border-rose-400' : ''}`}
                 />
                 {errors.password ? <p className="text-xs text-rose-400">{errors.password}</p> : null}
               </label>
             </div>
-          </div>
+          </UsuarioFormCardMovil>
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Roles</label>
+          <UsuarioFormCardMovil
+            titulo="Roles"
+            badge={
               <button
                 type="button"
                 onClick={() => setForm((prev) => ({ ...prev, roles: [] }))}
-                className="text-[11px] text-primary hover:underline"
+                className="text-[11px] font-medium text-primary hover:underline"
               >
                 Limpiar
               </button>
-            </div>
+            }
+          >
+            <label className="hidden text-xs font-bold uppercase tracking-widest text-slate-400 lg:block">Roles</label>
             <div className="space-y-2">
               {ROLE_OPTIONS.map((role) => (
                 <label
                   key={role.value}
-                  className={`flex items-center gap-3 rounded-2xl border border-slate-800 px-4 py-3 cursor-pointer ${
-                    form.roles.includes(role.value) ? 'bg-primary/5 border-primary/30' : 'bg-[#132a52]'
+                  className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 ${
+                    form.roles.includes(role.value)
+                      ? 'border-primary/30 bg-primary/5'
+                      : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-[#132a52]'
                   }`}
                 >
                   <input
@@ -1591,20 +2006,23 @@ function CreateUserModal({ onClose, onSubmit, saving, existingUsers: _existingUs
                     className="size-5 border-slate-600 text-primary focus:ring-primary"
                   />
                   <div>
-                    <p className="text-sm text-[#f0f4f8] flex items-center gap-2">
+                    <p className="flex items-center gap-2 text-sm text-slate-800 dark:text-[#f0f4f8]">
                       <span className="material-symbols-outlined text-base text-slate-400">{role.icon}</span>
                       {role.label}
                     </p>
-                    <p className="text-xs text-slate-500">{role.description}</p>
+                    <p className="text-xs text-slate-600 dark:text-slate-500">{role.description}</p>
                   </div>
                 </label>
               ))}
             </div>
-          </div>
+          </UsuarioFormCardMovil>
 
           {necesitaScope && (
-            <div ref={scopeRef} className="space-y-3 pt-4 border-t border-slate-800/50">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Alcance de visibilidad</label>
+            <UsuarioFormCardMovil titulo="Alcance de visibilidad">
+              <div ref={scopeRef}>
+              <label className="hidden text-xs font-bold uppercase tracking-widest text-slate-400 lg:block">
+                Alcance de visibilidad
+              </label>
 
               <div className="space-y-2">
                 <p className="text-xs text-slate-500">Facultad</p>
@@ -1618,7 +2036,7 @@ function CreateUserModal({ onClose, onSubmit, saving, existingUsers: _existingUs
                     <label key={f.id} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer ${
                       checked
                         ? 'border-primary/60 bg-primary/10'
-                        : 'border-slate-700 hover:border-slate-600 bg-surface-darker'
+                        : USUARIO_SCOPE_IDLE
                     }`}>
                       <input
                         type="radio"
@@ -1628,7 +2046,7 @@ function CreateUserModal({ onClose, onSubmit, saving, existingUsers: _existingUs
                         className="size-5 border-slate-600 text-primary focus:ring-primary"
                       />
                       <div>
-                        <p className="text-sm text-[#f0f4f8] flex items-center gap-2">
+                        <p className="flex items-center gap-2 text-sm text-slate-800 dark:text-[#f0f4f8]">
                           <span className="material-symbols-outlined text-base text-slate-400">{icon}</span>
                           {f.nombre}
                         </p>
@@ -1646,8 +2064,8 @@ function CreateUserModal({ onClose, onSubmit, saving, existingUsers: _existingUs
                     return (
                       <label key={c.id} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer ${
                         checked
-                          ? 'border-primary/60 bg-primary/10'
-                          : 'border-slate-700 hover:border-slate-600 bg-surface-darker'
+                          ? USUARIO_SCOPE_ACTIVE
+                          : USUARIO_SCOPE_IDLE
                       }`}>
                         <input
                           type="checkbox"
@@ -1657,31 +2075,32 @@ function CreateUserModal({ onClose, onSubmit, saving, existingUsers: _existingUs
                           )}
                           className={SCOPE_CARRERA_CHOICE_CLASS}
                         />
-                        <p className="text-sm text-[#f0f4f8]">{c.nombre}</p>
+                        <p className="text-sm text-slate-800 dark:text-[#f0f4f8]">{c.nombre}</p>
                       </label>
                     );
                   })}
                 </div>
               )}
-            </div>
+              </div>
+            </UsuarioFormCardMovil>
           )}
         </div>
 
-        <div className="p-6 bg-[#132a52] border-t border-slate-800">
-          <div className="grid grid-cols-2 gap-3">
+        <div className="app-mobile-bottom-bar shrink-0 border-t border-slate-200 bg-white/95 p-4 backdrop-blur-md max-lg:sticky max-lg:bottom-0 max-lg:z-10 max-lg:px-3 max-lg:py-3 sm:p-6 dark:border-slate-800 dark:bg-[#132a52]/95">
+          <div className="btn-mobile-stack flex gap-2 lg:grid lg:grid-cols-2 lg:gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="btn-modern btn-modern-ghost"
+              className="btn-modern btn-modern-ghost btn-modern-sm btn-mobile-cta w-full lg:flex-1"
             >
-              Cerrar
+              Cancelar
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="btn-modern btn-modern-primary"
+              className="btn-modern btn-modern-primary btn-modern-sm btn-mobile-cta w-full lg:flex-[1.35]"
             >
-              {saving ? 'Creando...' : 'Crear usuario'}
+              {saving ? 'Creando…' : 'Crear usuario'}
             </button>
           </div>
         </div>
