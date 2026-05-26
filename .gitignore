@@ -15,4 +15,5 @@ Thumbs.db
 # Archivos de prueba temporales
 test_js.js
 test_db.ts
-.idea/
+.idea
+.vscode
