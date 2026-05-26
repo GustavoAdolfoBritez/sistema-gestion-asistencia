@@ -19,3 +19,4 @@ test_db.ts
 .vscode
 .vercel
 .env*
+.prueba
