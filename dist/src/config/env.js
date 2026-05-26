@@ -42,6 +42,17 @@ function parseCorsOrigins(raw) {
         .map((o) => o.trim())
         .filter(Boolean);
 }
+/** Orígenes Vite en desarrollo local (no se añaden en producción). */
+const DEV_CORS_ORIGINS = [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:4173',
+];
+function resolveCorsOrigins(configured, nodeEnv) {
+    if (nodeEnv === 'production')
+        return configured;
+    return [...new Set([...configured, ...DEV_CORS_ORIGINS])];
+}
 function parseExposeErrorDetails(raw, nodeEnv) {
     if (raw === 'false' || raw === '0')
         return false;
@@ -50,7 +61,7 @@ function parseExposeErrorDetails(raw, nodeEnv) {
     return nodeEnv !== 'production';
 }
 const NODE_ENV = normalizeNodeEnv(parsed.data.NODE_ENV);
-const corsOrigins = parseCorsOrigins(parsed.data.CORS_ORIGINS);
+const corsOrigins = resolveCorsOrigins(parseCorsOrigins(parsed.data.CORS_ORIGINS), NODE_ENV);
 const exposeErrorDetails = parseExposeErrorDetails(process.env.EXPOSE_ERROR_DETAILS, NODE_ENV);
 const { NODE_ENV: _node, CORS_ORIGINS: _cors, EXPOSE_ERROR_DETAILS: _exp, DB_STATEMENT_TIMEOUT_MS: _stmto, SUPABASE_URL: supabaseUrl, SUPABASE_SERVICE_ROLE_KEY: supabaseServiceRoleKey, ...rest } = parsed.data;
 exports.env = {

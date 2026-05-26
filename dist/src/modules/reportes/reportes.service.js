@@ -482,7 +482,19 @@ async function listarConsolidadoRiesgoInhabilitados(filtro = {}, alcance = { tip
          JOIN planes_estudio pe ON pe.id = m.plan_id
          JOIN carreras ca ON ca.id = pe.carrera_id
          JOIN facultades f ON f.id = ca.facultad_id
+         JOIN LATERAL (
+            SELECT
+                total_clases_planificadas_curso(c.id) AS total_planificado,
+                (
+                    SELECT COUNT(*)::int
+                    FROM sesiones_clase sc
+                    WHERE sc.curso_id = c.id
+                      AND LOWER(sc.estado::text) = 'cerrada'
+                ) AS sesiones_cerradas
+         ) AS curso_met ON TRUE
          ${where}
+           AND curso_met.total_planificado > 0
+           AND curso_met.sesiones_cerradas >= CEIL(curso_met.total_planificado::numeric * 0.75)::int
            AND COALESCE(mat.porcentaje_asistencia, 0) < 75
          ORDER BY ${orderBy}
          LIMIT $${valores.length}`, valores);
@@ -544,6 +556,8 @@ async function listarActas(filtro = {}, alcance = { tipo: 'sin_restriccion' }) {
         condiciones.push(`a.generado_por = $${valores.length}::uuid`);
     }
     appendAlcanceCursoId(condiciones, valores, 'c.id', alcance);
+    // Informes por alumno se generan desde el perfil del estudiante, no en el listado de actas del curso.
+    condiciones.push(`a.tipo_acta <> 'informe_alumno'`);
     const limit = Math.min(Math.max(filtro.limit ?? 50, 1), 200);
     valores.push(limit);
     const where = condiciones.length ? `WHERE ${condiciones.join(' AND ')}` : '';
