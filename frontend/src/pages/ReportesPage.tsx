@@ -406,7 +406,9 @@ export function ReportesPage({ onLogout }: Props) {
     try {
       const query = cursoValido ? `/reportes/actas?cursoId=${cursoNum}` : '/reportes/actas';
       const actasResp = await apiFetch<ApiList<Acta>>(query);
-      setActas(actasResp?.datos ?? []);
+      setActas(
+        (actasResp?.datos ?? []).filter((a) => a.tipo_acta !== 'informe_alumno')
+      );
     } catch (error) {
       toastApiError(error, 'No se pudo cargar actas');
     } finally {
@@ -1169,28 +1171,28 @@ export function ReportesPage({ onLogout }: Props) {
                   </div>
                   <div className="lg:scroll-region-at-lg lg:max-h-[300px]">
                     {actas.length ? (
-                      <ul className="divide-y divide-slate-200 dark:divide-slate-800/70 max-lg:-mx-0.5 lg:space-y-2 lg:divide-y-0">
+                      <ul className="space-y-2">
                         {actas.map((a) => (
                           <li
                             key={a.id}
-                            className="max-lg:py-0 lg:rounded-xl lg:border lg:border-slate-800 lg:bg-[#0c1a3b] lg:p-3"
+                            className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-[#0c1a3b]"
                           >
-                            <div className="flex items-center gap-3 py-2.5 max-lg:py-2.5 lg:items-start lg:justify-between">
-                              <div className="flex min-w-0 flex-1 items-center gap-2.5 max-lg:gap-2 lg:items-start lg:gap-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex min-w-0 flex-1 items-start gap-3">
                                 <div
-                                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-cyan-200/80 bg-cyan-50 text-cyan-700 dark:border-cyan-500/25 dark:bg-cyan-500/10 dark:text-cyan-300 max-lg:h-8 max-lg:w-8"
+                                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-cyan-200/80 bg-cyan-50 text-cyan-700 dark:border-cyan-500/25 dark:bg-cyan-500/10 dark:text-cyan-300"
                                   aria-hidden
                                 >
-                                  <span className="material-symbols-outlined text-[18px] max-lg:text-[17px]">
+                                  <span className="material-symbols-outlined text-[18px]">
                                     {tipoActaIcon(a.tipo_acta)}
                                   </span>
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                  <p className="line-clamp-2 text-sm font-medium leading-snug text-slate-900 dark:text-[#f0f4f8] lg:truncate lg:line-clamp-none">
+                                  <p className="line-clamp-2 text-sm font-medium leading-snug text-slate-900 dark:text-[#f0f4f8]">
                                     {tipoActaLabel(a.tipo_acta)}
                                   </p>
                                   <p className="mt-0.5 truncate text-xs text-slate-600 dark:text-slate-400">{a.materia}</p>
-                                  <p className="mt-0.5 text-[11px] tabular-nums text-slate-500 dark:text-slate-500">
+                                  <p className="mt-0.5 text-[11px] tabular-nums text-slate-500 dark:text-slate-400">
                                     {formatDateTime24(a.generado_en, { locale: 'es-AR' })}
                                   </p>
                                 </div>
@@ -1202,7 +1204,7 @@ export function ReportesPage({ onLogout }: Props) {
                                     toastApiError(err, 'No se pudo abrir el documento')
                                   )
                                 }
-                                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-cyan-700 transition-colors hover:bg-slate-100 active:bg-slate-200 dark:border-slate-700 dark:bg-[#0c1a3b] dark:text-cyan-400 dark:hover:bg-slate-800/80 max-lg:h-9 max-lg:w-9 lg:hidden"
+                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-cyan-700 transition-colors hover:bg-slate-100 active:bg-slate-200 dark:border-slate-700 dark:bg-slate-800/60 dark:text-cyan-400 dark:hover:bg-slate-800 lg:hidden"
                                 title="Abrir documento"
                                 aria-label={`Abrir ${tipoActaLabel(a.tipo_acta)}`}
                               >
@@ -1215,7 +1217,7 @@ export function ReportesPage({ onLogout }: Props) {
                                     toastApiError(err, 'No se pudo abrir el documento')
                                   )
                                 }
-                                className="hidden shrink-0 rounded-lg bg-cyan-500/10 p-1.5 text-cyan-400 hover:bg-cyan-500/20 lg:inline-flex"
+                                className="hidden shrink-0 rounded-lg border border-slate-200 bg-white p-1.5 text-cyan-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/60 dark:text-cyan-400 dark:hover:bg-slate-800 lg:inline-flex"
                                 title="Abrir documento"
                               >
                                 <span className="material-symbols-outlined text-[16px]">open_in_new</span>
@@ -1242,13 +1244,13 @@ export function ReportesPage({ onLogout }: Props) {
                   </div>
                   <div className="lg:scroll-region-at-lg lg:max-h-[300px]">
                     {habilitados.filter((h) => h.habilitado).length ? (
-                      <ul className="divide-y divide-slate-200 dark:divide-slate-800/70 max-lg:-mx-0.5 lg:space-y-2 lg:divide-y-0">
+                      <ul className="space-y-2">
                         {habilitados
                           .filter((h) => h.habilitado)
                           .map((h) => (
                             <li
                               key={h.matricula_id}
-                              className="max-lg:py-0 lg:rounded-xl lg:border lg:border-slate-800 lg:bg-[#0c1a3b] lg:px-3 lg:py-2.5"
+                              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-800 dark:bg-[#0c1a3b]"
                             >
                               <div className="flex items-center justify-between gap-2 py-2.5 max-lg:py-2 lg:py-0">
                                 <div className="flex min-w-0 flex-1 items-center gap-2.5">

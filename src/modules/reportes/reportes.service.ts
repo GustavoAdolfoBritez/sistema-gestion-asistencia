@@ -840,6 +840,9 @@ export async function listarActas(
 
     appendAlcanceCursoId(condiciones, valores, 'c.id', alcance);
 
+    // Informes por alumno se generan desde el perfil del estudiante, no en el listado de actas del curso.
+    condiciones.push(`a.tipo_acta <> 'informe_alumno'`);
+
     const limit = Math.min(Math.max(filtro.limit ?? 50, 1), 200);
     valores.push(limit);
     const where = condiciones.length ? `WHERE ${condiciones.join(' AND ')}` : '';
