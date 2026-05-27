@@ -69,10 +69,10 @@ function yieldToMain(): Promise<void> {
   return new Promise((resolve) => requestAnimationFrame(() => resolve()));
 }
 
-/** lg = 1024px: mismo criterio que `max-lg:` en Tailwind (solo celular/tablet). */
-function viewportEsEscritorio(): boolean {
+/** xl = 1280px: vista doble lista+detalle; en tablet horizontal (1024–1279) no auto-seleccionar. */
+function viewportMuestraDetalleDoble(): boolean {
   if (typeof window === 'undefined') return true;
-  return window.matchMedia('(min-width: 1024px)').matches;
+  return window.matchMedia('(min-width: 1280px)').matches;
 }
 
 const LEGACY_FACULTADES = [
@@ -114,12 +114,75 @@ const recordFilterOptions: Array<{ id: RecordFilter; label: string }> = [
   { id: 'invalid', label: 'Con errores' },
 ];
 
+function clasesBotonFiltroRegistro(optionId: RecordFilter, activo: boolean): string {
+  const base =
+    'import-detalle-filtro-btn rounded-full border px-2.5 py-1 text-xs font-medium xl:rounded-lg xl:px-2.5 xl:py-1.5';
+
+  const estilos: Record<RecordFilter, { activo: string; inactivo: string }> = {
+    all: {
+      activo:
+        'import-detalle-filtro-btn--activo border-sky-400 bg-sky-50 text-sky-800 dark:border-sky-400 dark:bg-sky-500/15 dark:text-sky-100',
+      inactivo:
+        'border-sky-300 bg-white text-slate-600 hover:bg-sky-50/60 dark:border-sky-400/75 dark:bg-[#0f1a2f]/60 dark:text-slate-300 dark:hover:bg-sky-500/10',
+    },
+    valid: {
+      activo:
+        'import-detalle-filtro-btn--activo border-emerald-400 bg-emerald-50 text-emerald-800 dark:border-emerald-400 dark:bg-emerald-500/15 dark:text-emerald-100',
+      inactivo:
+        'border-emerald-300 bg-white text-slate-600 hover:bg-emerald-50/60 dark:border-emerald-400/75 dark:bg-[#0f1a2f]/60 dark:text-slate-300 dark:hover:bg-emerald-500/10',
+    },
+    invalid: {
+      activo:
+        'import-detalle-filtro-btn--activo border-rose-400 bg-rose-50 text-rose-800 dark:border-rose-400 dark:bg-rose-500/15 dark:text-rose-100',
+      inactivo:
+        'border-rose-300 bg-white text-slate-600 hover:bg-rose-50/60 dark:border-rose-400/75 dark:bg-[#0f1a2f]/60 dark:text-slate-300 dark:hover:bg-rose-500/10',
+    },
+  };
+
+  const { activo: activoCls, inactivo: inactivoCls } = estilos[optionId];
+  return `${base} ${activo ? activoCls : inactivoCls}`;
+}
+
 const estadoBadges: Record<string, { label: string; bg: string; text: string }> = {
   pendiente: { label: 'Pendiente', bg: 'bg-amber-500/10 border-amber-500/30', text: 'text-amber-300' },
   procesando: { label: 'Procesando', bg: 'bg-blue-500/10 border-blue-500/30', text: 'text-blue-300' },
   completado: { label: 'Completado', bg: 'bg-emerald-500/10 border-emerald-500/30', text: 'text-emerald-300' },
   error: { label: 'Con errores', bg: 'bg-rose-500/10 border-rose-500/30', text: 'text-rose-300' },
 };
+
+/** Badges del panel detalle en PC (modo claro, como referencia de diseño). */
+const estadoBadgesPc: Record<string, { label: string; className: string }> = {
+  pendiente: { label: 'Pendiente', className: 'border-amber-200 bg-amber-50 text-amber-800' },
+  procesando: { label: 'Procesando', className: 'border-sky-200 bg-sky-50 text-sky-800' },
+  completado: { label: 'Completado', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
+  error: { label: 'Con errores', className: 'border-rose-200 bg-rose-50 text-rose-700' },
+};
+
+function clasesBadgeEstado(estado: string, variante: 'movil' | 'pc'): string {
+  if (variante === 'pc') {
+    const badge = estadoBadgesPc[estado] ?? {
+      label: estado,
+      className: 'border-slate-200 bg-slate-100 text-slate-700',
+    };
+    return `inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${badge.className}`;
+  }
+  const badge = estadoBadges[estado] ?? {
+    label: estado,
+    bg: 'bg-slate-700/60 border-slate-600',
+    text: 'text-[#c9d7ed]',
+  };
+  return `inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${badge.bg} ${badge.text}`;
+}
+
+function etiquetaBadgeEstado(estado: string): string {
+  return estadoBadges[estado]?.label ?? estadoBadgesPc[estado]?.label ?? estado;
+}
+
+function semestreDesdeDescripcion(descripcion?: string | null): number | null {
+  const sem = descripcion?.match(/(\d{1,2})\s*°?\s*semestre|semestre\s*(\d{1,2})/i);
+  if (!sem) return null;
+  return Number(sem[1] ?? sem[2]);
+}
 
 function loteEsDescartable(estado?: string | null): boolean {
   const e = (estado ?? '').trim().toLowerCase();
@@ -384,7 +447,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
         if (current && lista.some((item) => item.id === current)) {
           return current;
         }
-        return viewportEsEscritorio() ? (lista[0]?.id ?? null) : null;
+        return viewportMuestraDetalleDoble() ? (lista[0]?.id ?? null) : null;
       });
     } catch (error) {
       const mensaje = error instanceof Error ? error.message : 'No se pudo cargar el historial';
@@ -491,9 +554,10 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
         if (filter !== 'all') {
           params.set('valido', filter === 'valid' ? 'true' : 'false');
         }
+        params.set('limit', '500');
         const query = params.toString();
         const data = await apiFetch<{ total: number; datos: Record<string, any>[] }>(
-          `/importaciones/lotes/${loteId}/registros${query ? `?${query}` : ''}`
+          `/importaciones/lotes/${loteId}/registros?${query}`
         );
         setRecords((data?.datos ?? []).map(mapRecord));
       } catch (error) {
@@ -1066,17 +1130,20 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                       {batchesLoading ? (
                         <li className="px-4 py-6 text-center text-sm text-slate-500">Cargando...</li>
                       ) : batches.length ? (
-                        batches.slice(0, 6).map((lote) => {
+                        batches.map((lote) => {
                           const badge = estadoBadges[lote.estado] ?? {
                             label: lote.estado,
                             bg: 'bg-slate-700/60 border-slate-600',
                             text: 'text-[#c9d7ed]',
                           };
+                          const selected = selectedBatchId === lote.id;
                           return (
                             <li key={lote.id} className="flex items-stretch">
                               <button
                                 type="button"
-                                className="min-w-0 flex-1 px-4 py-3 text-left transition-colors active:bg-slate-800/50"
+                                className={`min-w-0 flex-1 px-4 py-3 text-left transition-colors active:bg-slate-800/50 ${
+                                  selected ? 'bg-primary/10' : ''
+                                }`}
                                 onClick={() => setSelectedBatchId(lote.id)}
                               >
                                 <div className="flex items-start justify-between gap-2">
@@ -1119,7 +1186,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                         </li>
                       )}
                     </ul>
-                    <div className="scroll-region hidden min-h-0 max-h-[min(70dvh,40rem)] lg:block lg:max-h-none">
+                    <div className="importaciones-historial-tabla hidden lg:block lg:overflow-visible">
                       <table className="w-full text-left text-sm">
                         <thead className="bg-[#132a52] text-slate-500 uppercase text-xs">
                           <tr>
@@ -1136,16 +1203,19 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                               <td colSpan={5} className="px-4 py-6 text-center text-slate-500">Cargando...</td>
                             </tr>
                           ) : batches.length ? (
-                            batches.slice(0, 6).map((lote) => {
+                            batches.map((lote) => {
                               const badge = estadoBadges[lote.estado] ?? {
                                 label: lote.estado,
                                 bg: 'bg-slate-700/60 border-slate-600',
                                 text: 'text-[#c9d7ed]',
                               };
+                              const selected = selectedBatchId === lote.id;
                               return (
                                 <tr
                                   key={lote.id}
-                                  className="hover:bg-slate-800/30 cursor-pointer"
+                                  className={`cursor-pointer ${
+                                    selected ? 'bg-primary/15 hover:bg-primary/15' : 'hover:bg-slate-800/30'
+                                  }`}
                                   onClick={() => setSelectedBatchId(lote.id)}
                                 >
                                   <td className="px-4 py-3">
@@ -1208,7 +1278,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
             </section>
 
             <aside
-              className={`master-detail-detail relative z-10 flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden border-slate-800 bg-[#132a52] max-xl:min-h-0 xl:h-full xl:max-h-none xl:max-w-[26.25rem] xl:flex-none xl:border-l xl:border-t-0 ${
+              className={`importaciones-detail-panel master-detail-detail relative z-10 flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden border-slate-800 bg-[#132a52] max-xl:min-h-0 xl:h-full xl:max-h-none xl:max-w-[26.25rem] xl:flex-none xl:border-l xl:border-slate-200 xl:bg-white dark:xl:border-slate-700 dark:xl:bg-[#132a52] xl:border-t-0 ${
                 !selectedBatchId ? 'max-xl:hidden' : ''
               }`}
             >
@@ -1220,7 +1290,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                 successMessage={confirmSuccessMessage}
                 onDismissError={dismissConfirmError}
               />
-              <div className="flex min-w-0 shrink-0 flex-col gap-3 border-b border-slate-800 bg-[#132a52] px-4 py-3 max-xl:py-4 xl:flex-row xl:items-center xl:justify-between xl:py-[7px]">
+              <div className="importaciones-detail-header flex min-w-0 shrink-0 flex-col gap-3 border-b border-slate-800 bg-[#132a52] px-4 py-3 max-xl:py-4 xl:flex-row xl:items-start xl:justify-between xl:gap-4 xl:border-slate-200 xl:bg-white dark:xl:border-slate-700 dark:xl:bg-[#132a52] xl:px-5 xl:py-4">
                 {selectedBatchId ? (
                   <button
                     type="button"
@@ -1236,21 +1306,22 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                     Volver
                   </button>
                 ) : null}
-                <div className="w-full min-w-0 flex-1">
-                  <h3 className="text-base font-semibold text-[#f0f4f8] lg:text-sm">Detalle del lote</h3>
-                  <p className="mt-0.5 text-xs leading-relaxed text-slate-400 max-xl:block xl:hidden">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-base font-semibold text-[#f0f4f8] xl:text-slate-900 dark:xl:text-[#f0f4f8]">Detalle del lote</h3>
+                  <p className="mt-0.5 text-xs text-slate-400 max-xl:block xl:hidden">
                     Revisá el archivo y confirmá o descartá el lote
                   </p>
-                  <p className="mt-0.5 hidden text-xs text-slate-400 xl:block">
+                  <p className="mt-0.5 hidden text-xs text-slate-500 xl:block dark:xl:text-slate-400">
                     Selecciona un registro para ver sus datos
                   </p>
                 </div>
-                <div className="flex w-full min-w-0 flex-wrap items-center gap-2 xl:w-auto xl:shrink-0">
+                <div className="importaciones-detail-actions flex shrink-0 flex-wrap items-center gap-2 max-xl:w-full xl:flex-row xl:items-start xl:gap-2">
+                  <div className="btn-mobile-stack flex w-full flex-col gap-2 sm:w-auto max-xl:flex-col-reverse xl:w-[7.5rem] xl:flex-col">
                   <button
-                    className={`btn-modern flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold sm:flex-none xl:min-h-0 ${
+                    className={`btn-modern btn-mobile-cta flex items-center justify-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold ${
                       !batchDetail || batchDetail.estado === 'completado' || confirmBusy || discardLoading
-                        ? 'border-slate-700 text-slate-500 cursor-not-allowed opacity-60'
-                        : 'border-emerald-500 text-emerald-300 hover:bg-emerald-500/10'
+                        ? 'border-slate-700 text-slate-500 cursor-not-allowed opacity-60 xl:border-slate-300 xl:text-slate-400 dark:xl:border-slate-600 dark:xl:text-slate-500'
+                        : 'border-emerald-500 text-emerald-300 hover:bg-emerald-500/10 xl:border-slate-300 xl:bg-white xl:text-slate-700 xl:hover:bg-slate-50 dark:xl:border-slate-600 dark:xl:bg-[#0f1a2f] dark:xl:text-emerald-300 dark:xl:hover:bg-emerald-500/10'
                     }`}
                     type="button"
                     onClick={handleConfirmBatch}
@@ -1270,10 +1341,10 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                         : 'Confirmar'}
                   </button>
                   <button
-                    className={`btn-modern flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold sm:flex-none xl:min-h-0 ${
+                    className={`btn-modern btn-mobile-cta flex items-center justify-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold ${
                       !batchDetail || !loteEsDescartable(batchDetail.estado) || confirmBusy || discardLoading
-                        ? 'border-slate-300 text-slate-400 cursor-not-allowed opacity-60 dark:border-slate-700 dark:text-slate-500'
-                        : 'btn-modern-danger border-rose-500/50 text-rose-700 hover:bg-rose-50 dark:text-rose-200 dark:hover:bg-rose-500/10'
+                        ? 'border-slate-300 text-slate-400 cursor-not-allowed opacity-60 dark:border-slate-700 dark:text-slate-500 xl:border-slate-300 xl:bg-white dark:xl:border-slate-600 dark:xl:bg-[#0f1a2f]'
+                        : 'btn-modern-danger border-rose-500/50 text-rose-700 hover:bg-rose-50 dark:text-rose-200 dark:hover:bg-rose-500/10 xl:border-slate-300 xl:bg-white xl:text-slate-700 xl:hover:bg-slate-50 dark:xl:border-slate-600 dark:xl:bg-[#0f1a2f] dark:xl:text-rose-200 dark:xl:hover:bg-rose-500/10'
                     }`}
                     type="button"
                     title="Quitar la carga del historial"
@@ -1289,12 +1360,17 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                     <span className="material-symbols-outlined text-[18px]">delete_forever</span>
                     Descartar
                   </button>
+                  </div>
                   <button
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-[#f0f4f8] disabled:cursor-not-allowed disabled:opacity-40"
+                    className="self-center rounded p-1.5 text-slate-400 hover:bg-slate-800 hover:text-[#f0f4f8] disabled:cursor-not-allowed disabled:opacity-40 xl:self-end xl:hover:bg-slate-100 xl:hover:text-slate-700 dark:xl:hover:bg-slate-800/60 dark:xl:hover:text-[#f0f4f8]"
                     title="Recargar"
                     type="button"
                     disabled={confirmBusy || discardLoading}
-                    onClick={() => selectedBatchId && loadBatchDetail(selectedBatchId)}
+                    onClick={() => {
+                      if (!selectedBatchId) return;
+                      void loadBatchDetail(selectedBatchId);
+                      void loadBatchRecords(selectedBatchId, recordFilter);
+                    }}
                   >
                     <span
                       className={`material-symbols-outlined text-[20px] ${confirmPhase === 'confirming' || confirmPhase === 'syncing' ? 'animate-spin' : ''}`}
@@ -1305,93 +1381,105 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                 </div>
               </div>
 
-              <div className="scroll-region app-scroll-content import-detalle-scroll scrollbar-hide flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-4 space-y-4 max-xl:overscroll-y-contain xl:overflow-hidden">
+              <div className="import-detalle-scroll flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-4 space-y-4 max-lg:overflow-y-auto max-lg:overscroll-y-contain lg:max-xl:overflow-hidden xl:gap-4 xl:bg-white dark:xl:bg-[#132a52] xl:p-5">
                 {detailLoading ? (
                   <p className="text-center text-sm text-slate-500">Cargando detalle...</p>
                 ) : batchDetail ? (
                   <>
-                    <div className="shrink-0 bg-[#132a52] border border-slate-800 rounded-xl p-4 space-y-2">
-                      <div className="flex items-start justify-between">
-                        <div>
+                    <div className="import-detalle-lote-meta shrink-0 space-y-3 rounded-xl border border-slate-800 bg-[#132a52] p-4 max-xl:space-y-2 xl:border-slate-200 xl:bg-white dark:xl:border-slate-700 dark:xl:bg-[#132a52] xl:p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
                           <p className="text-xs text-slate-500">Archivo</p>
-                          <p className="break-words text-sm font-medium text-[#f0f4f8]">{batchDetail.archivoFuente ?? 'Sin nombre'}</p>
+                          <p className="break-words text-sm font-semibold text-[#f0f4f8] xl:text-base xl:text-slate-900 dark:xl:text-[#f0f4f8]">
+                            {batchDetail.archivoFuente ?? 'Sin nombre'}
+                          </p>
                         </div>
-                        {(() => {
-                          const badge = estadoBadges[batchDetail.estado] ?? {
-                            label: batchDetail.estado,
-                            bg: 'bg-slate-700/60 border-slate-600',
-                            text: 'text-[#c9d7ed]',
-                          };
-                          return (
-                            <span className={`px-2 py-0.5 rounded-full border text-[11px] font-semibold ${badge.bg} ${badge.text}`}>
-                              {badge.label}
-                            </span>
-                          );
-                        })()}
+                        <span className={`${clasesBadgeEstado(batchDetail.estado, 'movil')} xl:hidden dark:xl:inline-flex`}>
+                          {etiquetaBadgeEstado(batchDetail.estado)}
+                        </span>
+                        <span className={`hidden xl:inline-flex dark:xl:hidden ${clasesBadgeEstado(batchDetail.estado, 'pc')}`}>
+                          {etiquetaBadgeEstado(batchDetail.estado)}
+                        </span>
                       </div>
-                      <div className="rounded-lg border border-slate-800 bg-[#0a1424] p-3 text-xs text-slate-400 max-lg:grid max-lg:grid-cols-1 max-lg:gap-2.5 lg:grid lg:grid-cols-1 lg:gap-1">
-                        <div className="max-lg:flex max-lg:flex-col max-lg:gap-0.5">
-                          <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500 lg:hidden">
-                            Facultad destino
-                          </p>
-                          <p className="hidden lg:block">
-                            <span className="text-slate-500">Facultad destino:</span>{' '}
-                            <span className="text-[#f0f4f8]">{batchDetail.destinoFacultad ?? 'No definida'}</span>
-                          </p>
-                          <p className="break-words text-[#f0f4f8] lg:hidden">
+                      <div className="import-detalle-destino-movil space-y-3 rounded-lg border border-slate-800 bg-[#0a1424] p-3 text-sm leading-relaxed max-xl:p-3.5 xl:hidden">
+                        <div>
+                          <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">Facultad destino</p>
+                          <p className="mt-1 break-words font-medium text-[#f0f4f8]">
                             {batchDetail.destinoFacultad ?? 'No definida'}
                           </p>
                         </div>
-                        <div className="max-lg:flex max-lg:flex-col max-lg:gap-0.5">
-                          <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500 lg:hidden">
-                            Carrera destino
-                          </p>
-                          <p className="hidden lg:block">
-                            <span className="text-slate-500">Carrera destino:</span>{' '}
-                            <span className="text-[#f0f4f8]">{batchDetail.destinoCarrera ?? 'No definida'}</span>
-                          </p>
-                          <p className="break-words text-[#f0f4f8] lg:hidden">
+                        <div>
+                          <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">Carrera destino</p>
+                          <p className="mt-1 break-words font-medium text-[#f0f4f8]">
                             {batchDetail.destinoCarrera ?? 'No definida'}
                           </p>
                         </div>
-                        {(() => {
-                          const sem = batchDetail.descripcion?.match(/(\d{1,2})\s*°?\s*semestre|semestre\s*(\d{1,2})/i);
-                          const num = sem ? Number(sem[1] ?? sem[2]) : null;
-                          return num ? (
-                            <div className="max-lg:flex max-lg:flex-col max-lg:gap-0.5">
-                              <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500 lg:hidden">
-                                Semestre
-                              </p>
-                              <p className="hidden lg:block">
-                                <span className="text-slate-500">Semestre:</span>{' '}
-                                <span className="text-[#f0f4f8]">{num}° Semestre</span>
-                              </p>
-                              <p className="text-[#f0f4f8] lg:hidden">{num}° Semestre</p>
-                            </div>
-                          ) : null;
-                        })()}
+                        {semestreDesdeDescripcion(batchDetail.descripcion) ? (
+                          <div>
+                            <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">Semestre</p>
+                            <p className="mt-1 font-medium text-[#f0f4f8]">
+                              {semestreDesdeDescripcion(batchDetail.descripcion)}° Semestre
+                            </p>
+                          </div>
+                        ) : null}
                       </div>
-                      <div className="grid grid-cols-2 gap-3 text-xs text-slate-400">
+                      <div className="import-detalle-destino-pc hidden space-y-1.5 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm leading-snug text-slate-600 xl:block">
+                        <p>
+                          <span>Facultad destino: </span>
+                          <span className="import-detalle-destino-valor font-semibold text-slate-900 dark:xl:text-[#f0f4f8]">
+                            {batchDetail.destinoFacultad ?? 'No definida'}
+                          </span>
+                        </p>
+                        <p>
+                          <span>Carrera destino: </span>
+                          <span className="import-detalle-destino-valor font-semibold text-slate-900 dark:xl:text-[#f0f4f8]">
+                            {batchDetail.destinoCarrera ?? 'No definida'}
+                          </span>
+                        </p>
+                        {semestreDesdeDescripcion(batchDetail.descripcion) ? (
+                          <p>
+                            <span>Semestre: </span>
+                            <span className="import-detalle-destino-valor font-semibold text-slate-900 dark:xl:text-[#f0f4f8]">
+                              {semestreDesdeDescripcion(batchDetail.descripcion)}° Semestre
+                            </span>
+                          </p>
+                        ) : null}
+                      </div>
+                      <div className="import-detalle-lote-stats grid grid-cols-2 gap-3 text-xs text-slate-400">
                         <div>
-                          <p className="uppercase tracking-widest">Procesados</p>
-                          <p className="text-emerald-400 text-lg font-semibold">{batchDetail.procesados}</p>
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 xl:tracking-widest">
+                            Procesados
+                          </p>
+                          <p className="text-lg font-semibold text-emerald-400 xl:text-xl xl:text-emerald-600 dark:xl:text-emerald-400">
+                            {batchDetail.procesados}
+                          </p>
                         </div>
                         <div>
-                          <p className="uppercase tracking-widest">Errores</p>
-                          <p className="text-rose-400 text-lg font-semibold">{batchDetail.errores}</p>
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 xl:tracking-widest">
+                            Errores
+                          </p>
+                          <p className="text-lg font-semibold text-rose-400 xl:text-xl xl:text-rose-600 dark:xl:text-rose-400">
+                            {batchDetail.errores}
+                          </p>
                         </div>
-                        <div className="col-span-2">
-                          <p className="uppercase tracking-widest">Última acción</p>
-                          <p className="text-[#f0f4f8] text-sm">{formatDate(batchDetail.ejecutadoEn)}</p>
+                        <div className="col-span-2 border-t border-slate-800 pt-3 xl:border-slate-200 dark:xl:border-slate-700">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 xl:tracking-widest">
+                            Última acción
+                          </p>
+                          <p className="text-sm font-semibold text-[#f0f4f8] xl:text-slate-900 dark:xl:text-[#f0f4f8]">
+                            {formatDate(batchDetail.ejecutadoEn)}
+                          </p>
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex shrink-0 flex-col gap-3 rounded-xl border border-slate-800 bg-[#132a52] p-4 xl:min-h-0 xl:flex-1 xl:overflow-hidden">
+                    <div className="import-detalle-registros flex min-h-0 flex-1 flex-col gap-3 overflow-hidden rounded-xl border border-slate-800 bg-[#132a52] p-4 xl:border-slate-200 xl:bg-white dark:xl:border-slate-700 dark:xl:bg-[#132a52] xl:p-4">
                       <div className="flex shrink-0 flex-col gap-2.5">
                         <div>
-                          <p className="text-sm text-[#f0f4f8] font-medium">Registros cargados</p>
-                          <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                          <p className="text-sm font-medium text-[#f0f4f8] xl:text-slate-900 dark:xl:text-[#f0f4f8]">
+                            Registros cargados
+                          </p>
+                          <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
                             Vista previa de cada fila del Excel (campos detectados en el archivo).
                           </p>
                         </div>
@@ -1401,11 +1489,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                               key={option.id}
                               type="button"
                               onClick={() => setRecordFilter(option.id)}
-                              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border ${
-                                recordFilter === option.id
-                                  ? 'border-primary text-primary bg-primary/10'
-                                  : 'border-slate-700 text-slate-400 hover:text-[#f0f4f8] hover:border-slate-600'
-                              }`}
+                              className={clasesBotonFiltroRegistro(option.id, recordFilter === option.id)}
                             >
                               {option.label}
                             </button>
@@ -1413,25 +1497,25 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                         </div>
                       </div>
 
-                      <div className="flex flex-col max-xl:gap-3 xl:min-h-0 xl:flex-1 xl:overflow-hidden">
+                      <div className="import-detalle-registros-body flex min-h-0 flex-1 flex-col">
                       {recordsLoading ? (
-                        <p className="text-center text-sm text-slate-500 py-4">Cargando registros...</p>
+                        <p className="py-4 text-center text-sm text-slate-500">Cargando registros...</p>
                       ) : records.length ? (
-                        <div className="flex flex-col gap-3 xl:scroll-region xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:overscroll-y-contain">
+                        <div className="import-detalle-registros-lista flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-y-contain pr-1">
                           {records.map((registro) => {
                             const { entries, truncated, total } = recordPreviewEntries(registro);
                             const invalid = registro.valido === false;
                             return (
                               <div
                                 key={registro.id}
-                                className={`rounded-lg border overflow-hidden ${
+                                className={`import-detalle-registro-card shrink-0 rounded-lg border overflow-hidden ${
                                   invalid
-                                    ? 'border-rose-300 bg-rose-50 dark:border-rose-400/35 dark:bg-rose-950/20'
+                                    ? 'import-detalle-registro-card--invalid border-rose-300 bg-rose-50 dark:border-rose-400/35 dark:bg-rose-950/20'
                                     : 'border-slate-200 bg-white dark:border-slate-700/90 dark:bg-[#0a1424]/80'
                                 }`}
                               >
                                 <div
-                                  className={`flex items-center justify-between gap-2 px-3 py-2 ${
+                                  className={`import-detalle-registro-card__head flex items-center justify-between gap-2 px-3 py-2 ${
                                     invalid
                                       ? 'bg-rose-100 border-b border-rose-200 dark:bg-rose-500/10 dark:border-rose-400/25'
                                       : 'bg-slate-100 border-b border-slate-200 dark:bg-slate-900/40 dark:border-slate-700/60'
@@ -1460,7 +1544,9 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                                           <dt className="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500 leading-tight" title={key}>
                                             {label}
                                           </dt>
-                                          <dd className="text-xs text-slate-800 dark:text-[#e7eef9] leading-snug break-words">{value}</dd>
+                                          <dd className="text-xs font-medium leading-snug text-slate-800 break-words dark:text-[#e7eef9] xl:text-slate-900 dark:xl:text-[#e7eef9]">
+                                            {value}
+                                          </dd>
                                         </div>
                                       ))}
                                     </dl>

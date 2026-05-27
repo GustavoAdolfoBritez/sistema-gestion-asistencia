@@ -2050,7 +2050,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                   </div>
                 ) : null}
                 {/* Altura ≈ 3 filas de tarjeta; a partir de la 4ª aparece scroll vertical */}
-                <div className="scroll-region-at-lg space-y-2 pr-0.5 lg:max-h-[270px]">
+                <div className="lg:scroll-region-at-lg space-y-2 pr-0.5 lg:max-h-[270px]">
                   {!carreraSeleccionadaId ? (
                     <p className="text-sm text-slate-500 py-6 text-center">Selecciona una carrera para ver los módulos.</p>
                   ) : sortedModulos.length === 0 ? (
@@ -2276,7 +2276,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                 ) : null}
 
                 {/* Altura ≈ 3 filas de tarjeta; a partir de la 4ª aparece scroll vertical */}
-                <div className="scroll-region-at-lg pr-0.5 lg:max-h-[270px]">
+                <div className="lg:scroll-region-at-lg pr-0.5 lg:max-h-[270px]">
                   {!carreraSeleccionadaId ? (
                     <p className="text-sm text-slate-500 py-6 text-center">Selecciona una carrera para ver los cursos.</p>
                   ) : !cursosFiltradosPorCarrera.length ? (

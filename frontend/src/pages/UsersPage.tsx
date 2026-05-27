@@ -1229,9 +1229,9 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
 
             {selectedUser ? (
               <div
-                className={`master-detail-detail z-10 flex h-full w-full min-w-0 max-h-[min(55dvh,100%)] flex-col border-t border-slate-200 shadow-xl max-md:flex-1 max-md:max-h-none max-md:min-h-0 max-md:overflow-hidden dark:border-[#1c2a50] lg:max-h-none lg:w-[450px] lg:shrink-0 lg:border-t-0 lg:border-l ${USUARIO_DETAIL_SHELL}`}
+                className={`master-detail-detail z-10 flex h-full w-full min-w-0 flex-col border-t border-slate-200 shadow-xl max-lg:min-h-0 max-lg:flex-1 max-lg:max-h-none max-lg:overflow-hidden dark:border-[#1c2a50] lg:max-h-none lg:w-[450px] lg:shrink-0 lg:border-t-0 lg:border-l ${USUARIO_DETAIL_SHELL}`}
               >
-                <div className={`shrink-0 px-3 py-2.5 md:hidden ${USUARIO_DETAIL_HEADER}`}>
+                <div className={`shrink-0 px-3 py-2.5 lg:hidden ${USUARIO_DETAIL_HEADER}`}>
                   <button
                     type="button"
                     onClick={cerrarPanelDetalle}
@@ -1695,10 +1695,12 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                       </button>
                       <button
                         type="button"
-                        onClick={clearSelection}
+                        onClick={cerrarPanelDetalle}
                         className="btn-modern btn-modern-ghost btn-modern-sm btn-mobile-cta w-full"
                       >
-                        Cerrar
+                        <span className="material-symbols-outlined text-[18px] lg:hidden">arrow_back</span>
+                        <span className="lg:hidden">Volver al listado</span>
+                        <span className="hidden lg:inline">Cerrar</span>
                       </button>
                       <button
                         type="button"
@@ -1723,7 +1725,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
               </div>
             ) : isCreateOpen ? (
               <div
-                className={`master-detail-detail z-10 flex h-full w-full min-w-0 max-h-[min(55dvh,100%)] flex-col border-t border-slate-200 shadow-xl max-md:flex-1 max-md:max-h-none max-md:min-h-0 max-md:overflow-hidden dark:border-[#1c2a50] lg:max-h-none lg:w-[450px] lg:shrink-0 lg:border-t-0 lg:border-l ${USUARIO_DETAIL_SHELL}`}
+                className={`master-detail-detail z-10 flex h-full w-full min-w-0 flex-col border-t border-slate-200 shadow-xl max-lg:min-h-0 max-lg:flex-1 max-lg:max-h-none max-lg:overflow-hidden dark:border-[#1c2a50] lg:max-h-none lg:w-[450px] lg:shrink-0 lg:border-t-0 lg:border-l ${USUARIO_DETAIL_SHELL}`}
               >
                 <div className={`shrink-0 px-3 py-2.5 lg:hidden ${USUARIO_DETAIL_HEADER}`}>
                   <button
