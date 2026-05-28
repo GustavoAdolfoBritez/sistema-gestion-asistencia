@@ -307,9 +307,11 @@ function DetalleEventoEncabezadoMovil({ evento }: { evento: EventoAuditoria }) {
 function EventoAuditoriaTarjetaMovil({
   evento,
   onSeleccionar,
+  seleccionado = false,
 }: {
   evento: EventoAuditoria;
   onSeleccionar: () => void;
+  seleccionado?: boolean;
 }) {
   const actor = parsearActor(evento);
   const { icono, tono } = iconoModuloAuditoria(evento.modulo);
@@ -320,7 +322,11 @@ function EventoAuditoriaTarjetaMovil({
       <button
         type="button"
         onClick={onSeleccionar}
-        className="group w-full rounded-2xl border border-slate-200/90 bg-gradient-to-br from-white via-white to-slate-50 p-3.5 text-left shadow-sm transition-all active:scale-[0.99] hover:border-sky-200/80 hover:shadow-md dark:border-slate-700/80 dark:from-[#152d55] dark:via-[#132a52] dark:to-[#0f2244] dark:hover:border-sky-500/30"
+        className={`group w-full rounded-2xl border bg-gradient-to-br from-white via-white to-slate-50 p-3.5 text-left shadow-sm transition-all active:scale-[0.99] hover:border-sky-200/80 hover:shadow-md dark:from-[#152d55] dark:via-[#132a52] dark:to-[#0f2244] dark:hover:border-sky-500/30 ${
+          seleccionado
+            ? 'border-sky-400 ring-2 ring-sky-400/35 dark:border-sky-500/60'
+            : 'border-slate-200/90 dark:border-slate-700/80'
+        }`}
       >
         <div className="flex items-start gap-3">
           <div
@@ -597,15 +603,6 @@ export function AuditoriaPage({ onLogout }: Props) {
     }
   }, [seleccionado]);
 
-  useEffect(() => {
-    if (!mostrarDatosTecnicos) return;
-    const target = panelDatosTecnicosRef.current;
-    if (!target) return;
-
-    requestAnimationFrame(() => {
-      target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    });
-  }, [mostrarDatosTecnicos]);
 
   return (
     <div className="system-bg app-shell-viewport text-[#e7eef9] min-h-screen h-screen overflow-hidden">
@@ -636,12 +633,15 @@ export function AuditoriaPage({ onLogout }: Props) {
           </header>
 
           <section
-            className={`flex min-h-0 flex-1 flex-col gap-5 p-4 sm:p-6 lg:min-h-0 lg:overflow-y-auto lg:scroll-region ${
-              seleccionado ? 'max-xl:overflow-hidden' : 'scroll-region app-scroll-content overflow-y-auto'
+            className={`auditoria-page-section flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:gap-5 sm:p-6 ${
+              seleccionado
+                ? 'max-xl:overflow-hidden'
+                : 'max-lg:scroll-region max-lg:app-scroll-content max-lg:overflow-y-auto lg:overflow-hidden'
             }`}
+            data-has-selection={seleccionado ? 'true' : 'false'}
           >
             <div
-              className={`min-w-0 flex flex-col gap-3 rounded-xl border border-slate-800 bg-[#132a52] p-4 ${
+              className={`auditoria-filtros min-w-0 shrink-0 flex flex-col gap-3 rounded-xl border border-slate-800 bg-[#132a52] p-4 ${
                 seleccionado ? 'max-xl:hidden' : ''
               }`}
             >
@@ -785,34 +785,34 @@ export function AuditoriaPage({ onLogout }: Props) {
             </div>
 
             <div
-              className="auditoria-root master-detail-root flex min-h-0 flex-1 flex-col gap-5 lg:gap-5"
+              className="auditoria-workspace flex min-h-0 flex-col gap-3 sm:gap-4"
               data-has-selection={seleccionado ? 'true' : 'false'}
             >
-            <div className="master-detail-list flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-[#132a52] max-xl:min-h-0 max-xl:flex-1">
-              <div className="auditoria-eventos-scroll min-w-0 min-h-0 flex-1 overflow-y-auto overscroll-y-contain xl:max-h-[min(45vh,28rem)]">
-                <ul className="flex flex-col gap-2.5 p-3 pb-4 xl:hidden">
-                  {loading ? (
-                    <li className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-[#132a52] dark:text-slate-400">
-                      Cargando eventos…
-                    </li>
-                  ) : eventosFiltrados.length === 0 ? (
-                    <li className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-[#132a52] dark:text-slate-400">
-                      No hay eventos con esos filtros
-                    </li>
-                  ) : (
-                    eventosFiltrados.map((evento) => (
+            <div
+              className={`auditoria-tabla-panel min-w-0 rounded-xl border border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-[#132a52] ${
+                seleccionado ? 'max-xl:hidden' : ''
+              }`}
+            >
+              <div className="auditoria-tabla-scroll flex min-h-0 min-w-0 flex-1 flex-col max-lg:max-h-none max-lg:overflow-visible lg:min-h-0 lg:overflow-auto">
+                {!eventosFiltrados.length ? (
+                  <div className="auditoria-eventos-estado-vacio m-3 flex min-h-[min(42vh,18rem)] flex-1 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white px-4 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-[#132a52] dark:text-slate-400 xl:min-h-[min(28vh,14rem)]">
+                    {loading ? 'Cargando eventos…' : 'No hay eventos con esos filtros'}
+                  </div>
+                ) : (
+                  <>
+                <ul className="auditoria-eventos-tarjetas flex flex-col gap-2.5 p-3 xl:hidden">
+                  {eventosFiltrados.map((evento) => (
                       <EventoAuditoriaTarjetaMovil
                         key={evento.id}
                         evento={evento}
+                        seleccionado={seleccionado?.id === evento.id}
                         onSeleccionar={() => setSeleccionado(evento)}
                       />
-                    ))
-                  )}
+                    ))}
                 </ul>
 
-                <div className="hidden min-w-0 xl:block">
-                <div className="min-w-0 overflow-x-auto overscroll-x-contain">
-                <table className="w-full min-w-[52rem] table-auto text-sm">
+                <div className="scroll-region-table hidden min-w-0 overflow-x-auto overscroll-x-contain xl:block">
+                <table className="auditoria-tabla-eventos w-full min-w-[52rem] table-auto text-sm">
                   <colgroup>
                     <col className="w-[1%]" />
                     <col className="w-[1%]" />
@@ -821,14 +821,14 @@ export function AuditoriaPage({ onLogout }: Props) {
                     <col />
                     <col className="w-[1%]" />
                   </colgroup>
-                  <thead className="sticky top-0 bg-[#0c1a3b] text-slate-300">
+                  <thead className="sticky top-0 z-[1] bg-[#0c1a3b] text-slate-300">
                     <tr>
-                      <th className="whitespace-nowrap px-3 py-2 text-left align-bottom">Fecha</th>
+                      <th className="whitespace-nowrap rounded-tl-xl px-3 py-2 text-left align-bottom">Fecha</th>
                       <th className="whitespace-nowrap px-3 py-2 text-left align-bottom">Actor</th>
                       <th className="whitespace-nowrap px-3 py-2 text-left align-bottom">Módulo</th>
                       <th className="px-3 py-2 text-left align-bottom">Acción</th>
                       <th className="px-3 py-2 text-left align-bottom">Recurso</th>
-                      <th className="whitespace-nowrap px-3 py-2 text-left align-bottom">Resultado</th>
+                      <th className="whitespace-nowrap rounded-tr-xl px-3 py-2 text-left align-bottom">Resultado</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -836,7 +836,9 @@ export function AuditoriaPage({ onLogout }: Props) {
                       <tr
                         key={evento.id}
                         onClick={() => setSeleccionado(evento)}
-                        className={`cursor-pointer border-t border-slate-800 hover:bg-[#162b52] ${seleccionado?.id === evento.id ? 'bg-[#162b52]' : ''}`}
+                        className={`cursor-pointer border-t border-slate-800 hover:bg-[#1e3a6b] ${
+                          seleccionado?.id === evento.id ? 'auditoria-fila-seleccionada bg-[#1e3a6b]' : ''
+                        }`}
                       >
                         <td className="whitespace-nowrap px-3 py-2 align-top text-slate-200">
                           {formatearFechaLarga(evento.fecha_hora)}
@@ -848,7 +850,7 @@ export function AuditoriaPage({ onLogout }: Props) {
                         <td className="min-w-[10rem] whitespace-normal break-words px-3 py-2 align-top text-slate-200">
                           {etiquetaAccion(evento.accion)}
                         </td>
-                        <td className="min-w-[12rem] whitespace-normal break-words px-3 py-2 align-top text-slate-400">
+                        <td className="auditoria-celda-secundaria min-w-[12rem] whitespace-normal break-words px-3 py-2 align-top text-slate-400">
                           {formatearRecurso(evento)}
                         </td>
                         <td className="whitespace-nowrap px-3 py-2 align-top">
@@ -860,58 +862,200 @@ export function AuditoriaPage({ onLogout }: Props) {
                         </td>
                       </tr>
                     ))}
-                    {!eventosFiltrados.length ? (
-                      <tr>
-                        <td className="px-3 py-6 text-center text-slate-400" colSpan={6}>
-                          {loading ? 'Cargando eventos...' : 'No hay eventos con esos filtros'}
-                        </td>
-                      </tr>
-                    ) : null}
                   </tbody>
                 </table>
                 </div>
-                </div>
+                  </>
+                )}
               </div>
             </div>
 
             <div
-              className={`master-detail-detail rounded-xl border border-slate-200 bg-slate-50/90 p-4 dark:border-slate-800 dark:bg-[#132a52] max-xl:min-h-0 max-xl:flex-1 xl:bg-white xl:p-4 ${
-                seleccionado ? 'flex min-h-0 flex-1 flex-col overflow-hidden max-xl:p-3' : 'hidden'
+              className={`auditoria-detail-panel rounded-xl border p-4 xl:shrink-0 ${
+                seleccionado
+                  ? 'auditoria-detail-panel--activo max-xl:flex max-xl:min-h-0 max-xl:flex-1 max-xl:flex-col max-xl:overflow-hidden max-xl:p-3'
+                  : 'max-xl:hidden'
               }`}
             >
               {seleccionado ? (
                 <button
                   type="button"
                   onClick={() => setSeleccionado(null)}
-                  className="mb-3 flex w-full shrink-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:bg-slate-800 max-xl:flex xl:hidden"
+                  className="mb-3 flex w-full shrink-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:bg-slate-800 xl:hidden"
                 >
                   <span className="material-symbols-outlined text-[18px]">arrow_back</span>
                   Volver al listado
                 </button>
               ) : null}
               <div className="mb-3 flex shrink-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">Detalle del evento</h2>
+                <h2 className="text-base font-semibold text-slate-900 dark:text-[#f0f4f8]">Detalle del evento</h2>
                 {seleccionado ? (
-                  <button
-                    type="button"
-                    onClick={() => setMostrarDatosTecnicos((prev) => !prev)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:w-auto dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-200 dark:hover:bg-slate-800 lg:mr-6"
-                  >
-                    {mostrarDatosTecnicos ? 'Ocultar datos técnicos' : 'Datos técnicos avanzados'}
-                  </button>
+                  <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setMostrarDatosTecnicos((prev) => !prev)}
+                      className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:flex-none dark:border-slate-500 dark:bg-transparent dark:text-[#e7eef9] dark:hover:bg-white/5 xl:mr-6"
+                    >
+                      {mostrarDatosTecnicos ? 'Ocultar datos técnicos' : 'Datos técnicos avanzados'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSeleccionado(null)}
+                      className="auditoria-detalle-cerrar-tablet hidden shrink-0 items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-white/5"
+                      aria-label="Cerrar detalle"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">close</span>
+                    </button>
+                  </div>
                 ) : null}
               </div>
               {!seleccionado ? (
-                <p className="text-sm text-slate-500 dark:text-slate-400 max-xl:hidden">
+                <p className="auditoria-detalle-placeholder text-sm text-slate-500 dark:text-slate-400 max-xl:hidden">
                   Selecciona un evento para ver más información.
                 </p>
               ) : (
-                <div className="scroll-region app-scroll-content min-h-0 flex-1 overflow-y-auto text-sm">
-                  <div className="grid w-full grid-cols-1 gap-4 xl:grid-cols-2">
-                    <div className="w-full min-w-0 text-slate-700 dark:text-slate-300">
-                      <div className="w-full space-y-2 xl:hidden">
+                <div
+                  className={`auditoria-detail-body scroll-region app-scroll-content min-h-0 flex-1 overflow-y-auto overflow-x-auto overscroll-y-contain text-sm max-xl:max-h-none ${
+                    mostrarDatosTecnicos ? 'xl:max-h-[min(38vh,22rem)]' : 'xl:max-h-[min(28vh,15rem)]'
+                  }`}
+                >
+                  <div
+                    className={`flex w-full min-w-0 flex-col gap-4 max-xl:relative max-xl:z-0 ${
+                      mostrarDatosTecnicos
+                        ? 'max-xl:gap-5 xl:grid xl:grid-cols-[minmax(10rem,28%)_minmax(0,1fr)] xl:items-start xl:gap-5'
+                        : ''
+                    }`}
+                  >
+                    <div
+                      className={`w-full min-w-0 text-slate-700 dark:text-[#e7eef9] ${
+                        mostrarDatosTecnicos ? 'max-xl:shrink-0 xl:pr-0' : 'xl:flex-1 xl:pr-5'
+                      }`}
+                    >
+                      <div className="auditoria-detalle-movil-stack flex w-full flex-col gap-4 xl:hidden">
                         <DetalleEventoEncabezadoMovil evento={seleccionado} />
-                        <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white/80 dark:border-slate-700/60 dark:bg-slate-900/25">
+                        {!mostrarDatosTecnicos ? (
+                          <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white/80 dark:border-slate-700/60 dark:bg-slate-900/25">
+                            <DetalleCampoMovil
+                              etiqueta="Qué se hizo"
+                              valor={<span className="break-words">{construirResumenCambio(seleccionado)}</span>}
+                            />
+                            <DetalleCampoMovil
+                              etiqueta="Quién lo hizo"
+                              valor={<span className="break-words">{obtenerActor(seleccionado)}</span>}
+                            />
+                            <DetalleCampoMovil
+                              etiqueta="Cuándo"
+                              valor={<span className="tabular-nums">{formatearFechaLarga(seleccionado.fecha_hora)}</span>}
+                            />
+                            <DetalleCampoMovil
+                              etiqueta="Módulo / Acción"
+                              valor={
+                                <span className="break-words">
+                                  {seleccionado.modulo} / {etiquetaAccion(seleccionado.accion)}
+                                </span>
+                              }
+                            />
+                            <DetalleCampoMovil
+                              etiqueta="Recurso"
+                              valor={<span className="break-words">{formatearRecurso(seleccionado)}</span>}
+                            />
+                            <DetalleCampoMovil
+                              etiqueta="Resultado"
+                              valor={
+                                <span
+                                  className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold uppercase ${claseBadgeResultadoAuditoria(seleccionado.resultado)}`}
+                                >
+                                  {seleccionado.resultado}
+                                </span>
+                              }
+                            />
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="auditoria-detalle-resumen-pc hidden space-y-2.5 leading-relaxed xl:block">
+                        <p>
+                          <strong>Qué se hizo:</strong> {construirResumenCambio(seleccionado)}
+                        </p>
+                        <p>
+                          <strong>Quién lo hizo:</strong> {obtenerActor(seleccionado)}
+                        </p>
+                        <p>
+                          <strong>Cuándo:</strong> {formatearFechaLarga(seleccionado.fecha_hora)}
+                        </p>
+                        <p>
+                          <strong>Módulo / Acción:</strong> {seleccionado.modulo} /{' '}
+                          {etiquetaAccion(seleccionado.accion)}
+                        </p>
+                        <p>
+                          <strong>Recurso:</strong> {formatearRecurso(seleccionado)}
+                        </p>
+                        <p>
+                          <strong>Resultado:</strong>{' '}
+                          <span
+                            className={`rounded px-2 py-0.5 text-xs font-semibold ${claseBadgeResultadoAuditoria(seleccionado.resultado)}`}
+                          >
+                            {seleccionado.resultado.toUpperCase()}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                    {mostrarDatosTecnicos ? (
+                      <div className="auditoria-datos-tecnicos relative z-[1] w-full min-w-0 shrink-0 space-y-2 xl:border-l xl:border-slate-200 xl:pl-5 dark:xl:border-slate-600">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 lg:hidden">
+                          Datos técnicos
+                        </p>
+                        <div
+                          ref={panelDatosTecnicosRef}
+                          className="w-full rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900/40 max-xl:max-h-[min(50vh,24rem)] max-xl:overflow-y-auto max-xl:shadow-sm xl:max-h-none xl:overflow-visible"
+                        >
+                          <div className="space-y-2 text-xs text-slate-700 dark:text-slate-300">
+                            <p className="break-words">
+                              <strong>ID:</strong> {seleccionado.id}
+                            </p>
+                            <p className="break-words">
+                              <strong>IP:</strong> {seleccionado.ip ?? '-'}
+                            </p>
+                            <p className="break-words leading-snug">
+                              <strong>User-Agent:</strong>{' '}
+                              <span className="font-mono text-[11px]">{seleccionado.user_agent ?? '-'}</span>
+                            </p>
+                            <p className="break-words">
+                              <strong>Roles:</strong> {(seleccionado.actor_roles ?? []).join(', ') || '-'}
+                            </p>
+                            {tieneContenidoTecnico(seleccionado.detalle) ? (
+                              <div>
+                                <p className="mb-1 text-xs uppercase text-slate-400">Detalle JSON</p>
+                                <pre className="max-h-48 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words rounded-lg border border-slate-700 bg-slate-900 p-3 text-xs text-slate-200 xl:max-h-none xl:overflow-y-visible">
+                                  {JSON.stringify(seleccionado.detalle, null, 2)}
+                                </pre>
+                              </div>
+                            ) : null}
+                            {tieneContenidoTecnico(seleccionado.antes) ? (
+                              <div>
+                                <p className="mb-1 text-xs uppercase text-slate-400">Antes</p>
+                                <pre className="max-h-40 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words rounded-lg border border-slate-700 bg-slate-900 p-3 text-xs text-slate-200 xl:max-h-none xl:overflow-y-visible">
+                                  {JSON.stringify(seleccionado.antes, null, 2)}
+                                </pre>
+                              </div>
+                            ) : null}
+                            {tieneContenidoTecnico(seleccionado.despues) ? (
+                              <div>
+                                <p className="mb-1 text-xs uppercase text-slate-400">Después</p>
+                                <pre className="max-h-40 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words rounded-lg border border-slate-700 bg-slate-900 p-3 text-xs text-slate-200 xl:max-h-none xl:overflow-y-visible">
+                                  {JSON.stringify(seleccionado.despues, null, 2)}
+                                </pre>
+                              </div>
+                            ) : null}
+                            {!tieneContenidoTecnico(seleccionado.detalle) &&
+                            !tieneContenidoTecnico(seleccionado.antes) &&
+                            !tieneContenidoTecnico(seleccionado.despues) ? (
+                              <div className="rounded-lg border border-slate-700 bg-slate-900/40 p-3 text-xs text-slate-400">
+                                Este evento no incluye campos técnicos adicionales para mostrar.
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                        <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white/80 dark:border-slate-700/60 dark:bg-slate-900/25 lg:hidden">
                           <DetalleCampoMovil
                             etiqueta="Qué se hizo"
                             valor={<span className="break-words">{construirResumenCambio(seleccionado)}</span>}
@@ -948,87 +1092,7 @@ export function AuditoriaPage({ onLogout }: Props) {
                           />
                         </div>
                       </div>
-                      <div className="hidden space-y-1 xl:block">
-                        <p>
-                          <strong>Qué se hizo:</strong> {construirResumenCambio(seleccionado)}
-                        </p>
-                        <p>
-                          <strong>Quién lo hizo:</strong> {obtenerActor(seleccionado)}
-                        </p>
-                        <p>
-                          <strong>Cuándo:</strong> {formatearFechaLarga(seleccionado.fecha_hora)}
-                        </p>
-                        <p>
-                          <strong>Módulo / Acción:</strong> {seleccionado.modulo} /{' '}
-                          {etiquetaAccion(seleccionado.accion)}
-                        </p>
-                        <p>
-                          <strong>Recurso:</strong> {formatearRecurso(seleccionado)}
-                        </p>
-                        <p>
-                          <strong>Resultado:</strong>{' '}
-                          <span
-                            className={`rounded px-2 py-0.5 text-xs font-semibold ${claseBadgeResultadoAuditoria(seleccionado.resultado)}`}
-                          >
-                            {seleccionado.resultado.toUpperCase()}
-                          </span>
-                        </p>
-                      </div>
-                    </div>
-                    <div className="w-full min-w-0 space-y-2 max-xl:mt-0">
-                      {mostrarDatosTecnicos ? (
-                        <div
-                          ref={panelDatosTecnicosRef}
-                          className="w-full rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900/40"
-                        >
-                          <div className="space-y-2 text-xs text-slate-700 dark:text-slate-300">
-                            <p className="break-words">
-                              <strong>ID:</strong> {seleccionado.id}
-                            </p>
-                            <p className="break-words">
-                              <strong>IP:</strong> {seleccionado.ip ?? '-'}
-                            </p>
-                            <p className="break-all leading-snug">
-                              <strong>User-Agent:</strong> {seleccionado.user_agent ?? '-'}
-                            </p>
-                            <p className="break-words">
-                              <strong>Roles:</strong> {(seleccionado.actor_roles ?? []).join(', ') || '-'}
-                            </p>
-                            {tieneContenidoTecnico(seleccionado.detalle) ? (
-                              <div>
-                                <p className="mb-1 text-xs uppercase text-slate-400">Detalle JSON</p>
-                                <pre className="scroll-region max-h-40 rounded-lg border border-slate-700 bg-slate-900 p-3 text-xs text-slate-200">
-                                  {JSON.stringify(seleccionado.detalle, null, 2)}
-                                </pre>
-                              </div>
-                            ) : null}
-                            {tieneContenidoTecnico(seleccionado.antes) ? (
-                              <div>
-                                <p className="mb-1 text-xs uppercase text-slate-400">Antes</p>
-                                <pre className="scroll-region max-h-32 rounded-lg border border-slate-700 bg-slate-900 p-3 text-xs text-slate-200">
-                                  {JSON.stringify(seleccionado.antes, null, 2)}
-                                </pre>
-                              </div>
-                            ) : null}
-                            {tieneContenidoTecnico(seleccionado.despues) ? (
-                              <div>
-                                <p className="mb-1 text-xs uppercase text-slate-400">Después</p>
-                                <pre className="scroll-region max-h-32 rounded-lg border border-slate-700 bg-slate-900 p-3 text-xs text-slate-200">
-                                  {JSON.stringify(seleccionado.despues, null, 2)}
-                                </pre>
-                              </div>
-                            ) : null}
-                            {!tieneContenidoTecnico(seleccionado.detalle) &&
-                            !tieneContenidoTecnico(seleccionado.antes) &&
-                            !tieneContenidoTecnico(seleccionado.despues) ? (
-                              <div className="rounded-lg border border-slate-700 bg-slate-900/40 p-3 text-xs text-slate-400">
-                                Este evento no incluye campos técnicos adicionales para mostrar.
-                              </div>
-                            ) : null}
-                          </div>
-                        </div>
-                      ) : null}
-                    </div>
+                    ) : null}
                   </div>
                 </div>
               )}
