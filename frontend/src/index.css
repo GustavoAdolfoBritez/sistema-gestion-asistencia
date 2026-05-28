@@ -276,6 +276,12 @@
       grid-template-columns: unset !important;
     }
 
+    .importaciones-root.master-detail-root[data-has-selection='true'] {
+      min-height: 0;
+      flex: 1 1 auto;
+      overflow: hidden;
+    }
+
     .importaciones-root.master-detail-root[data-has-selection='true'] .master-detail-list {
       display: none !important;
     }
@@ -292,12 +298,326 @@
       flex: 1 1 auto;
       border-right: none !important;
     }
+
+    /** Detalle del lote a pantalla completa: scroll interno en registros (evita tarjetas aplastadas). */
+    .importaciones-detail-panel {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .importaciones-detail-panel .import-detalle-scroll {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden !important;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .importaciones-detail-panel .import-detalle-lote-meta {
+      flex: 0 0 auto;
+    }
+
+    .importaciones-detail-panel .import-detalle-registros {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .importaciones-detail-panel .import-detalle-registros-body {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .importaciones-detail-panel .import-detalle-registros-lista {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .importaciones-detail-panel .import-detalle-registros-lista > * {
+      flex-shrink: 0;
+    }
+
+    /** Historial: no capturar rueda/touch; scrollea el panel principal. */
+    .importaciones-historial-tabla {
+      overflow: visible !important;
+      overscroll-behavior: auto;
+      touch-action: pan-y;
+    }
+
+    /** Detalle del lote · cabecera y resumen más compactos para dejar aire a «Registros cargados». */
+    .importaciones-detail-panel .importaciones-detail-header {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.45rem 0.75rem;
+      padding-top: 0.5rem;
+      padding-bottom: 0.5rem;
+    }
+
+    .importaciones-detail-panel .importaciones-detail-header > p,
+    .importaciones-detail-panel .importaciones-detail-header .min-w-0.flex-1 > p {
+      display: none;
+    }
+
+    .importaciones-detail-panel .importaciones-detail-header .importaciones-detail-actions {
+      width: auto !important;
+      flex-wrap: nowrap;
+    }
+
+    .importaciones-detail-panel .importaciones-detail-actions .btn-mobile-stack {
+      flex-direction: row !important;
+      width: auto !important;
+      gap: 0.35rem;
+    }
+
+    .importaciones-detail-panel .importaciones-detail-actions .btn-mobile-cta {
+      width: auto !important;
+      min-height: 2rem;
+      padding: 0.35rem 0.65rem;
+    }
+
+    .importaciones-detail-panel .import-detalle-scroll {
+      padding: 0.5rem 0.85rem;
+      gap: 0.5rem;
+    }
+
+    .importaciones-detail-panel .import-detalle-lote-meta {
+      padding: 0.6rem 0.75rem;
+      gap: 0.45rem;
+    }
+
+    .importaciones-detail-panel .import-detalle-lote-meta > :not([hidden]) ~ :not([hidden]) {
+      margin-top: 0.45rem;
+    }
+
+    .importaciones-detail-panel .import-detalle-destino-movil {
+      display: grid !important;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.35rem 0.65rem;
+      padding: 0.45rem 0.6rem;
+    }
+
+    .importaciones-detail-panel .import-detalle-destino-movil > div > p.mt-1 {
+      margin-top: 0.125rem;
+      font-size: 0.75rem;
+      line-height: 1.25;
+    }
+
+    .importaciones-detail-panel .import-detalle-destino-movil > div > p:first-child {
+      font-size: 0.5625rem;
+      letter-spacing: 0.04em;
+    }
+
+    .importaciones-detail-panel .import-detalle-lote-stats {
+      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+      gap: 0.35rem 0.5rem;
+    }
+
+    .importaciones-detail-panel .import-detalle-lote-stats > .col-span-2 {
+      grid-column: span 1 !important;
+      border-top: none !important;
+      padding-top: 0 !important;
+    }
+
+    .importaciones-detail-panel .import-detalle-lote-stats p.text-lg {
+      font-size: 1rem;
+      line-height: 1.2;
+    }
+
+    .importaciones-detail-panel .import-detalle-lote-stats .text-sm {
+      font-size: 0.6875rem;
+      line-height: 1.25;
+    }
+
+    .importaciones-detail-panel .import-detalle-registros {
+      min-height: min(46vh, 20rem);
+      padding: 0.6rem 0.75rem;
+    }
+
+    .importaciones-detail-panel .import-detalle-registros > .flex.shrink-0 {
+      gap: 0.5rem;
+    }
   }
 
   @media (min-width: 1280px) {
     .importaciones-root.master-detail-root[data-has-selection='true'] {
       display: grid !important;
       grid-template-columns: minmax(0, 1fr) min(100%, 26.25rem) !important;
+    }
+  }
+
+  /**
+   * Importaciones · PC: panel «Detalle del lote» — layout y scroll (colores por tema abajo).
+   */
+  @media (min-width: 1280px) {
+    .importaciones-detail-panel {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .importaciones-detail-panel .importaciones-detail-header {
+      flex-shrink: 0;
+    }
+
+    .importaciones-detail-panel .import-detalle-scroll {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding: 1.25rem;
+    }
+
+    .importaciones-detail-panel .import-detalle-registros {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .importaciones-detail-panel .import-detalle-registros-lista {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .importaciones-detail-panel .import-detalle-registros-lista > * {
+      flex-shrink: 0;
+    }
+
+    .importaciones-detail-panel .importaciones-detail-actions .btn-modern {
+      width: 100%;
+      justify-content: center;
+      min-height: 2rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border-radius: 0.5rem;
+      box-shadow: none;
+    }
+
+    .importaciones-detail-panel .importaciones-detail-actions .btn-modern:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+  }
+
+  /** Importaciones · PC · modo claro (referencia diseño). */
+  @media (min-width: 1280px) {
+    html:not(.dark) .importaciones-detail-panel {
+      background-color: #ffffff;
+      border-left-color: #e2e8f0;
+    }
+
+    html:not(.dark) .importaciones-detail-panel .importaciones-detail-header {
+      background-color: #ffffff;
+      border-bottom-color: #e2e8f0;
+    }
+
+    html:not(.dark) .importaciones-detail-panel .import-detalle-scroll {
+      background-color: #ffffff;
+    }
+
+    html:not(.dark) .importaciones-detail-panel .import-detalle-lote-meta,
+    html:not(.dark) .importaciones-detail-panel .import-detalle-registros {
+      background-color: #ffffff;
+      border-color: #e2e8f0;
+    }
+
+    html:not(.dark) .importaciones-detail-panel .importaciones-detail-actions .btn-modern {
+      border-color: #cbd5e1;
+      background-color: #ffffff;
+      color: #334155;
+    }
+
+    html:not(.dark) .importaciones-detail-panel .importaciones-detail-actions .btn-modern:not(:disabled):hover {
+      background-color: #f8fafc;
+      border-color: #94a3b8;
+      color: #0f172a;
+    }
+  }
+
+  /** Importaciones · PC · modo oscuro (misma paleta que el resto del módulo). */
+  @media (min-width: 1280px) {
+    .dark .importaciones-detail-panel {
+      background-color: #132a52;
+      border-left-color: #1e293b;
+    }
+
+    .dark .importaciones-detail-panel .importaciones-detail-header {
+      background-color: #132a52;
+      border-bottom-color: #1e293b;
+    }
+
+    .dark .importaciones-detail-panel .import-detalle-scroll {
+      background-color: #132a52;
+    }
+
+    .dark .importaciones-detail-panel .import-detalle-lote-meta,
+    .dark .importaciones-detail-panel .import-detalle-registros {
+      background-color: #132a52;
+      border-color: #334155;
+    }
+
+    .dark .importaciones-detail-panel .import-detalle-destino-pc {
+      border-color: #334155;
+      background-color: rgba(10, 20, 36, 0.65);
+      color: #94a3b8;
+    }
+
+    .dark .importaciones-detail-panel .import-detalle-destino-pc .import-detalle-destino-valor {
+      color: #f0f4f8;
+    }
+
+    .dark .importaciones-detail-panel .importaciones-detail-actions .btn-modern {
+      border-color: #475569;
+      background-color: rgba(15, 26, 47, 0.9);
+      color: #e2e8f0;
+    }
+
+    .dark .importaciones-detail-panel .importaciones-detail-actions .btn-modern:not(:disabled):hover {
+      background-color: rgba(30, 41, 59, 0.9);
+      border-color: #64748b;
+      color: #f8fafc;
+    }
+
+    .dark .importaciones-detail-panel .import-detalle-registros-lista .import-detalle-registro-card {
+      border-color: rgba(51, 65, 85, 0.9);
+      background-color: rgba(10, 20, 36, 0.85);
+    }
+
+    .dark .importaciones-detail-panel .import-detalle-registros-lista .import-detalle-registro-card--invalid {
+      border-color: rgba(244, 63, 94, 0.35);
+      background-color: rgba(76, 5, 25, 0.25);
+    }
+
+    .dark .importaciones-detail-panel .import-detalle-registro-card__head {
+      border-bottom-color: rgba(51, 65, 85, 0.7);
+      background-color: rgba(15, 23, 42, 0.55);
+    }
+
+    .dark .importaciones-detail-panel .import-detalle-registro-card--invalid .import-detalle-registro-card__head {
+      border-bottom-color: rgba(244, 63, 94, 0.25);
+      background-color: rgba(244, 63, 94, 0.08);
     }
   }
 
@@ -321,32 +641,6 @@
     .alumnos-root.master-detail-root[data-has-selection='true'] {
       display: grid !important;
       grid-template-columns: minmax(0, 20rem) minmax(0, 1fr) !important;
-    }
-  }
-
-  /** Auditoría · tablet horizontal: tarjetas + una pantalla a la vez (lista o detalle). */
-  @media (min-width: 1024px) and (max-width: 1279px) {
-    .auditoria-root.master-detail-root {
-      display: flex !important;
-      flex-direction: column;
-      grid-template-columns: unset !important;
-    }
-
-    .auditoria-root.master-detail-root[data-has-selection='true'] .master-detail-list {
-      display: none !important;
-    }
-
-    .auditoria-root.master-detail-root:not([data-has-selection='true']) .master-detail-detail {
-      display: none !important;
-    }
-
-    .auditoria-root.master-detail-root .master-detail-list,
-    .auditoria-root.master-detail-root .master-detail-detail {
-      width: 100%;
-      max-width: 100%;
-      min-width: 0;
-      flex: 1 1 auto;
-      border-right: none !important;
     }
   }
 
@@ -507,7 +801,8 @@
   @media (min-width: 768px) {
     .scroll-region-at-lg {
       overflow: auto;
-      overscroll-behavior: contain;
+      overscroll-behavior-x: contain;
+      overscroll-behavior-y: auto;
       -webkit-overflow-scrolling: touch;
     }
   }
@@ -730,6 +1025,273 @@ html:not(.dark) .usuario-detail-panel .usuario-detail-panel-footer {
 
 html:not(.dark) .usuario-detail-panel .usuario-detail-panel-card {
   background-color: #ffffff;
+}
+
+/** Auditoría · tablet horizontal (T3): tarjetas 2×2; detalle a pantalla completa al seleccionar. */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .auditoria-page-section {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+  }
+
+  .auditoria-filtros {
+    padding: 0.65rem 0.85rem;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  .auditoria-filtros > .flex-col {
+    gap: 0.5rem;
+  }
+
+  .auditoria-page-section[data-has-selection='true'] .auditoria-filtros {
+    display: none;
+  }
+
+  .auditoria-workspace {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .auditoria-page-section[data-has-selection='false'] .auditoria-tabla-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .auditoria-page-section[data-has-selection='false'] .auditoria-detail-panel {
+    display: none !important;
+  }
+
+  .auditoria-page-section[data-has-selection='true'] .auditoria-tabla-panel {
+    display: none !important;
+  }
+
+  .auditoria-page-section[data-has-selection='true'] .auditoria-detail-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex !important;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .auditoria-tabla-panel {
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .auditoria-tabla-scroll {
+    min-height: 0;
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .auditoria-eventos-tarjetas {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+    align-content: start;
+  }
+
+  .auditoria-eventos-tarjetas > .auditoria-eventos-estado-vacio {
+    grid-column: 1 / -1;
+  }
+
+  .auditoria-tabla-scroll .auditoria-eventos-estado-vacio {
+    flex: 1 1 auto;
+    align-self: stretch;
+  }
+
+  .auditoria-eventos-tarjetas li > button {
+    height: 100%;
+  }
+}
+
+/** Auditoría · PC (≥1280px): tabla arriba + detalle abajo, sin scroll de página externo. */
+@media (min-width: 1280px) {
+  .auditoria-workspace {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .auditoria-tabla-panel {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .auditoria-tabla-scroll {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-x: auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+.auditoria-detail-panel {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.dark .auditoria-detail-panel {
+  background: linear-gradient(180deg, #162347 0%, #131e3c 52%, #101a33 100%);
+  border-color: #1c2a50;
+}
+
+.dark .auditoria-detail-panel .auditoria-detail-body {
+  color: #e7eef9;
+}
+
+.dark .auditoria-detail-panel .auditoria-detail-body strong {
+  color: #c9d7ed;
+  font-weight: 600;
+}
+
+@media (min-width: 1280px) {
+  .auditoria-detail-panel .auditoria-detail-body:has(.auditoria-datos-tecnicos) {
+    overflow-x: auto;
+    overflow-y: auto;
+  }
+
+  .auditoria-detail-body:has(.auditoria-datos-tecnicos) .auditoria-datos-tecnicos {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .auditoria-detail-body:has(.auditoria-datos-tecnicos) .auditoria-datos-tecnicos > div {
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .auditoria-datos-tecnicos pre {
+    max-height: none;
+    overflow-y: visible;
+  }
+}
+
+/** Auditoría · móvil + tablet vertical + tablet horizontal: detalle a pantalla completa con scroll interno. */
+@media (max-width: 1279px) {
+  .auditoria-detail-panel--activo {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    max-height: none;
+  }
+
+  .auditoria-detail-panel--activo .auditoria-detail-body {
+    min-height: 0;
+    flex: 1 1 auto;
+    max-height: none;
+  }
+
+  .auditoria-detail-panel--activo .auditoria-detail-body > div {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .auditoria-detalle-movil-stack {
+    position: relative;
+    z-index: 0;
+  }
+
+  .auditoria-detail-panel--activo .auditoria-datos-tecnicos {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+  }
+}
+
+.dark .auditoria-tabla-eventos thead {
+  background-color: #0c1a3b;
+  color: #cbd5e1;
+}
+
+.dark .auditoria-tabla-eventos tbody tr:nth-child(odd) {
+  background-color: #152d55;
+}
+
+.dark .auditoria-tabla-eventos tbody tr:nth-child(even) {
+  background-color: #1a3058;
+}
+
+.dark .auditoria-tabla-eventos tbody tr:hover {
+  background-color: #1e3a6b;
+}
+
+.dark .auditoria-tabla-eventos tbody tr.auditoria-fila-seleccionada {
+  background-color: #1e3a6b;
+}
+
+.dark .auditoria-tabla-eventos tbody td {
+  color: #e2e8f0;
+}
+
+.dark .auditoria-tabla-eventos tbody td.auditoria-celda-secundaria {
+  color: #94a3b8;
+}
+
+html:not(.dark) .auditoria-tabla-eventos thead {
+  background-color: #f1f5f9;
+  color: #475569;
+}
+
+html:not(.dark) .auditoria-tabla-eventos tbody tr:nth-child(odd) {
+  background-color: #ffffff;
+}
+
+html:not(.dark) .auditoria-tabla-eventos tbody tr:nth-child(even) {
+  background-color: #f0f9ff;
+}
+
+html:not(.dark) .auditoria-tabla-eventos tbody tr:hover,
+html:not(.dark) .auditoria-tabla-eventos tbody tr.auditoria-fila-seleccionada {
+  background-color: #e0f2fe;
+}
+
+html:not(.dark) .auditoria-tabla-eventos tbody td {
+  color: #1e293b;
+}
+
+html:not(.dark) .auditoria-tabla-eventos tbody td.auditoria-celda-secundaria {
+  color: #64748b;
+}
+
+html:not(.dark) .auditoria-detail-panel .auditoria-detail-body {
+  color: #334155;
+}
+
+/** Usuarios · tablet vertical/móvil: panel detalle a altura completa, footer abajo. */
+@media (max-width: 1023px) {
+  .usuario-detail-panel.master-detail-detail {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .usuario-detail-panel .usuario-detail-panel-body {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
 }
 
 .sidebar-active-chip {

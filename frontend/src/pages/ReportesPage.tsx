@@ -1173,7 +1173,7 @@ export function ReportesPage({ onLogout }: Props) {
                         {actas.map((a) => (
                           <li
                             key={a.id}
-                            className="max-lg:py-0 lg:rounded-xl lg:border lg:border-slate-800 lg:bg-[#0c1a3b] lg:p-3"
+                            className="max-lg:py-0 lg:rounded-xl lg:border lg:border-slate-200 lg:bg-slate-50 lg:p-3 dark:lg:border-slate-800 dark:lg:bg-[#0c1a3b]"
                           >
                             <div className="flex items-center gap-3 py-2.5 max-lg:py-2.5 lg:items-start lg:justify-between">
                               <div className="flex min-w-0 flex-1 items-center gap-2.5 max-lg:gap-2 lg:items-start lg:gap-3">
@@ -1215,7 +1215,7 @@ export function ReportesPage({ onLogout }: Props) {
                                     toastApiError(err, 'No se pudo abrir el documento')
                                   )
                                 }
-                                className="hidden shrink-0 rounded-lg bg-cyan-500/10 p-1.5 text-cyan-400 hover:bg-cyan-500/20 lg:inline-flex"
+                                className="hidden shrink-0 rounded-lg border border-slate-200 bg-white p-1.5 text-cyan-700 hover:bg-slate-100 dark:border-transparent dark:bg-cyan-500/10 dark:text-cyan-400 dark:hover:bg-cyan-500/20 lg:inline-flex"
                                 title="Abrir documento"
                               >
                                 <span className="material-symbols-outlined text-[16px]">open_in_new</span>
@@ -1248,7 +1248,7 @@ export function ReportesPage({ onLogout }: Props) {
                           .map((h) => (
                             <li
                               key={h.matricula_id}
-                              className="max-lg:py-0 lg:rounded-xl lg:border lg:border-slate-800 lg:bg-[#0c1a3b] lg:px-3 lg:py-2.5"
+                              className="max-lg:py-0 lg:rounded-xl lg:border lg:border-slate-200 lg:bg-slate-50 lg:px-3 lg:py-2.5 dark:lg:border-slate-800 dark:lg:bg-[#0c1a3b]"
                             >
                               <div className="flex items-center justify-between gap-2 py-2.5 max-lg:py-2 lg:py-0">
                                 <div className="flex min-w-0 flex-1 items-center gap-2.5">
