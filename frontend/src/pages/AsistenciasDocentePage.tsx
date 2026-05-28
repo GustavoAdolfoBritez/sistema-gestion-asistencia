@@ -2,6 +2,13 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { toast } from 'sonner';
 import { AppSidebar } from '../components/AppSidebar';
 import { AppSelect } from '../components/ui/app-select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog';
 import { API_BASE_URL, abrirDocumento, apiFetch, generarYAbrirPdf, notifySessionExpired } from '../utils/api';
 import {
   contarFaltasDesdeSesiones,
@@ -162,6 +169,21 @@ function formatDateLabel(value?: string | null, long = false) {
     return date.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
   }
   return date.toLocaleDateString('es-AR');
+}
+
+/** Estado efectivo en la sesión abierta (pending + matriz; sin marca = presente por defecto). */
+function estadoAsistenciaEnSesion(
+  matriculaId: number,
+  sesionId: number,
+  entry: PlanillaMatrixEntry,
+  pendingChanges: Map<string, 'presente' | 'ausente'>
+): 'presente' | 'ausente' | 'justificada' {
+  const pending = pendingChanges.get(`${matriculaId}:${sesionId}`);
+  if (pending) return pending;
+  const raw = entry.celdas.get(sesionId)?.estadoAsistencia ?? null;
+  if (raw === 'ausente') return 'ausente';
+  if (raw === 'justificada') return 'justificada';
+  return 'presente';
 }
 
 const STICKY_COL_NUM = 36;
@@ -754,6 +776,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
   const [nuevaSesionModalidad, setNuevaSesionModalidad] = useState<'presencial' | 'virtual'>('presencial');
   const [creandoSesion, setCreandoSesion] = useState(false);
   const [cerrandoSesionId, setCerrandoSesionId] = useState<number | null>(null);
+  const [cerrarListaModalOpen, setCerrarListaModalOpen] = useState(false);
   const [sesionActivaId, setSesionActivaId] = useState<number | null>(null);
   const [justificaciones, setJustificaciones] = useState<JustificacionRow[]>([]);
   const [justificacionesLoading, setJustificacionesLoading] = useState(false);
@@ -854,6 +877,25 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
     }
     return [...sesionesDelMes].reverse().find((s) => s.estado.toLowerCase() !== 'cerrada') ?? null;
   }, [sesionActivaId, sesionesDelMes]);
+
+  const resumenCierreLista = useMemo(() => {
+    if (!sesionListaAbierta) return null;
+    const sesionId = sesionListaAbierta.id;
+    let presentes = 0;
+    let ausentes = 0;
+    const alumnosAusentes: { matriculaId: number; nombre: string }[] = [];
+    for (const [matriculaId, entry] of planillaMatrix) {
+      const estado = estadoAsistenciaEnSesion(matriculaId, sesionId, entry, pendingChanges);
+      if (estado === 'ausente') {
+        ausentes += 1;
+        alumnosAusentes.push({ matriculaId, nombre: entry.alumno });
+      } else {
+        presentes += 1;
+      }
+    }
+    alumnosAusentes.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+    return { presentes, ausentes, alumnosAusentes };
+  }, [sesionListaAbierta, planillaMatrix, pendingChanges]);
 
   // Todos los días lectivos (Lun–Jue) del mes seleccionado, acotados al rango del módulo
   const diasLectivosDelMes = useMemo(() => {
@@ -1342,6 +1384,15 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
     }
   }, [sesiones, cargarPlanillaMes, guardarCambiosLote]);
 
+  const confirmarCierreLista = useCallback(async () => {
+    if (!sesionListaAbierta) return;
+    await cerrarSesionById(sesionListaAbierta.id);
+  }, [sesionListaAbierta, cerrarSesionById]);
+
+  useEffect(() => {
+    if (!sesionListaAbierta) setCerrarListaModalOpen(false);
+  }, [sesionListaAbierta]);
+
   const cargarAusencias = useCallback(async (cId: string) => {
     if (!cId) { setAusencias([]); setAusenciasError(null); return; }
     setAusenciasLoading(true);
@@ -1734,7 +1785,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                   disabled={creandoSesion || !cursoId || !nuevaSesionFecha || !!sesionListaAbierta}
                   title={
                     sesionListaAbierta
-                      ? 'Hay una lista abierta. Usá «Cerrar lista» antes de tomar otra sesión.'
+                      ? 'Hay una lista abierta. Usá «Revisar y Cerrar Lista» antes de tomar otra sesión.'
                       : undefined
                   }
                   onClick={async () => {
@@ -1781,13 +1832,107 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                     type="button"
                     className="btn-modern btn-modern-sm btn-mobile-cta flex items-center justify-center gap-1.5 border-0 bg-rose-600 font-semibold text-white shadow-md hover:bg-rose-500 lg:w-auto"
                     disabled={cerrandoSesionId === sesionListaAbierta.id}
-                    onClick={() => void cerrarSesionById(sesionListaAbierta.id)}
+                    onClick={() => setCerrarListaModalOpen(true)}
                   >
-                    <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                    {cerrandoSesionId === sesionListaAbierta.id ? 'Cerrando...' : 'Cerrar lista'}
+                    <span className="material-symbols-outlined text-[16px]">fact_check</span>
+                    {cerrandoSesionId === sesionListaAbierta.id ? 'Cerrando...' : 'Revisar y Cerrar Lista'}
                   </button>
                 ) : null}
               </div>
+
+              <Dialog
+                open={cerrarListaModalOpen && !!sesionListaAbierta}
+                onOpenChange={(open) => {
+                  if (!open && cerrandoSesionId == null) setCerrarListaModalOpen(false);
+                }}
+              >
+                <DialogContent className="max-w-md gap-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 text-slate-900 shadow-2xl dark:border-slate-600/40 dark:bg-gradient-to-b dark:from-[#162d55] dark:to-[#0f2244] dark:text-[#e7eef9]">
+                  <div className="border-b border-slate-200 bg-slate-50 px-5 pb-4 pt-5 sm:px-6 dark:border-white/10 dark:bg-[#0c1a32]/90">
+                    <DialogHeader className="space-y-2 text-left">
+                      <DialogTitle className="text-lg font-semibold text-slate-900 dark:text-white">
+                        Revisar y cerrar lista
+                      </DialogTitle>
+                      <DialogDescription className="text-sm text-slate-600 dark:text-slate-300">
+                        Confirmá el resumen de asistencia antes de cerrar la jornada. Podés volver para seguir editando.
+                      </DialogDescription>
+                    </DialogHeader>
+                  </div>
+
+                  <div className="space-y-4 px-5 py-5 sm:px-6">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm dark:border-white/10 dark:bg-[#0a162c]/80">
+                      <dl className="grid gap-2.5">
+                        <div>
+                          <dt className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Curso</dt>
+                          <dd className="mt-0.5 font-medium leading-snug text-slate-900 dark:text-slate-100">
+                            {planillaSeleccionada?.materia ?? '—'}
+                          </dd>
+                          {planillaSeleccionada ? (
+                            <dd className="text-xs text-slate-500 dark:text-slate-400">{planillaSeleccionada.carrera}</dd>
+                          ) : null}
+                        </div>
+                        <div>
+                          <dt className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Fecha de la lista</dt>
+                          <dd className="mt-0.5 font-medium text-slate-900 dark:text-slate-100">
+                            {sesionListaAbierta ? formatDateLabel(sesionListaAbierta.fecha, true) : '—'}
+                          </dd>
+                        </div>
+                      </dl>
+                    </div>
+
+                    <div className="flex flex-wrap gap-3 text-sm">
+                      <p className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 font-medium text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200">
+                        <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                        Presentes: {resumenCierreLista?.presentes ?? 0}
+                      </p>
+                      <p className="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 font-medium text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">
+                        <span className="material-symbols-outlined text-[18px]">cancel</span>
+                        Ausentes: {resumenCierreLista?.ausentes ?? 0}
+                      </p>
+                    </div>
+
+                    {(resumenCierreLista?.ausentes ?? 0) > 0 ? (
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Alumnos ausentes</p>
+                        <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-600/50 dark:bg-[#071222]">
+                          <ul className="flex flex-wrap gap-2">
+                            {resumenCierreLista?.alumnosAusentes.map((al) => (
+                              <li key={al.matriculaId}>
+                                <span className="inline-flex max-w-full items-center rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-900 dark:border-rose-500/35 dark:bg-rose-500/15 dark:text-rose-100">
+                                  {al.nombre}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="rounded-xl border border-emerald-200/80 bg-emerald-50/80 px-3 py-2.5 text-sm font-medium text-emerald-800 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-200">
+                        Asistencia completa — Sin alumnos ausentes
+                      </p>
+                    )}
+
+                    <div className="btn-mobile-stack flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end sm:gap-3">
+                      <button
+                        type="button"
+                        className="btn-modern btn-modern-ghost btn-mobile-cta lg:h-10 lg:min-h-0 lg:w-auto"
+                        onClick={() => setCerrarListaModalOpen(false)}
+                        disabled={cerrandoSesionId != null}
+                      >
+                        Volver
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-modern btn-modern-sm btn-mobile-cta flex items-center justify-center gap-1.5 border-0 bg-rose-600 font-semibold text-white shadow-md hover:bg-rose-500 lg:h-10 lg:min-h-0 lg:w-auto"
+                        onClick={() => void confirmarCierreLista()}
+                        disabled={!sesionListaAbierta || cerrandoSesionId != null}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                        {cerrandoSesionId != null ? 'Cerrando...' : 'Confirmar'}
+                      </button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
 
               {planillasError ? (
                 <div className="flex items-center gap-2 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-100">
