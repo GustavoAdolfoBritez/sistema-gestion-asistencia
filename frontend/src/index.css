@@ -543,16 +543,40 @@
       border-color: #e2e8f0;
     }
 
-    html:not(.dark) .importaciones-detail-panel .importaciones-detail-actions .btn-modern {
+    html:not(.dark) .importaciones-detail-panel .importaciones-detail-actions .btn-modern:not(.import-detalle-btn-confirmar):not(.import-detalle-btn-descartar) {
       border-color: #cbd5e1;
       background-color: #ffffff;
       color: #334155;
     }
 
-    html:not(.dark) .importaciones-detail-panel .importaciones-detail-actions .btn-modern:not(:disabled):hover {
+    html:not(.dark) .importaciones-detail-panel .importaciones-detail-actions .btn-modern:not(.import-detalle-btn-confirmar):not(.import-detalle-btn-descartar):not(:disabled):hover {
       background-color: #f8fafc;
       border-color: #94a3b8;
       color: #0f172a;
+    }
+
+    html:not(.dark) .importaciones-detail-panel .importaciones-detail-actions .import-detalle-btn-confirmar:not(:disabled) {
+      border-color: #10b981;
+      background-color: #ffffff;
+      color: #047857;
+    }
+
+    html:not(.dark) .importaciones-detail-panel .importaciones-detail-actions .import-detalle-btn-confirmar:not(:disabled):hover {
+      border-color: #059669;
+      background-color: #ecfdf5;
+      color: #065f46;
+    }
+
+    html:not(.dark) .importaciones-detail-panel .importaciones-detail-actions .import-detalle-btn-descartar:not(:disabled) {
+      border-color: #f43f5e;
+      background-color: #ffffff;
+      color: #e11d48;
+    }
+
+    html:not(.dark) .importaciones-detail-panel .importaciones-detail-actions .import-detalle-btn-descartar:not(:disabled):hover {
+      border-color: #f43f5e;
+      background-color: #fff1f2;
+      color: #be123c;
     }
   }
 
@@ -588,16 +612,40 @@
       color: #f0f4f8;
     }
 
-    .dark .importaciones-detail-panel .importaciones-detail-actions .btn-modern {
+    .dark .importaciones-detail-panel .importaciones-detail-actions .btn-modern:not(.import-detalle-btn-confirmar):not(.import-detalle-btn-descartar) {
       border-color: #475569;
       background-color: rgba(15, 26, 47, 0.9);
       color: #e2e8f0;
     }
 
-    .dark .importaciones-detail-panel .importaciones-detail-actions .btn-modern:not(:disabled):hover {
+    .dark .importaciones-detail-panel .importaciones-detail-actions .btn-modern:not(.import-detalle-btn-confirmar):not(.import-detalle-btn-descartar):not(:disabled):hover {
       background-color: rgba(30, 41, 59, 0.9);
       border-color: #64748b;
       color: #f8fafc;
+    }
+
+    .dark .importaciones-detail-panel .importaciones-detail-actions .import-detalle-btn-confirmar:not(:disabled) {
+      border-color: rgba(16, 185, 129, 0.65);
+      background-color: rgba(15, 26, 47, 0.9);
+      color: #6ee7b7;
+    }
+
+    .dark .importaciones-detail-panel .importaciones-detail-actions .import-detalle-btn-confirmar:not(:disabled):hover {
+      border-color: rgba(52, 211, 153, 0.75);
+      background-color: rgba(6, 78, 59, 0.35);
+      color: #a7f3d0;
+    }
+
+    .dark .importaciones-detail-panel .importaciones-detail-actions .import-detalle-btn-descartar:not(:disabled) {
+      border-color: rgba(244, 63, 94, 0.65);
+      background-color: rgba(15, 26, 47, 0.9);
+      color: #fda4af;
+    }
+
+    .dark .importaciones-detail-panel .importaciones-detail-actions .import-detalle-btn-descartar:not(:disabled):hover {
+      border-color: rgba(244, 63, 94, 0.75);
+      background-color: rgba(127, 29, 29, 0.35);
+      color: #fecdd3;
     }
 
     .dark .importaciones-detail-panel .import-detalle-registros-lista .import-detalle-registro-card {
