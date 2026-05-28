@@ -143,6 +143,11 @@ function clasesBotonFiltroRegistro(optionId: RecordFilter, activo: boolean): str
   return `${base} ${activo ? activoCls : inactivoCls}`;
 }
 
+const HISTORIAL_LOTES_POR_PAGINA = 7;
+
+const HISTORIAL_PAG_BTN =
+  'btn-modern btn-modern-ghost h-8 w-8 shrink-0 !min-h-0 !p-0 hover:!translate-y-0 active:!translate-y-0';
+
 const estadoBadges: Record<string, { label: string; bg: string; text: string }> = {
   pendiente: { label: 'Pendiente', bg: 'bg-amber-500/10 border-amber-500/30', text: 'text-amber-300' },
   procesando: { label: 'Procesando', bg: 'bg-blue-500/10 border-blue-500/30', text: 'text-blue-300' },
@@ -386,6 +391,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
   const [detailLoading, setDetailLoading] = useState(false);
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [batchesError, setBatchesError] = useState<string | null>(null);
+  const [historialPagina, setHistorialPagina] = useState(1);
   const [uploadPhase, setUploadPhase] = useState<ImportUploadPhase>('idle');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadMessage, setUploadMessage] = useState<string | null>(null);
@@ -419,6 +425,28 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
       activos,
     };
   }, [batches]);
+
+  const historialPaginacion = useMemo(() => {
+    const total = batches.length;
+    const totalPaginas = Math.max(1, Math.ceil(total / HISTORIAL_LOTES_POR_PAGINA));
+    const pagina = Math.min(Math.max(1, historialPagina), totalPaginas);
+    const inicio = (pagina - 1) * HISTORIAL_LOTES_POR_PAGINA;
+    const lotes = batches.slice(inicio, inicio + HISTORIAL_LOTES_POR_PAGINA);
+    return {
+      total,
+      totalPaginas,
+      pagina,
+      lotes,
+      cantidadVisible: lotes.length,
+    };
+  }, [batches, historialPagina]);
+
+  useEffect(() => {
+    const totalPaginas = Math.max(1, Math.ceil(batches.length / HISTORIAL_LOTES_POR_PAGINA));
+    if (historialPagina > totalPaginas) {
+      setHistorialPagina(totalPaginas);
+    }
+  }, [batches.length, historialPagina]);
 
   const carrerasDisponibles = useMemo(() => {
     const facultadId = Number(facultadSeleccionadaId);
@@ -1114,23 +1142,23 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                     <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-xs text-[#f0f4f8] font-bold">5</span>
                     Historial de importaciones
                   </h2>
-                  <div className="bg-[#132a52] border border-slate-800 rounded-xl overflow-hidden flex flex-col min-h-0 min-w-0">
-                    <div className="shrink-0 px-4 py-3 border-b border-slate-800 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <p className="text-sm text-[#f0f4f8] font-medium min-w-0">Registros recientes</p>
+                  <div className="flex flex-col min-h-0 min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#132a52]">
+                    <div className="flex shrink-0 flex-col gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="min-w-0 text-sm font-medium text-slate-900 dark:text-[#f0f4f8]">Registros recientes</p>
                       <button
                         type="button"
-                        className="text-xs text-slate-400 hover:text-[#f0f4f8] flex items-center gap-1 shrink-0 self-start sm:self-auto"
+                        className="flex shrink-0 items-center gap-1 self-start text-xs text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-[#f0f4f8] sm:self-auto"
                         onClick={() => loadBatches()}
                       >
                         <span className="material-symbols-outlined text-[18px]">refresh</span>
                         Actualizar
                       </button>
                     </div>
-                    <ul className="divide-y divide-slate-800 lg:hidden">
+                    <ul className="divide-y divide-slate-200 lg:hidden dark:divide-slate-800">
                       {batchesLoading ? (
                         <li className="px-4 py-6 text-center text-sm text-slate-500">Cargando...</li>
                       ) : batches.length ? (
-                        batches.map((lote) => {
+                        historialPaginacion.lotes.map((lote) => {
                           const badge = estadoBadges[lote.estado] ?? {
                             label: lote.estado,
                             bg: 'bg-slate-700/60 border-slate-600',
@@ -1141,13 +1169,13 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                             <li key={lote.id} className="flex items-stretch">
                               <button
                                 type="button"
-                                className={`min-w-0 flex-1 px-4 py-3 text-left transition-colors active:bg-slate-800/50 ${
+                                className={`min-w-0 flex-1 px-4 py-3 text-left transition-colors active:bg-slate-100 dark:active:bg-slate-800/50 ${
                                   selected ? 'bg-primary/10' : ''
                                 }`}
                                 onClick={() => setSelectedBatchId(lote.id)}
                               >
                                 <div className="flex items-start justify-between gap-2">
-                                  <p className="min-w-0 flex-1 break-words text-sm font-medium text-[#f0f4f8]">
+                                  <p className="min-w-0 flex-1 break-words text-sm font-medium text-slate-900 dark:text-[#f0f4f8]">
                                     {lote.archivoFuente ?? 'Sin nombre'}
                                   </p>
                                   <span
@@ -1157,7 +1185,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                                   </span>
                                 </div>
                                 <p className="mt-1 text-xs text-slate-500">{formatDate(lote.ejecutadoEn)} · {lote.tipoLote}</p>
-                                <p className="mt-0.5 text-xs text-[#9fb3d4]">
+                                <p className="mt-0.5 text-xs text-slate-600 dark:text-[#9fb3d4]">
                                   {lote.procesados}/{lote.totalRegistros} registros
                                 </p>
                               </button>
@@ -1178,7 +1206,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                         <li className="px-4 py-8 text-center text-slate-500">
                           <div className="flex flex-col items-center gap-2">
                             <span className="material-symbols-outlined text-[36px] text-slate-600">inbox</span>
-                            <p className="text-sm font-medium text-[#c9d7ed]">{batchesError ?? 'Aún no se registraron importaciones.'}</p>
+                            <p className="text-sm font-medium text-slate-700 dark:text-[#c9d7ed]">{batchesError ?? 'Aún no se registraron importaciones.'}</p>
                             <p className="max-w-sm text-xs text-slate-500">
                               Cuando completes una carga en los pasos anteriores, el historial aparecerá aquí.
                             </p>
@@ -1188,7 +1216,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                     </ul>
                     <div className="importaciones-historial-tabla hidden lg:block lg:overflow-visible">
                       <table className="w-full text-left text-sm">
-                        <thead className="bg-[#132a52] text-slate-500 uppercase text-xs">
+                        <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-[#0f1f3d]">
                           <tr>
                             <th className="px-4 py-2">Archivo</th>
                             <th className="px-4 py-2">Tipo</th>
@@ -1197,13 +1225,13 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                             <th className="px-2 py-2 w-12 text-center" aria-label="Descartar" />
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800">
+                        <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                           {batchesLoading ? (
                             <tr>
                               <td colSpan={5} className="px-4 py-6 text-center text-slate-500">Cargando...</td>
                             </tr>
                           ) : batches.length ? (
-                            batches.map((lote) => {
+                            historialPaginacion.lotes.map((lote) => {
                               const badge = estadoBadges[lote.estado] ?? {
                                 label: lote.estado,
                                 bg: 'bg-slate-700/60 border-slate-600',
@@ -1214,22 +1242,22 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                                 <tr
                                   key={lote.id}
                                   className={`cursor-pointer ${
-                                    selected ? 'bg-primary/15 hover:bg-primary/15' : 'hover:bg-slate-800/30'
+                                    selected ? 'bg-primary/15 hover:bg-primary/15' : 'hover:bg-slate-50 dark:hover:bg-slate-800/30'
                                   }`}
                                   onClick={() => setSelectedBatchId(lote.id)}
                                 >
                                   <td className="px-4 py-3">
-                                    <p className="text-[#f0f4f8] font-medium truncate">{lote.archivoFuente ?? 'Sin nombre'}</p>
+                                    <p className="truncate font-medium text-slate-900 dark:text-[#f0f4f8]">{lote.archivoFuente ?? 'Sin nombre'}</p>
                                     <p className="text-xs text-slate-500">{formatDate(lote.ejecutadoEn)}</p>
                                   </td>
-                                  <td className="px-4 py-3 text-[#9fb3d4]">{lote.tipoLote}</td>
+                                  <td className="px-4 py-3 text-slate-600 dark:text-[#9fb3d4]">{lote.tipoLote}</td>
                                   <td className="px-4 py-3">
                                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-semibold ${badge.bg} ${badge.text}`}>
                                       <span className="material-symbols-outlined text-[14px]">task</span>
                                       {badge.label}
                                     </span>
                                   </td>
-                                  <td className="px-4 py-3 text-[#9fb3d4]">
+                                  <td className="px-4 py-3 text-slate-600 dark:text-[#9fb3d4]">
                                     {lote.procesados}/{lote.totalRegistros}
                                   </td>
                                   <td
@@ -1260,7 +1288,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                               <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
                                 <div className="flex flex-col items-center gap-2">
                                   <span className="material-symbols-outlined text-[36px] text-slate-600">inbox</span>
-                                  <p className="text-sm font-medium text-[#c9d7ed]">{batchesError ?? 'Aún no se registraron importaciones.'}</p>
+                                  <p className="text-sm font-medium text-slate-700 dark:text-[#c9d7ed]">{batchesError ?? 'Aún no se registraron importaciones.'}</p>
                                   <p className="text-xs text-slate-500 max-w-sm">
                                     Cuando completes una carga en los pasos anteriores, el historial aparecerá aquí.
                                   </p>
@@ -1271,6 +1299,56 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                         </tbody>
                       </table>
                     </div>
+                    {batches.length > 0 && !batchesLoading ? (
+                      <div className="flex shrink-0 flex-col gap-3 border-t border-slate-200 px-4 py-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Mostrando {historialPaginacion.cantidadVisible} de {historialPaginacion.total} registros
+                        </p>
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                          <button
+                            type="button"
+                            className={HISTORIAL_PAG_BTN}
+                            aria-label="Primera página"
+                            disabled={historialPaginacion.pagina <= 1}
+                            onClick={() => setHistorialPagina(1)}
+                          >
+                            <span className="material-symbols-outlined text-[18px]">first_page</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={HISTORIAL_PAG_BTN}
+                            aria-label="Página anterior"
+                            disabled={historialPaginacion.pagina <= 1}
+                            onClick={() => setHistorialPagina((p) => Math.max(1, p - 1))}
+                          >
+                            <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+                          </button>
+                          <span className="min-w-[6.5rem] px-1 text-center text-xs tabular-nums text-slate-600 dark:text-slate-400">
+                            Página {historialPaginacion.pagina} de {historialPaginacion.totalPaginas}
+                          </span>
+                          <button
+                            type="button"
+                            className={HISTORIAL_PAG_BTN}
+                            aria-label="Página siguiente"
+                            disabled={historialPaginacion.pagina >= historialPaginacion.totalPaginas}
+                            onClick={() =>
+                              setHistorialPagina((p) => Math.min(historialPaginacion.totalPaginas, p + 1))
+                            }
+                          >
+                            <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={HISTORIAL_PAG_BTN}
+                            aria-label="Última página"
+                            disabled={historialPaginacion.pagina >= historialPaginacion.totalPaginas}
+                            onClick={() => setHistorialPagina(historialPaginacion.totalPaginas)}
+                          >
+                            <span className="material-symbols-outlined text-[18px]">last_page</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -1318,10 +1396,10 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                 <div className="importaciones-detail-actions flex shrink-0 flex-wrap items-center gap-2 max-xl:w-full xl:flex-row xl:items-start xl:gap-2">
                   <div className="btn-mobile-stack flex w-full flex-col gap-2 sm:w-auto max-xl:flex-col-reverse xl:w-[7.5rem] xl:flex-col">
                   <button
-                    className={`btn-modern btn-mobile-cta flex items-center justify-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold ${
+                    className={`import-detalle-btn-confirmar btn-modern btn-mobile-cta flex items-center justify-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold ${
                       !batchDetail || batchDetail.estado === 'completado' || confirmBusy || discardLoading
-                        ? 'border-slate-700 text-slate-500 cursor-not-allowed opacity-60 xl:border-slate-300 xl:text-slate-400 dark:xl:border-slate-600 dark:xl:text-slate-500'
-                        : 'border-emerald-500 text-emerald-300 hover:bg-emerald-500/10 xl:border-slate-300 xl:bg-white xl:text-slate-700 xl:hover:bg-slate-50 dark:xl:border-slate-600 dark:xl:bg-[#0f1a2f] dark:xl:text-emerald-300 dark:xl:hover:bg-emerald-500/10'
+                        ? 'border-slate-300 text-slate-400 cursor-not-allowed opacity-60 dark:border-slate-700 dark:text-slate-500 xl:border-slate-300 xl:bg-white dark:xl:border-slate-600 dark:xl:bg-[#0f1a2f]'
+                        : 'border-emerald-500 bg-white text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500/70 dark:bg-[#0f1a2f] dark:text-emerald-300 dark:hover:bg-emerald-500/10'
                     }`}
                     type="button"
                     onClick={handleConfirmBatch}
@@ -1341,10 +1419,10 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                         : 'Confirmar'}
                   </button>
                   <button
-                    className={`btn-modern btn-mobile-cta flex items-center justify-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold ${
+                    className={`import-detalle-btn-descartar btn-modern btn-mobile-cta flex items-center justify-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold ${
                       !batchDetail || !loteEsDescartable(batchDetail.estado) || confirmBusy || discardLoading
                         ? 'border-slate-300 text-slate-400 cursor-not-allowed opacity-60 dark:border-slate-700 dark:text-slate-500 xl:border-slate-300 xl:bg-white dark:xl:border-slate-600 dark:xl:bg-[#0f1a2f]'
-                        : 'btn-modern-danger border-rose-500/50 text-rose-700 hover:bg-rose-50 dark:text-rose-200 dark:hover:bg-rose-500/10 xl:border-slate-300 xl:bg-white xl:text-slate-700 xl:hover:bg-slate-50 dark:xl:border-slate-600 dark:xl:bg-[#0f1a2f] dark:xl:text-rose-200 dark:xl:hover:bg-rose-500/10'
+                        : 'border-rose-500 bg-white text-rose-700 hover:bg-rose-50 dark:border-rose-500/70 dark:bg-[#0f1a2f] dark:text-rose-300 dark:hover:bg-rose-500/10'
                     }`}
                     type="button"
                     title="Quitar la carga del historial"
