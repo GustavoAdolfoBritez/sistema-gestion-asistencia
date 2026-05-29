@@ -1023,12 +1023,44 @@ body {
 .app-sidebar-shell {
   border-right: 1px solid #1c2a50;
   background: linear-gradient(180deg, #162347 0%, #131e3c 52%, #101a33 100%);
+  box-shadow: none;
 }
 
 /* Light mode sidebar */
 html:not(.dark) .app-sidebar-shell {
   background: #ffffff !important;
   border-right: 1px solid #e2e8f0 !important;
+  box-shadow: none !important;
+}
+
+/** Sidebar escritorio (lg+): plano, solo borde derecho (misma línea que el header). */
+@media (min-width: 1024px) {
+  .app-sidebar-shell {
+    box-shadow: none !important;
+    border-right-width: 1px;
+    border-right-style: solid;
+  }
+
+  .dark .app-sidebar-shell {
+    border-right-color: rgb(30 41 59); /* slate-800, alineado con border-b del header */
+  }
+
+  html:not(.dark) .app-sidebar-shell {
+    border-right-color: #cbd5e1 !important; /* slate-300, más legible sobre el shell claro */
+  }
+}
+
+/** Drawer móvil/tablet: elevación lateral; en escritorio sigue plano. */
+@media (max-width: 1023px) {
+  .app-sidebar-shell {
+    border-right: 1px solid #1c2a50;
+    box-shadow: 4px 0 24px rgba(2, 6, 23, 0.45);
+  }
+
+  html:not(.dark) .app-sidebar-shell {
+    border-right: 1px solid #e2e8f0 !important;
+    box-shadow: 4px 0 20px rgba(15, 23, 42, 0.1) !important;
+  }
 }
 
 /* Panel lateral derecho (Usuarios): mismo fondo que app-sidebar-shell */
@@ -1510,7 +1542,6 @@ html:not(.dark) .login-shell-bg {
 /* ── Sidebar: blanco limpio con texto oscuro ── */
 html:not(.dark) .app-sidebar-shell {
   background: #ffffff !important;
-  border-right: 1px solid #e2e8f0 !important;
 }
 html:not(.dark) .app-sidebar-shell .text-\[\#f0f4f8\],
 html:not(.dark) .app-sidebar-shell .text-\[\#e7eef9\],
