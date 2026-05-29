@@ -539,6 +539,15 @@ export function AuditoriaPage({ onLogout }: Props) {
     });
   }, [eventos, q]);
 
+  const cerrarDetalleEvento = useCallback(() => {
+    setSeleccionado(null);
+    setMostrarDatosTecnicos(false);
+  }, []);
+
+  useEffect(() => {
+    cerrarDetalleEvento();
+  }, [queryString, q, cerrarDetalleEvento]);
+
   useEffect(() => {
     if (!accion) return;
     if (!accionesDisponibles.includes(accion)) {
@@ -785,15 +794,19 @@ export function AuditoriaPage({ onLogout }: Props) {
             </div>
 
             <div
-              className="auditoria-workspace flex min-h-0 flex-col gap-3 sm:gap-4"
+              className={`auditoria-workspace flex min-h-0 flex-col gap-3 sm:gap-4 ${
+                eventosFiltrados.length > 0 || seleccionado ? 'flex-1' : ''
+              }`}
               data-has-selection={seleccionado ? 'true' : 'false'}
             >
-            <div
-              className={`auditoria-tabla-panel min-w-0 rounded-xl border border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-[#132a52] ${
-                seleccionado ? 'max-xl:hidden' : ''
-              }`}
-            >
-              <div className="auditoria-tabla-scroll flex min-h-0 min-w-0 flex-1 flex-col max-lg:max-h-none max-lg:overflow-visible lg:min-h-0 lg:overflow-auto">
+            <div className="auditoria-tabla-panel flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-[#132a52]">
+              <div
+                className={
+                  !eventosFiltrados.length
+                    ? `auditoria-tabla-scroll flex min-h-0 min-w-0 flex-1 flex-col max-lg:max-h-none max-lg:overflow-visible lg:min-h-0 lg:overflow-auto${seleccionado ? ' max-xl:hidden' : ''}`
+                    : `auditoria-tabla-scroll auditoria-tabla-scroll--con-datos min-h-0 min-w-0 flex-1 overflow-x-auto overflow-y-auto overscroll-contain max-lg:overflow-visible${seleccionado ? ' max-xl:hidden' : ''}`
+                }
+              >
                 {!eventosFiltrados.length ? (
                   <div className="auditoria-eventos-estado-vacio m-3 flex min-h-[min(42vh,18rem)] flex-1 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white px-4 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-[#132a52] dark:text-slate-400 xl:min-h-[min(28vh,14rem)]">
                     {loading ? 'Cargando eventos…' : 'No hay eventos con esos filtros'}
@@ -811,7 +824,7 @@ export function AuditoriaPage({ onLogout }: Props) {
                     ))}
                 </ul>
 
-                <div className="scroll-region-table hidden min-w-0 overflow-x-auto overscroll-x-contain xl:block">
+                <div className="scroll-region-table hidden min-w-0 overscroll-x-contain xl:block">
                 <table className="auditoria-tabla-eventos w-full min-w-[52rem] table-auto text-sm">
                   <colgroup>
                     <col className="w-[1%]" />
@@ -868,55 +881,59 @@ export function AuditoriaPage({ onLogout }: Props) {
                   </>
                 )}
               </div>
-            </div>
+              {!seleccionado && eventosFiltrados.length > 0 && !loading ? (
+                <p className="auditoria-tabla-ayuda shrink-0 border-t border-slate-200 px-4 py-2.5 text-left text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                  Selecciona un evento para ver más información.
+                </p>
+              ) : null}
 
-            <div
-              className={`auditoria-detail-panel rounded-xl border p-4 xl:shrink-0 ${
-                seleccionado
-                  ? 'auditoria-detail-panel--activo max-xl:flex max-xl:min-h-0 max-xl:flex-1 max-xl:flex-col max-xl:overflow-hidden max-xl:p-3'
-                  : 'max-xl:hidden'
-              }`}
-            >
-              {seleccionado ? (
+            {seleccionado ? (
+            <div className="auditoria-detail-panel auditoria-detail-panel--activo shrink-0 border-t border-slate-200 p-4 max-xl:flex max-xl:min-h-0 max-xl:flex-1 max-xl:flex-col max-xl:overflow-hidden max-xl:p-3 xl:flex xl:max-h-[min(45vh,28rem)] xl:flex-col xl:overflow-hidden dark:border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setSeleccionado(null)}
+                  onClick={cerrarDetalleEvento}
                   className="mb-3 flex w-full shrink-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:bg-slate-800 xl:hidden"
                 >
                   <span className="material-symbols-outlined text-[18px]">arrow_back</span>
                   Volver al listado
                 </button>
-              ) : null}
               <div className="mb-3 flex shrink-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                <h2 className="text-base font-semibold text-slate-900 dark:text-[#f0f4f8]">Detalle del evento</h2>
-                {seleccionado ? (
+                <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                  <h2 className="text-base font-semibold text-slate-900 dark:text-[#f0f4f8]">Detalle del evento</h2>
+                    <button
+                      type="button"
+                      onClick={cerrarDetalleEvento}
+                      className="inline-flex shrink-0 items-center justify-center rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-[#f0f4f8] sm:hidden"
+                      aria-label="Cerrar detalle"
+                      title="Cerrar detalle"
+                    >
+                      <span className="material-symbols-outlined text-[22px]">close</span>
+                    </button>
+                </div>
                   <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
                     <button
                       type="button"
                       onClick={() => setMostrarDatosTecnicos((prev) => !prev)}
-                      className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:flex-none dark:border-slate-500 dark:bg-transparent dark:text-[#e7eef9] dark:hover:bg-white/5 xl:mr-6"
+                      className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:flex-none dark:border-slate-500 dark:bg-transparent dark:text-[#e7eef9] dark:hover:bg-white/5 xl:mr-2"
                     >
                       {mostrarDatosTecnicos ? 'Ocultar datos técnicos' : 'Datos técnicos avanzados'}
                     </button>
                     <button
                       type="button"
-                      onClick={() => setSeleccionado(null)}
-                      className="auditoria-detalle-cerrar-tablet hidden shrink-0 items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-white/5"
+                      onClick={cerrarDetalleEvento}
+                      className="hidden size-[34px] shrink-0 items-center justify-center rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 sm:inline-flex dark:border-slate-600 dark:text-slate-300 dark:hover:bg-white/5"
                       aria-label="Cerrar detalle"
+                      title="Cerrar detalle"
                     >
-                      <span className="material-symbols-outlined text-[16px]">close</span>
+                      <span className="material-symbols-outlined text-[20px]">close</span>
                     </button>
                   </div>
-                ) : null}
               </div>
-              {!seleccionado ? (
-                <p className="auditoria-detalle-placeholder text-sm text-slate-500 dark:text-slate-400 max-xl:hidden">
-                  Selecciona un evento para ver más información.
-                </p>
-              ) : (
                 <div
-                  className={`auditoria-detail-body scroll-region app-scroll-content min-h-0 flex-1 overflow-y-auto overflow-x-auto overscroll-y-contain text-sm max-xl:max-h-none ${
-                    mostrarDatosTecnicos ? 'xl:max-h-[min(38vh,22rem)]' : 'xl:max-h-[min(28vh,15rem)]'
+                  className={`auditoria-detail-body min-h-0 text-sm max-xl:flex-1 max-xl:overflow-y-auto xl:flex-1 xl:overflow-y-auto ${
+                    mostrarDatosTecnicos
+                      ? 'max-xl:max-h-[min(42vh,24rem)] max-xl:overflow-x-auto max-xl:overflow-y-auto max-xl:overscroll-y-contain'
+                      : ''
                   }`}
                 >
                   <div
@@ -928,7 +945,7 @@ export function AuditoriaPage({ onLogout }: Props) {
                   >
                     <div
                       className={`w-full min-w-0 text-slate-700 dark:text-[#e7eef9] ${
-                        mostrarDatosTecnicos ? 'max-xl:shrink-0 xl:pr-0' : 'xl:flex-1 xl:pr-5'
+                        mostrarDatosTecnicos ? 'max-xl:shrink-0 xl:pr-0' : 'xl:pr-0'
                       }`}
                     >
                       <div className="auditoria-detalle-movil-stack flex w-full flex-col gap-4 xl:hidden">
@@ -1095,7 +1112,8 @@ export function AuditoriaPage({ onLogout }: Props) {
                     ) : null}
                   </div>
                 </div>
-              )}
+            </div>
+            ) : null}
             </div>
             </div>
           </section>
