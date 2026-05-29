@@ -184,7 +184,7 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
     : 'rounded-lg border border-slate-300 bg-white text-black shadow-sm pl-3 pr-3';
 
   /** Selects de la barra 'Ver estadísticas de:' (nombres largos de carrera/facultad). */
-  const panelStatsFilterSelectClass = `${panelNativeSelectClass} min-w-[12rem] w-full max-w-md max-lg:min-w-0 max-lg:max-w-full sm:min-w-[14rem] sm:w-auto`;
+  const panelStatsFilterSelectClass = `${panelNativeSelectClass} min-w-[12rem] w-full max-w-md sm:w-auto sm:min-w-[14rem]`;
 
   const [alertas, setAlertas] = useState<Alerta[]>([]);
   const [estadisticas, setEstadisticas] = useState<Estadistica[]>([]);
@@ -570,15 +570,15 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
               </div>
             </div>
 
-            <div className="flex min-w-0 flex-col gap-3 rounded-lg border border-slate-800 bg-slate-900/40 px-4 py-3 max-lg:px-3 max-lg:py-2.5 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="flex min-w-0 flex-wrap items-center gap-3 rounded-lg border border-slate-800 bg-slate-900/40 px-4 py-3">
               <span className="material-symbols-outlined text-slate-800 dark:text-white text-[18px] shrink-0">filter_list</span>
               <p className="text-xs font-semibold text-slate-800 dark:text-white uppercase tracking-wider shrink-0">Ver estadísticas de:</p>
               {!contextoFiltrosListo ? (
                 <ScopeSelectorSkeleton
                   soloCarrera={alcanceListo && alcanceFiltrosPanel === 'carrera'}
                   hideLabel
-                  gridClassName="grid min-w-0 w-full grid-cols-1 gap-3 lg:flex lg:flex-1 lg:flex-wrap"
-                  className="w-full min-w-0 lg:flex-1"
+                  gridClassName="flex flex-wrap gap-3 flex-1 min-w-[12rem]"
+                  className="flex-1"
                 />
               ) : alcanceFiltrosPanel === 'carrera' ? (
                 <>

@@ -255,6 +255,25 @@ const JUSTIF_TABLE_HEAD_CLASS =
 const JUSTIF_TABLE_ROW_CLASS =
   'border-t border-slate-200 align-top hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-[#0d1b2e]/40';
 
+/** Campos del formulario de justificaciones (claro/oscuro, todos los breakpoints). */
+const JUSTIF_FIELD_CLASS =
+  'rounded-lg border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 dark:border-slate-600 dark:bg-[#0b2147] dark:text-[#e7eef9] dark:placeholder:text-slate-500';
+
+const JUSTIF_ALUMNO_ITEM_SELECTED =
+  'border-primary/50 bg-primary/10 ring-1 ring-primary/25 shadow-sm dark:bg-primary/15';
+
+const JUSTIF_ALUMNO_ITEM_IDLE =
+  'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700/60 dark:bg-[#0d1b2e] dark:hover:border-slate-500 dark:hover:bg-[#132a52]';
+
+const JUSTIF_DIAS_PANEL_CLASS =
+  'rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700/60 dark:bg-[#0d1b2e]';
+
+const JUSTIF_DAY_CHIP_CHECKED =
+  'border-primary bg-primary/10 text-slate-900 dark:bg-primary/20 dark:text-[#e7eef9]';
+
+const JUSTIF_DAY_CHIP_IDLE =
+  'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50 dark:border-slate-700 dark:bg-transparent dark:text-slate-400 dark:hover:border-slate-500 dark:hover:text-slate-200';
+
 function claseBadgeEstadoJustificacion(estado: JustificacionEstado): string {
   if (estado === 'aprobada') {
     return 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300';
@@ -262,7 +281,7 @@ function claseBadgeEstadoJustificacion(estado: JustificacionEstado): string {
   if (estado === 'rechazada') {
     return 'border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300';
   }
-  return 'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-400/60 dark:bg-transparent dark:text-amber-300';
+  return 'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-400/60 dark:bg-amber-500/10 dark:text-amber-300';
 }
 
 const PLANILLA_KPI_ITEMS = [
@@ -2628,7 +2647,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[18px]">search</span>
                             <input
                               type="text"
-                              className="w-full rounded-lg border py-2 pl-9 pr-4 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 max-lg:min-h-11 max-lg:border-slate-300 max-lg:bg-white max-lg:text-slate-900 max-lg:placeholder:text-slate-400 lg:border-[#4f8cdb] lg:bg-[#132a52] lg:text-[#e7eef9]"
+                              className={`w-full py-2 pl-9 pr-4 text-sm max-lg:min-h-11 ${JUSTIF_FIELD_CLASS}`}
                               placeholder="Buscar por nombre o CI..."
                               value={justifAlumnoBusqueda}
                               onChange={(e) => {
@@ -2645,14 +2664,14 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                                 Cargando ausencias...
                               </p>
                             ) : ausenciasError ? (
-                              <div className="px-4 py-3 flex items-start gap-2 text-rose-300 text-sm">
+                              <div className="px-4 py-3 flex items-start gap-2 text-sm text-rose-700 dark:text-rose-300">
                                 <span className="material-symbols-outlined text-[16px] mt-0.5">error</span>
                                 <div>
                                   <p className="font-medium">Error al cargar ausencias</p>
-                                  <p className="text-xs text-rose-400">{ausenciasError}</p>
+                                  <p className="text-xs text-rose-600 dark:text-rose-400">{ausenciasError}</p>
                                   <button
                                     type="button"
-                                    className="mt-1 text-xs text-blue-400 hover:underline"
+                                    className="mt-1 text-xs text-primary hover:underline"
                                     onClick={() => void cargarAusencias(cursoId)}
                                   >
                                     Reintentar
@@ -2673,13 +2692,14 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                                   setJustifAlumnoSeleccionado(al.matriculaId);
                                   setJustifDiasSeleccionados([]);
                                 }}
-                                className={`group flex w-full items-center gap-2 rounded-md border px-2.5 py-2 text-left text-sm transition-all max-lg:min-h-12 max-lg:rounded-xl max-lg:px-3 max-lg:py-3
-                                  ${justifAlumnoSeleccionado === al.matriculaId
-                                    ? 'border-primary/50 bg-primary/15 ring-1 ring-primary/25 shadow-sm'
-                                    : 'border-slate-700/60 bg-[#0d1b2e] hover:border-slate-500 hover:bg-[#132a52] max-lg:border-slate-200 max-lg:bg-slate-50 max-lg:hover:border-slate-300 max-lg:hover:bg-slate-100 dark:max-lg:border-slate-700/60 dark:max-lg:bg-[#0d1b2e] dark:max-lg:hover:bg-[#132a52]'}`}
+                                className={`group flex w-full items-center gap-2 rounded-md border px-2.5 py-2 text-left text-sm transition-all max-lg:min-h-12 max-lg:rounded-xl max-lg:px-3 max-lg:py-3 ${
+                                  justifAlumnoSeleccionado === al.matriculaId
+                                    ? JUSTIF_ALUMNO_ITEM_SELECTED
+                                    : JUSTIF_ALUMNO_ITEM_IDLE
+                                }`}
                               >
                                 <div className="min-w-0 flex-1">
-                                  <p className="text-[13px] font-semibold leading-snug tracking-tight whitespace-normal break-words text-[#e7eef9] max-lg:text-slate-900 dark:max-lg:text-[#e7eef9]">
+                                  <p className="text-[13px] font-semibold leading-snug tracking-tight whitespace-normal break-words text-slate-900 dark:text-[#e7eef9]">
                                     {formatoNombreLegible(al.alumno)}
                                   </p>
                                   <p className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500">
@@ -2707,9 +2727,9 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                           <p className="text-xs font-semibold uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
                             <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary text-white text-[10px] font-bold">2</span>
                             Días a justificar —
-                            <span className="text-slate-300 normal-case font-medium">{formatoNombreLegible(alumno.alumno)}</span>
+                            <span className="text-slate-600 normal-case font-medium dark:text-slate-300">{formatoNombreLegible(alumno.alumno)}</span>
                           </p>
-                          <div className="rounded-lg border border-slate-700/60 bg-[#0d1b2e] p-3 max-lg:border-slate-200 max-lg:bg-slate-50 dark:max-lg:border-slate-700/60 dark:max-lg:bg-[#0d1b2e]">
+                          <div className={JUSTIF_DIAS_PANEL_CLASS}>
                             {!alumno.dias.length ? (
                               <p className="text-sm text-slate-500">
                                 Este alumno no tiene inasistencias sin justificar registradas.
@@ -2726,11 +2746,11 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                                       onClick={() => setJustifDiasSeleccionados((prev) =>
                                         checked ? prev.filter((k) => k !== diaKey) : [...prev, diaKey]
                                       )}
-                                      className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium max-lg:min-h-11 max-lg:px-4 ${checked
-                                          ? 'border-primary bg-primary/20 text-[#e7eef9] max-lg:text-slate-900 dark:max-lg:text-[#e7eef9]'
-                                          : 'border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200 max-lg:border-slate-300 max-lg:bg-white max-lg:text-slate-600 max-lg:hover:border-slate-400 dark:max-lg:border-slate-700 dark:max-lg:bg-transparent'}`}
+                                      className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium max-lg:min-h-11 max-lg:px-4 ${
+                                        checked ? JUSTIF_DAY_CHIP_CHECKED : JUSTIF_DAY_CHIP_IDLE
+                                      }`}
                                     >
-                                      <span className={`material-symbols-outlined text-[15px] ${checked ? 'text-primary' : 'text-slate-600'}`}>
+                                      <span className={`material-symbols-outlined text-[15px] ${checked ? 'text-primary' : 'text-slate-500 dark:text-slate-400'}`}>
                                         {checked ? 'check_box' : 'check_box_outline_blank'}
                                       </span>
                                       {new Date(`${d.fecha}T00:00:00`).toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: 'short' })}
@@ -2759,9 +2779,9 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                       </p>
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <label className="flex flex-col gap-1.5 text-sm">
-                          <span className="text-xs uppercase text-slate-500 max-lg:text-slate-600 lg:text-slate-400">Motivo</span>
+                          <span className="text-xs uppercase text-slate-500 dark:text-slate-400">Motivo</span>
                           <textarea
-                            className="min-h-[5.5rem] resize-none rounded-lg border px-3 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 max-lg:border-slate-300 max-lg:bg-white max-lg:text-slate-900 max-lg:placeholder:text-slate-400 md:min-h-[80px] lg:border-[#4f8cdb] lg:bg-[#132a52] lg:text-[#e7eef9]"
+                            className={`min-h-[5.5rem] w-full resize-none px-3 py-2.5 text-sm md:min-h-[80px] ${JUSTIF_FIELD_CLASS}`}
                             placeholder="Describe el motivo de la inasistencia..."
                             value={justifMotivo}
                             onChange={(e) => setJustifMotivo(e.target.value)}
@@ -2769,14 +2789,12 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                           />
                         </label>
                         <div className="flex min-w-0 flex-col gap-1.5 text-sm">
-                          <span className="text-xs uppercase text-slate-500 max-lg:text-slate-600 lg:text-slate-400">
+                          <span className="text-xs uppercase text-slate-500 dark:text-slate-400">
                             Documento justificativo (PDF)
                           </span>
                           <div
-                            className={`app-file-upload-zone max-lg:border-slate-300 max-lg:bg-slate-50 max-lg:hover:border-slate-400 max-lg:hover:bg-slate-100 dark:max-lg:border-slate-600 dark:max-lg:bg-[#0d1b2e] dark:max-lg:hover:border-slate-500 dark:max-lg:hover:bg-[#132a52] lg:min-h-[80px] lg:border-slate-600 lg:bg-[#0d1b2e] lg:hover:border-slate-500 lg:hover:bg-[#132a52] ${
-                              justifArchivo
-                                ? 'app-file-upload-zone--filled max-lg:border-emerald-400 max-lg:bg-emerald-50 max-lg:hover:bg-emerald-50 dark:max-lg:border-emerald-500/50 dark:max-lg:bg-emerald-500/10'
-                                : ''
+                            className={`app-file-upload-zone lg:min-h-[80px] ${
+                              justifArchivo ? 'app-file-upload-zone--filled' : ''
                             }`}
                           >
                             <input
@@ -2972,7 +2990,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                           {puedeResolverJustificaciones && pendiente ? (
                             <div className="space-y-2.5 border-t border-slate-200 pt-3 dark:border-slate-800">
                               <input
-                                className="w-full rounded-lg border px-3 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 max-lg:min-h-11 max-lg:border-slate-300 max-lg:bg-white max-lg:text-slate-900 lg:border-[#4f8cdb] lg:bg-[#132a52] lg:text-xs lg:text-[#e7eef9]"
+                                className={`w-full px-3 py-2.5 text-sm max-lg:min-h-11 lg:text-xs ${JUSTIF_FIELD_CLASS}`}
                                 placeholder="Comentario (opcional)"
                                 value={comentariosRevision[j.id] ?? ''}
                                 onChange={(e) =>
