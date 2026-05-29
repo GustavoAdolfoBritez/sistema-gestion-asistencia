@@ -581,28 +581,21 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
                   className="flex-1"
                 />
               ) : alcanceFiltrosPanel === 'carrera' ? (
-                <>
-                  <ScopeSelector
-                    hideLabel
-                    label="Filtrar por carrera"
-                    options={carrerasList}
-                    value={filtroCarreraId}
-                    placeholder="Seleccioná carrera"
-                    controlClassName={`py-1.5 text-sm focus:border-primary focus:outline-none ${panelStatsFilterSelectClass}`}
-                    onChange={(id) => {
-                      setFiltroCarreraId(id);
-                      if (id) {
-                        const c = carrerasCatalogo.find((x) => x.id === Number(id));
-                        if (c) setFiltroFacultadId(String(c.facultad_id));
-                      }
-                    }}
-                  />
-                  {filtroCarreraId ? (
-                    <span className="text-xs text-primary font-medium ml-auto">
-                      Carrera: {carrerasList.find((c) => c.id === Number(filtroCarreraId))?.nombre ?? ''}
-                    </span>
-                  ) : null}
-                </>
+                <ScopeSelector
+                  hideLabel
+                  label="Filtrar por carrera"
+                  options={carrerasList}
+                  value={filtroCarreraId}
+                  placeholder="Seleccioná carrera"
+                  controlClassName={`py-1.5 text-sm focus:border-primary focus:outline-none ${panelStatsFilterSelectClass}`}
+                  onChange={(id) => {
+                    setFiltroCarreraId(id);
+                    if (id) {
+                      const c = carrerasCatalogo.find((x) => x.id === Number(id));
+                      if (c) setFiltroFacultadId(String(c.facultad_id));
+                    }
+                  }}
+                />
               ) : alcanceFiltrosPanel === 'facultad' ? (
                 <>
                   <ScopeSelector
@@ -628,20 +621,6 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
                       controlClassName={`py-1.5 text-sm focus:border-primary focus:outline-none ${panelStatsFilterSelectClass}`}
                       onChange={setFiltroCarreraId}
                     />
-                  ) : null}
-                  {filtroFacultadId || filtroCarreraId ? (
-                    <span className="text-xs text-primary font-medium ml-auto truncate max-w-[min(100%,20rem)]">
-                      {[
-                        filtroFacultadId
-                          ? `Facultad: ${facultadesList.find((f) => f.id === Number(filtroFacultadId))?.nombre ?? ''}`
-                          : null,
-                        filtroCarreraId
-                          ? `Carrera: ${carrerasList.find((c) => c.id === Number(filtroCarreraId))?.nombre ?? ''}`
-                          : null,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </span>
                   ) : null}
                 </>
               ) : (
@@ -672,20 +651,6 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
                       controlClassName={`py-1.5 text-sm focus:border-primary focus:outline-none ${panelStatsFilterSelectClass}`}
                       onChange={setFiltroCarreraId}
                     />
-                  ) : null}
-                  {filtroFacultadId || filtroCarreraId ? (
-                    <span className="text-xs text-primary font-medium ml-auto truncate max-w-[min(100%,20rem)]">
-                      {[
-                        filtroFacultadId
-                          ? `Facultad: ${facultadesList.find((f) => f.id === Number(filtroFacultadId))?.nombre ?? ''}`
-                          : null,
-                        filtroCarreraId
-                          ? `Carrera: ${carrerasList.find((c) => c.id === Number(filtroCarreraId))?.nombre ?? ''}`
-                          : null,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </span>
                   ) : null}
                 </>
               )}

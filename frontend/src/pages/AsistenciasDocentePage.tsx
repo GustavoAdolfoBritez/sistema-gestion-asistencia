@@ -274,6 +274,9 @@ const JUSTIF_DAY_CHIP_CHECKED =
 const JUSTIF_DAY_CHIP_IDLE =
   'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50 dark:border-slate-700 dark:bg-transparent dark:text-slate-400 dark:hover:border-slate-500 dark:hover:text-slate-200';
 
+const JUSTIF_FALTAS_BADGE_CLASS =
+  'inline-flex shrink-0 items-center rounded-md border border-rose-300 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700 shadow-sm dark:border-rose-500/45 dark:bg-rose-950/70 dark:text-rose-300 dark:shadow-none';
+
 function claseBadgeEstadoJustificacion(estado: JustificacionEstado): string {
   if (estado === 'aprobada') {
     return 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300';
@@ -2702,14 +2705,14 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                                   <p className="text-[13px] font-semibold leading-snug tracking-tight whitespace-normal break-words text-slate-900 dark:text-[#e7eef9]">
                                     {formatoNombreLegible(al.alumno)}
                                   </p>
-                                  <p className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500">
-                                    <span className="material-symbols-outlined text-[13px] leading-none text-slate-500 shrink-0">id_card</span>
+                                  <p className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
+                                    <span className="material-symbols-outlined text-[13px] leading-none text-slate-500 shrink-0 dark:text-slate-400">id_card</span>
                                     <span>
-                                      CI <span className="tabular-nums text-slate-400">{al.documento}</span>
+                                      CI <span className="tabular-nums text-slate-400 dark:text-slate-500">{al.documento}</span>
                                     </span>
                                   </p>
                                 </div>
-                                <span className="inline-flex shrink-0 items-center rounded-md border border-rose-300 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700 shadow-sm max-lg:py-1 dark:border-rose-500/45 dark:bg-rose-500/18 dark:text-rose-100 dark:shadow-rose-950/30">
+                                <span className={JUSTIF_FALTAS_BADGE_CLASS}>
                                   {al.dias.length} {al.dias.length === 1 ? 'falta' : 'faltas'}
                                 </span>
                               </button>
@@ -2764,7 +2767,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                                 {justifDiasSeleccionados.length} {justifDiasSeleccionados.length === 1 ? 'día seleccionado' : 'días seleccionados'}
                               </p>
                             ) : alumno.dias.length > 0 ? (
-                              <p className="mt-2 text-xs text-slate-600">Haz clic en los días que quieres justificar.</p>
+                              <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">Haz clic en los días que quieres justificar.</p>
                             ) : null}
                           </div>
                         </div>
