@@ -90,6 +90,20 @@ function normalizarNombrePdf(fileName: string): string {
   return trimmed.toLowerCase().endsWith('.pdf') ? trimmed : `${trimmed}.pdf`;
 }
 
+/** Une path con API_BASE_URL y devuelve URL absoluta (new URL exige absoluta si la base es /api). */
+function resolveApiAbsoluteUrl(path: string): string {
+  const pathPart = path.startsWith('/') ? path : `/${path}`;
+  const base = API_BASE_URL.replace(/\/$/, '');
+  const combined = `${base}${pathPart}`;
+  if (/^https?:\/\//i.test(combined)) {
+    return combined;
+  }
+  if (typeof window !== 'undefined') {
+    return new URL(combined, window.location.origin).href;
+  }
+  return combined;
+}
+
 function obtenerTokenSesion(): string | null {
   return TOKEN_KEYS.map((key) => localStorage.getItem(key)).find(Boolean) ?? null;
 }
@@ -100,8 +114,7 @@ export function buildAuthenticatedPdfUrl(path: string): string {
   if (!token) {
     throw new SessionExpiredError();
   }
-  const base = path.startsWith('/') ? `${API_BASE_URL}${path}` : `${API_BASE_URL}/${path}`;
-  const parsed = new URL(base);
+  const parsed = new URL(resolveApiAbsoluteUrl(path));
   parsed.searchParams.set('access_token', token);
   return parsed.toString();
 }

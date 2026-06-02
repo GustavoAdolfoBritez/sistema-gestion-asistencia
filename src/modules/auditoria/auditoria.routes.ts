@@ -16,7 +16,14 @@ router.use('/auditoria', ...autenticarConPoliticaAlcance, autorizarRoles(...ROLE
 
 router.get('/auditoria/eventos', async (req, res, next) => {
     try {
-        const { desde, hasta, actorUsuarioId, modulo, accion, resultado, severidad, recursoTipo, q, limit, offset } = req.query;
+        const { desde, hasta, actorUsuarioId, modulo, accion, resultado, severidad, recursoTipo, q, limit, offset, page } = req.query;
+
+        const limitNum = limit ? Number(limit) : undefined;
+        const pageNum = page ? Number(page) : undefined;
+        let offsetNum = offset ? Number(offset) : undefined;
+        if (pageNum && limitNum && Number.isFinite(pageNum) && Number.isFinite(limitNum)) {
+            offsetNum = Math.max(0, (Math.max(1, Math.trunc(pageNum)) - 1) * Math.trunc(limitNum));
+        }
 
         const data = await listarEventosAuditoria({
             desde: desde ? String(desde) : undefined,
@@ -28,8 +35,8 @@ router.get('/auditoria/eventos', async (req, res, next) => {
             severidad: severidad ? (String(severidad) as 'baja' | 'media' | 'alta') : undefined,
             recursoTipo: recursoTipo ? String(recursoTipo) : undefined,
             q: q ? String(q) : undefined,
-            limit: limit ? Number(limit) : undefined,
-            offset: offset ? Number(offset) : undefined
+            limit: limitNum,
+            offset: offsetNum
         });
 
         res.json(data);

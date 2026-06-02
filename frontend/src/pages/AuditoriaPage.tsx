@@ -54,7 +54,77 @@ const ACCIONES_SUGERIDAS_POR_MODULO: Record<string, string[]> = {
 
 type RangoRapido = '' | 'ultimos_7_dias' | 'este_mes' | 'este_anio';
 
+const AUDITORIA_FILAS_POR_PAGINA_PC = 15;
+const AUDITORIA_FILAS_POR_PAGINA_MOVIL = 5;
+const AUDITORIA_MQ_VISTA_TARJETAS = '(max-width: 1279px)';
+
+function filasPorPaginaAuditoria(esVistaTarjetas: boolean): number {
+  return esVistaTarjetas ? AUDITORIA_FILAS_POR_PAGINA_MOVIL : AUDITORIA_FILAS_POR_PAGINA_PC;
+}
+
+const AUDITORIA_PAG_BTN =
+  'btn-modern btn-modern-ghost h-8 w-8 shrink-0 !min-h-0 !p-0 hover:!translate-y-0 active:!translate-y-0';
+
 const ZONA_AUDITORIA = 'America/Asuncion';
+
+function AuditoriaTablaColgroup() {
+  return (
+    <colgroup>
+      <col className="auditoria-col-fecha" />
+      <col className="auditoria-col-actor" />
+      <col className="auditoria-col-modulo" />
+      <col className="auditoria-col-accion" />
+      <col className="auditoria-col-recurso" />
+      <col className="auditoria-col-resultado" />
+    </colgroup>
+  );
+}
+
+function AuditoriaTablaEncabezado() {
+  return (
+    <thead className="auditoria-tabla-eventos-thead">
+      <tr>
+        <th className="whitespace-nowrap rounded-tl-xl px-3 py-2 text-left align-bottom">Fecha</th>
+        <th className="whitespace-nowrap px-3 py-2 text-left align-bottom">Actor</th>
+        <th className="whitespace-nowrap px-3 py-2 text-left align-bottom">Módulo</th>
+        <th className="px-3 py-2 text-left align-bottom">Acción</th>
+        <th className="px-3 py-2 text-left align-bottom">Recurso</th>
+        <th className="whitespace-nowrap rounded-tr-xl px-3 py-2 text-center align-bottom">Resultado</th>
+      </tr>
+    </thead>
+  );
+}
+
+function CeldaTextoTabla({
+  texto,
+  className = '',
+  variante = 'truncada',
+}: {
+  texto: string;
+  className?: string;
+  /** truncada = una línea; multilinea = salto de línea si no entra en la columna */
+  variante?: 'truncada' | 'multilinea';
+}) {
+  const esMultilinea = variante === 'multilinea';
+  return (
+    <td
+      className={`${esMultilinea ? 'auditoria-celda-multilinea' : 'auditoria-celda-truncada'} px-3 py-2 ${
+        esMultilinea ? 'align-top' : 'align-middle'
+      } ${className}`}
+      title={texto}
+    >
+      <span
+        className={
+          esMultilinea
+            ? 'auditoria-celda-multilinea-text block whitespace-normal break-words leading-snug'
+            : 'block max-w-full truncate'
+        }
+      >
+        {texto}
+      </span>
+    </td>
+  );
+}
 
 function toInputDate(date: Date): string {
   const year = date.getFullYear();
@@ -95,14 +165,6 @@ function etiquetaAccion(valor: string): string {
   if (valor === 'promocionar_semestre_curricular') return 'Promoción semestre curricular (por carrera)';
   if (valor === 'promocionar_semestre_curricular_masivo_facultad') return 'Promoción semestre curricular (masiva por facultad)';
   return formatearEtiqueta(valor);
-}
-
-function normalizarTexto(valor: string): string {
-  return valor
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim();
 }
 
 function obtenerActor(evento: EventoAuditoria): string {
@@ -322,7 +384,7 @@ function EventoAuditoriaTarjetaMovil({
       <button
         type="button"
         onClick={onSeleccionar}
-        className={`group w-full rounded-2xl border bg-gradient-to-br from-white via-white to-slate-50 p-3.5 text-left shadow-sm transition-all active:scale-[0.99] hover:border-sky-200/80 hover:shadow-md dark:from-[#152d55] dark:via-[#132a52] dark:to-[#0f2244] dark:hover:border-sky-500/30 ${
+        className={`auditoria-evento-tarjeta-movil group w-full rounded-2xl border bg-gradient-to-br from-white via-white to-slate-50 p-3.5 text-left shadow-sm transition-all active:scale-[0.99] hover:border-sky-200/80 hover:shadow-md dark:from-[#152d55] dark:via-[#132a52] dark:to-[#0f2244] dark:hover:border-sky-500/30 ${
           seleccionado
             ? 'border-sky-400 ring-2 ring-sky-400/35 dark:border-sky-500/60'
             : 'border-slate-200/90 dark:border-slate-700/80'
@@ -469,7 +531,28 @@ export function AuditoriaPage({ onLogout }: Props) {
   const [q, setQ] = useState('');
   const [exportandoPdf, setExportandoPdf] = useState(false);
   const [mostrarDatosTecnicos, setMostrarDatosTecnicos] = useState(false);
+  const [pagina, setPagina] = useState(1);
+  const [esVistaTarjetas, setEsVistaTarjetas] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(AUDITORIA_MQ_VISTA_TARJETAS).matches,
+  );
   const panelDatosTecnicosRef = useRef<HTMLDivElement | null>(null);
+  const auditoriaPageSectionRef = useRef<HTMLElement | null>(null);
+  const auditoriaMovilFooterRef = useRef<HTMLDivElement | null>(null);
+  const paginaPrevScrollRef = useRef(pagina);
+  const paginaPendienteScrollPieRef = useRef<number | null>(null);
+  const filasPorPagina = filasPorPaginaAuditoria(esVistaTarjetas);
+
+  useEffect(() => {
+    const mq = window.matchMedia(AUDITORIA_MQ_VISTA_TARJETAS);
+    const syncVista = () => setEsVistaTarjetas(mq.matches);
+    syncVista();
+    mq.addEventListener('change', syncVista);
+    return () => mq.removeEventListener('change', syncVista);
+  }, []);
+
+  useEffect(() => {
+    setPagina(1);
+  }, [filasPorPagina]);
 
   useEffect(() => {
     if (!rangoRapido) return;
@@ -490,16 +573,19 @@ export function AuditoriaPage({ onLogout }: Props) {
     setHasta(toInputDate(fin));
   }, [rangoRapido]);
 
-  const queryString = useMemo(() => {
-    const params = new URLSearchParams();
-    if (desde) params.set('desde', `${desde}T00:00:00Z`);
-    if (hasta) params.set('hasta', `${hasta}T23:59:59Z`);
-    if (modulo.trim()) params.set('modulo', modulo.trim());
-    if (accion.trim()) params.set('accion', accion.trim());
-    if (resultado) params.set('resultado', resultado);
-    params.set('limit', '120');
-    return params.toString();
-  }, [desde, hasta, modulo, accion, resultado]);
+  const paginacion = useMemo(() => {
+    const totalPaginas = Math.max(1, Math.ceil(total / filasPorPagina));
+    const paginaActual = Math.min(Math.max(1, pagina), totalPaginas);
+    const inicio = total === 0 ? 0 : (paginaActual - 1) * filasPorPagina + 1;
+    const fin = Math.min(paginaActual * filasPorPagina, total);
+    return {
+      totalPaginas,
+      paginaActual,
+      inicio,
+      fin,
+      cantidadVisible: eventos.length,
+    };
+  }, [total, pagina, eventos.length, filasPorPagina]);
 
   const modulosDisponibles = useMemo(() => {
     const modulosEventos = eventos.map((item) => item.modulo).filter(Boolean);
@@ -515,38 +601,24 @@ export function AuditoriaPage({ onLogout }: Props) {
       .sort((a, b) => etiquetaAccion(a).localeCompare(etiquetaAccion(b), 'es'));
   }, [accionesVistas, modulo]);
 
-  const eventosFiltrados = useMemo(() => {
-    const term = normalizarTexto(q);
-    if (!term) return eventos;
-
-    return eventos.filter((evento) => {
-      const detalleTxt = JSON.stringify(evento.detalle ?? {});
-      const antesTxt = JSON.stringify(evento.antes ?? {});
-      const despuesTxt = JSON.stringify(evento.despues ?? {});
-      const recursoTxt = `${evento.recurso_tipo ?? ''} ${evento.recurso_id ?? ''}`;
-      const base = [
-        evento.modulo,
-        evento.accion,
-        etiquetaAccion(evento.accion),
-        obtenerActor(evento),
-        construirResumenCambio(evento),
-        recursoTxt,
-        detalleTxt,
-        antesTxt,
-        despuesTxt,
-      ].join(' ');
-      return normalizarTexto(base).includes(term);
-    });
-  }, [eventos, q]);
-
   const cerrarDetalleEvento = useCallback(() => {
     setSeleccionado(null);
     setMostrarDatosTecnicos(false);
   }, []);
 
   useEffect(() => {
+    setPagina(1);
+  }, [desde, hasta, modulo, accion, resultado, q]);
+
+  useEffect(() => {
+    if (pagina > paginacion.totalPaginas) {
+      setPagina(paginacion.totalPaginas);
+    }
+  }, [pagina, paginacion.totalPaginas]);
+
+  useEffect(() => {
     cerrarDetalleEvento();
-  }, [queryString, q, cerrarDetalleEvento]);
+  }, [desde, hasta, modulo, accion, resultado, q, pagina, cerrarDetalleEvento]);
 
   useEffect(() => {
     if (!accion) return;
@@ -555,10 +627,29 @@ export function AuditoriaPage({ onLogout }: Props) {
     }
   }, [accion, accionesDisponibles]);
 
-  const cargarEventos = useCallback(async () => {
+  const construirQueryEventos = useCallback(
+    (paginaConsulta: number) => {
+      const params = new URLSearchParams();
+      if (desde) params.set('desde', `${desde}T00:00:00Z`);
+      if (hasta) params.set('hasta', `${hasta}T23:59:59Z`);
+      if (modulo.trim()) params.set('modulo', modulo.trim());
+      if (accion.trim()) params.set('accion', accion.trim());
+      if (resultado) params.set('resultado', resultado);
+      if (q.trim()) params.set('q', q.trim());
+      params.set('limit', String(filasPorPagina));
+      params.set('page', String(paginaConsulta));
+      return params.toString();
+    },
+    [desde, hasta, modulo, accion, resultado, q, filasPorPagina],
+  );
+
+  const cargarEventos = useCallback(async (paginaOverride?: number) => {
+    const paginaConsulta = paginaOverride ?? pagina;
     setLoading(true);
     try {
-      const data = await apiFetch<ApiList<EventoAuditoria>>(`/auditoria/eventos?${queryString}`);
+      const data = await apiFetch<ApiList<EventoAuditoria>>(
+        `/auditoria/eventos?${construirQueryEventos(paginaConsulta)}`,
+      );
       setEventos(data.datos ?? []);
       setTotal(data.total ?? 0);
       setAccionesVistas((prev) => {
@@ -576,7 +667,7 @@ export function AuditoriaPage({ onLogout }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [queryString]);
+  }, [construirQueryEventos, pagina]);
 
   const exportarPdf = useCallback(async () => {
     setExportandoPdf(true);
@@ -605,6 +696,45 @@ export function AuditoriaPage({ onLogout }: Props) {
   useEffect(() => {
     void cargarEventos();
   }, [cargarEventos]);
+
+  const scrollAlPiePaginaMovil = useCallback(() => {
+    const section = auditoriaPageSectionRef.current;
+    const footer = auditoriaMovilFooterRef.current;
+    if (!section) return;
+
+    const irAlPie = () => {
+      if (footer) {
+        const margen = 12;
+        const sectionRect = section.getBoundingClientRect();
+        const footerRect = footer.getBoundingClientRect();
+        const desplazamiento = footerRect.bottom - sectionRect.bottom + margen;
+        if (desplazamiento > 0) {
+          section.scrollTop += desplazamiento;
+        }
+      } else {
+        section.scrollTop = section.scrollHeight;
+      }
+    };
+
+    irAlPie();
+    window.requestAnimationFrame(irAlPie);
+  }, []);
+
+  useEffect(() => {
+    if (!esVistaTarjetas || seleccionado) return;
+    if (paginaPrevScrollRef.current === pagina) return;
+    paginaPrevScrollRef.current = pagina;
+    paginaPendienteScrollPieRef.current = pagina;
+  }, [pagina, esVistaTarjetas, seleccionado]);
+
+  useEffect(() => {
+    if (!esVistaTarjetas || seleccionado || loading) return;
+    if (paginaPendienteScrollPieRef.current !== pagina) return;
+
+    paginaPendienteScrollPieRef.current = null;
+    const timers = [0, 100, 250].map((ms) => window.setTimeout(() => scrollAlPiePaginaMovil(), ms));
+    return () => timers.forEach((id) => window.clearTimeout(id));
+  }, [loading, pagina, esVistaTarjetas, seleccionado, scrollAlPiePaginaMovil]);
 
   useEffect(() => {
     if (!seleccionado) {
@@ -638,19 +768,19 @@ export function AuditoriaPage({ onLogout }: Props) {
                 <h1 className="text-xl font-semibold truncate">Auditoría del sistema</h1>
               </div>
             </div>
-            <div className="w-full shrink-0 text-xs text-slate-400 sm:w-auto">Total eventos: {eventosFiltrados.length} / {total}</div>
           </header>
 
           <section
-            className={`auditoria-page-section flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:gap-5 sm:p-6 ${
+            ref={auditoriaPageSectionRef}
+            className={`auditoria-page-section flex min-h-0 flex-1 flex-col gap-4 p-4 sm:gap-5 sm:p-6 max-lg:gap-2 max-lg:p-2 sm:max-lg:gap-2.5 sm:max-lg:p-3 ${
               seleccionado
                 ? 'max-xl:overflow-hidden'
-                : 'max-lg:scroll-region max-lg:app-scroll-content max-lg:overflow-y-auto lg:overflow-hidden'
+                : 'max-lg:min-h-0 max-lg:flex-1 max-lg:overflow-y-auto max-lg:overscroll-y-contain xl:overflow-hidden'
             }`}
             data-has-selection={seleccionado ? 'true' : 'false'}
           >
             <div
-              className={`auditoria-filtros min-w-0 shrink-0 flex flex-col gap-3 rounded-xl border border-slate-800 bg-[#132a52] p-4 ${
+              className={`auditoria-filtros min-w-0 shrink-0 flex flex-col gap-3 rounded-xl border border-slate-800 bg-[#132a52] p-4 max-lg:relative max-lg:z-[2] ${
                 seleccionado ? 'max-xl:hidden' : ''
               }`}
             >
@@ -761,10 +891,23 @@ export function AuditoriaPage({ onLogout }: Props) {
                 <div className="btn-mobile-stack flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap lg:flex-row lg:items-center">
                   <button
                     type="button"
-                    onClick={() => void cargarEventos()}
+                    onClick={() => {
+                      setPagina(1);
+                      void cargarEventos(1);
+                    }}
                     className="btn-modern btn-modern-primary btn-mobile-cta w-full sm:w-auto"
                   >
                     {loading ? 'Cargando...' : 'Aplicar filtros'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void cargarEventos()}
+                    disabled={loading || exportandoPdf}
+                    className="btn-modern btn-modern-ghost btn-mobile-cta inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-600 bg-slate-900 text-sm text-slate-200 hover:bg-slate-800 sm:w-auto"
+                    aria-label="Actualizar tabla de eventos"
+                  >
+                    <span className={`material-symbols-outlined text-[18px] ${loading ? 'animate-spin' : ''}`}>refresh</span>
+                    {loading ? 'Actualizando...' : 'Actualizar'}
                   </button>
                   <button
                     type="button"
@@ -776,6 +919,7 @@ export function AuditoriaPage({ onLogout }: Props) {
                       setAccion('');
                       setResultado('');
                       setQ('');
+                      setPagina(1);
                     }}
                     className="btn-modern btn-modern-ghost btn-mobile-cta w-full rounded-lg border border-slate-600 bg-slate-900 text-sm text-slate-200 hover:bg-slate-800 sm:w-auto"
                   >
@@ -794,97 +938,216 @@ export function AuditoriaPage({ onLogout }: Props) {
             </div>
 
             <div
-              className={`auditoria-workspace flex min-h-0 flex-col gap-3 sm:gap-4 ${
-                eventosFiltrados.length > 0 || seleccionado ? 'flex-1' : ''
-              }`}
+              className="auditoria-workspace flex min-h-0 flex-col gap-3 max-lg:shrink-0 sm:gap-4 lg:min-h-0 lg:flex-1 lg:overflow-hidden"
               data-has-selection={seleccionado ? 'true' : 'false'}
             >
-            <div className="auditoria-tabla-panel flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-[#132a52]">
-              <div
-                className={
-                  !eventosFiltrados.length
-                    ? `auditoria-tabla-scroll flex min-h-0 min-w-0 flex-1 flex-col max-lg:max-h-none max-lg:overflow-visible lg:min-h-0 lg:overflow-auto${seleccionado ? ' max-xl:hidden' : ''}`
-                    : `auditoria-tabla-scroll auditoria-tabla-scroll--con-datos min-h-0 min-w-0 flex-1 overflow-x-auto overflow-y-auto overscroll-contain max-lg:overflow-visible${seleccionado ? ' max-xl:hidden' : ''}`
-                }
-              >
-                {!eventosFiltrados.length ? (
+            <div className="auditoria-tabla-panel flex min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-slate-50/80 max-lg:shrink-0 max-lg:overflow-visible dark:border-slate-800 dark:bg-[#132a52] lg:flex-1">
+              {!eventos.length ? (
+                <div
+                  className={`auditoria-tabla-scroll flex min-h-0 min-w-0 flex-1 flex-col max-lg:overflow-y-auto max-lg:overscroll-y-contain lg:min-h-0 lg:overflow-auto${seleccionado ? ' max-xl:hidden' : ''}`}
+                >
                   <div className="auditoria-eventos-estado-vacio m-3 flex min-h-[min(42vh,18rem)] flex-1 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white px-4 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-[#132a52] dark:text-slate-400 xl:min-h-[min(28vh,14rem)]">
                     {loading ? 'Cargando eventos…' : 'No hay eventos con esos filtros'}
                   </div>
-                ) : (
-                  <>
-                <ul className="auditoria-eventos-tarjetas flex flex-col gap-2.5 p-3 xl:hidden">
-                  {eventosFiltrados.map((evento) => (
-                      <EventoAuditoriaTarjetaMovil
-                        key={evento.id}
-                        evento={evento}
-                        seleccionado={seleccionado?.id === evento.id}
-                        onSeleccionar={() => setSeleccionado(evento)}
-                      />
-                    ))}
-                </ul>
-
-                <div className="scroll-region-table hidden min-w-0 overscroll-x-contain xl:block">
-                <table className="auditoria-tabla-eventos w-full min-w-[52rem] table-auto text-sm">
-                  <colgroup>
-                    <col className="w-[1%]" />
-                    <col className="w-[1%]" />
-                    <col className="w-[1%]" />
-                    <col />
-                    <col />
-                    <col className="w-[1%]" />
-                  </colgroup>
-                  <thead className="sticky top-0 z-[1] bg-[#0c1a3b] text-slate-300">
-                    <tr>
-                      <th className="whitespace-nowrap rounded-tl-xl px-3 py-2 text-left align-bottom">Fecha</th>
-                      <th className="whitespace-nowrap px-3 py-2 text-left align-bottom">Actor</th>
-                      <th className="whitespace-nowrap px-3 py-2 text-left align-bottom">Módulo</th>
-                      <th className="px-3 py-2 text-left align-bottom">Acción</th>
-                      <th className="px-3 py-2 text-left align-bottom">Recurso</th>
-                      <th className="whitespace-nowrap rounded-tr-xl px-3 py-2 text-left align-bottom">Resultado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {eventosFiltrados.map((evento) => (
-                      <tr
-                        key={evento.id}
-                        onClick={() => setSeleccionado(evento)}
-                        className={`cursor-pointer border-t border-slate-800 hover:bg-[#1e3a6b] ${
-                          seleccionado?.id === evento.id ? 'auditoria-fila-seleccionada bg-[#1e3a6b]' : ''
-                        }`}
-                      >
-                        <td className="whitespace-nowrap px-3 py-2 align-top text-slate-200">
-                          {formatearFechaLarga(evento.fecha_hora)}
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-2 align-top text-slate-300">
-                          {obtenerActor(evento)}
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-2 align-top text-slate-300">{evento.modulo}</td>
-                        <td className="min-w-[10rem] whitespace-normal break-words px-3 py-2 align-top text-slate-200">
-                          {etiquetaAccion(evento.accion)}
-                        </td>
-                        <td className="auditoria-celda-secundaria min-w-[12rem] whitespace-normal break-words px-3 py-2 align-top text-slate-400">
-                          {formatearRecurso(evento)}
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-2 align-top">
-                          <span
-                            className={`rounded px-2 py-1 text-xs font-semibold uppercase ${claseBadgeResultadoAuditoria(evento.resultado)}`}
-                          >
-                            {evento.resultado}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
                 </div>
-                  </>
-                )}
-              </div>
-              {!seleccionado && eventosFiltrados.length > 0 && !loading ? (
-                <p className="auditoria-tabla-ayuda shrink-0 border-t border-slate-200 px-4 py-2.5 text-left text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                  Selecciona un evento para ver más información.
-                </p>
+              ) : (
+                <>
+                  <div
+                    className={`auditoria-movil-panel flex flex-col xl:hidden${seleccionado ? ' max-xl:hidden' : ''}`}
+                  >
+                    <div className="auditoria-tabla-scroll auditoria-tabla-scroll--movil min-w-0">
+                      {!seleccionado && total > 0 ? (
+                        <p className="auditoria-tabla-ayuda auditoria-tabla-ayuda--movil shrink-0 border-b border-slate-200 px-4 py-2.5 text-left text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                          Selecciona un evento para ver más información.
+                        </p>
+                      ) : null}
+                      <ul className="auditoria-eventos-tarjetas flex flex-col gap-2.5 p-3">
+                        {eventos.map((evento) => (
+                          <EventoAuditoriaTarjetaMovil
+                            key={evento.id}
+                            evento={evento}
+                            seleccionado={seleccionado?.id === evento.id}
+                            onSeleccionar={() => setSeleccionado(evento)}
+                          />
+                        ))}
+                      </ul>
+                    </div>
+                    {!seleccionado && total > 0 ? (
+                      <div
+                        ref={auditoriaMovilFooterRef}
+                        className="auditoria-tabla-footer-movil flex shrink-0 flex-col gap-2 border-t border-slate-200 px-3 py-2.5 dark:border-slate-800"
+                      >
+                        <p className="text-center text-xs tabular-nums text-slate-500 dark:text-slate-400">
+                          {paginacion.inicio > 0
+                            ? `Mostrando ${paginacion.inicio}–${paginacion.fin} de ${total}`
+                            : `0 de ${total}`}
+                        </p>
+                        <div className="flex flex-wrap items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            className={AUDITORIA_PAG_BTN}
+                            aria-label="Actualizar tabla"
+                            title="Actualizar"
+                            disabled={loading || exportandoPdf}
+                            onClick={() => void cargarEventos()}
+                          >
+                            <span className={`material-symbols-outlined text-[18px] ${loading ? 'animate-spin' : ''}`}>refresh</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={AUDITORIA_PAG_BTN}
+                            aria-label="Primera página"
+                            disabled={paginacion.paginaActual <= 1 || loading}
+                            onClick={() => setPagina(1)}
+                          >
+                            <span className="material-symbols-outlined text-[18px]">first_page</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={AUDITORIA_PAG_BTN}
+                            aria-label="Página anterior"
+                            disabled={paginacion.paginaActual <= 1 || loading}
+                            onClick={() => setPagina((p) => Math.max(1, p - 1))}
+                          >
+                            <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+                          </button>
+                          <span className="min-w-[6.5rem] px-1 text-center text-xs tabular-nums text-slate-600 dark:text-slate-400">
+                            Página {paginacion.paginaActual} de {paginacion.totalPaginas}
+                          </span>
+                          <button
+                            type="button"
+                            className={AUDITORIA_PAG_BTN}
+                            aria-label="Página siguiente"
+                            disabled={paginacion.paginaActual >= paginacion.totalPaginas || loading}
+                            onClick={() => setPagina((p) => Math.min(paginacion.totalPaginas, p + 1))}
+                          >
+                            <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={AUDITORIA_PAG_BTN}
+                            aria-label="Última página"
+                            disabled={paginacion.paginaActual >= paginacion.totalPaginas || loading}
+                            onClick={() => setPagina(paginacion.totalPaginas)}
+                          >
+                            <span className="material-symbols-outlined text-[18px]">last_page</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="auditoria-tabla-desktop hidden min-h-0 min-w-0 flex-1 flex-col overflow-hidden xl:flex">
+                    <div className="auditoria-tabla-head-fixed shrink-0 overflow-x-hidden overflow-y-hidden">
+                      <table className="auditoria-tabla-eventos w-full table-fixed text-sm">
+                        <AuditoriaTablaColgroup />
+                        <AuditoriaTablaEncabezado />
+                      </table>
+                    </div>
+                    <div className="auditoria-tabla-body-scroll min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain">
+                      <table className="auditoria-tabla-eventos w-full table-fixed text-sm">
+                        <AuditoriaTablaColgroup />
+                        <tbody className="auditoria-tabla-eventos-body">
+                          {eventos.map((evento) => (
+                            <tr
+                              key={evento.id}
+                              onClick={() => setSeleccionado(evento)}
+                              className={`auditoria-fila-evento cursor-pointer border-t border-slate-800 hover:bg-[#1e3a6b] ${
+                                seleccionado?.id === evento.id ? 'auditoria-fila-seleccionada bg-[#1e3a6b]' : ''
+                              }`}
+                            >
+                              <CeldaTextoTabla texto={formatearFechaLarga(evento.fecha_hora)} className="text-slate-200" />
+                              <CeldaTextoTabla texto={obtenerActor(evento)} className="text-slate-300" variante="multilinea" />
+                              <CeldaTextoTabla texto={evento.modulo} className="text-slate-300" variante="multilinea" />
+                              <CeldaTextoTabla
+                                texto={etiquetaAccion(evento.accion)}
+                                className="text-slate-200"
+                                variante="multilinea"
+                              />
+                              <CeldaTextoTabla
+                                texto={formatearRecurso(evento)}
+                                className="auditoria-celda-secundaria text-slate-400"
+                                variante="multilinea"
+                              />
+                              <td className="auditoria-celda-resultado px-2 py-2 align-top">
+                                <span
+                                  className={`auditoria-badge-resultado inline-block max-w-full rounded px-2 py-1 text-xs font-semibold uppercase ${claseBadgeResultadoAuditoria(evento.resultado)}`}
+                                >
+                                  {evento.resultado}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              )}
+              {!seleccionado && total > 0 ? (
+                <div className="auditoria-tabla-footer hidden shrink-0 flex-col gap-2 border-t border-slate-200 px-4 py-2.5 dark:border-slate-800 xl:flex lg:flex-row lg:items-center lg:justify-between">
+                  <p className="auditoria-tabla-ayuda hidden text-left text-xs text-slate-500 dark:text-slate-400 lg:block">
+                    Selecciona un evento para ver más información.
+                  </p>
+                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-1.5">
+                    <p className="shrink-0 text-xs tabular-nums text-slate-500 dark:text-slate-400">
+                      {paginacion.inicio > 0
+                        ? `Mostrando ${paginacion.inicio}–${paginacion.fin} de ${total}`
+                        : `0 de ${total}`}
+                    </p>
+                    <div className="flex flex-wrap items-center justify-end gap-1.5">
+                    <button
+                      type="button"
+                      className={AUDITORIA_PAG_BTN}
+                      aria-label="Actualizar tabla"
+                      title="Actualizar"
+                      disabled={loading || exportandoPdf}
+                      onClick={() => void cargarEventos()}
+                    >
+                      <span className={`material-symbols-outlined text-[18px] ${loading ? 'animate-spin' : ''}`}>refresh</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`${AUDITORIA_PAG_BTN} max-lg:hidden`}
+                      aria-label="Primera página"
+                      disabled={paginacion.paginaActual <= 1 || loading}
+                      onClick={() => setPagina(1)}
+                    >
+                      <span className="material-symbols-outlined text-[18px]">first_page</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={AUDITORIA_PAG_BTN}
+                      aria-label="Página anterior"
+                      disabled={paginacion.paginaActual <= 1 || loading}
+                      onClick={() => setPagina((p) => Math.max(1, p - 1))}
+                    >
+                      <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+                    </button>
+                    <span className="min-w-[6.5rem] px-1 text-center text-xs tabular-nums text-slate-600 dark:text-slate-400">
+                      Página {paginacion.paginaActual} de {paginacion.totalPaginas}
+                    </span>
+                    <button
+                      type="button"
+                      className={AUDITORIA_PAG_BTN}
+                      aria-label="Página siguiente"
+                      disabled={paginacion.paginaActual >= paginacion.totalPaginas || loading}
+                      onClick={() => setPagina((p) => Math.min(paginacion.totalPaginas, p + 1))}
+                    >
+                      <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`${AUDITORIA_PAG_BTN} max-lg:hidden`}
+                      aria-label="Última página"
+                      disabled={paginacion.paginaActual >= paginacion.totalPaginas || loading}
+                      onClick={() => setPagina(paginacion.totalPaginas)}
+                    >
+                      <span className="material-symbols-outlined text-[18px]">last_page</span>
+                    </button>
+                    </div>
+                  </div>
+                </div>
               ) : null}
 
             {seleccionado ? (
