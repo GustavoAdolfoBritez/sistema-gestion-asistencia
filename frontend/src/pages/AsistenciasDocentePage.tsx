@@ -769,7 +769,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
   }, [sidebarOpen]);
 
   useEffect(() => {
-    const mq = window.matchMedia('(max-width: 1023px)');
+    const mq = window.matchMedia('(max-width: 1279px)');
     const onChange = () => setViewportEsMovil(mq.matches);
     onChange();
     mq.addEventListener('change', onChange);
@@ -818,7 +818,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
   const [subiendoJustif, setSubiendoJustif] = useState(false);
   const [mostrarFormJustif, setMostrarFormJustif] = useState(false);
   const [viewportEsMovil, setViewportEsMovil] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches,
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 1279px)').matches,
   );
   const listaAbiertaSyncKeyRef = useRef<string | null>(null);
 
@@ -1622,7 +1622,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
             ) : null}
           </header>
 
-          <section className="justif-movil-scroll-section app-scroll-content flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-6 max-lg:overflow-y-auto max-lg:bg-background-light dark:max-lg:bg-[#0d1830]">
+          <section className="justif-movil-scroll-section app-scroll-content flex min-h-0 min-w-0 flex-1 flex-col gap-4 p-4 sm:p-6 max-lg:bg-background-light dark:max-lg:bg-[#0d1830] xl:overflow-hidden">
             <div className="btn-mobile-tabs btn-mobile-tabs--inline-md flex w-full flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-[#132a52] sm:w-auto md:inline-flex">
               <button
                 type="button"
@@ -2581,12 +2581,12 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
             ) : null}
 
             {mostrarModuloJustificaciones && subView === 'justificaciones' ? (
-            <div className="min-w-0 space-y-4 max-lg:flex-none lg:scroll-region lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:gap-4">
+            <div className="justif-layout-column min-w-0 space-y-4 max-xl:flex-none xl:flex xl:min-h-0 xl:flex-1 xl:flex-col xl:gap-5">
 
               {/* Formulario nueva justificación — altura solo al contenido en móvil (evita bloque blanco vacío) */}
               <div
                 data-justif-form-panel
-                className={`justif-movil-form-panel ${JUSTIF_PANEL_CLASS} max-lg:h-auto max-lg:min-h-0 max-lg:shrink-0`}
+                className={`justif-movil-form-panel ${JUSTIF_PANEL_CLASS} flex flex-col overflow-hidden xl:overflow-visible max-xl:shrink-0 xl:shrink-0`}
               >
                 <div className={JUSTIF_PANEL_HEADER_CLASS}>
                   <div className="min-w-0">
@@ -2637,7 +2637,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                 </div>
 
                 {mostrarFormJustif ? (
-                  <div className="justif-movil-form-scroll space-y-5 p-4 max-lg:px-4 max-lg:pt-4">
+                  <div className="justif-movil-form-scroll space-y-5 bg-white p-4 max-lg:px-4 max-lg:pt-4 dark:bg-[#132a52]">
 
                     {/* Paso 1: Buscar alumno */}
                     <div className="space-y-2">
@@ -2732,7 +2732,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                             Días a justificar —
                             <span className="text-slate-600 normal-case font-medium dark:text-slate-300">{formatoNombreLegible(alumno.alumno)}</span>
                           </p>
-                          <div className={JUSTIF_DIAS_PANEL_CLASS}>
+                          <div className={`${JUSTIF_DIAS_PANEL_CLASS} w-full max-xl:w-fit max-xl:min-w-[min(100%,18rem)]`}>
                             {!alumno.dias.length ? (
                               <p className="text-sm text-slate-500">
                                 Este alumno no tiene inasistencias sin justificar registradas.
@@ -2774,13 +2774,15 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                       );
                     })() : null}
 
-                    {/* Paso 3: Motivo + PDF */}
-                    <div className="space-y-2">
+                    {/* Paso 3: Motivo + PDF — solo tras elegir alumno */}
+                    {justifAlumnoSeleccionado !== null ? (
+                    <>
+                    <div id="justif-paso-datos" className="space-y-2 scroll-mt-4">
                       <p className="text-xs font-semibold uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
                         <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary text-white text-[10px] font-bold">3</span>
                         Completar datos
                       </p>
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                         <label className="flex flex-col gap-1.5 text-sm">
                           <span className="text-xs uppercase text-slate-500 dark:text-slate-400">Motivo</span>
                           <textarea
@@ -2865,13 +2867,15 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                           : `Registrar justificación${justifDiasSeleccionados.length > 1 ? ` (${justifDiasSeleccionados.length} días)` : ''}`}
                       </button>
                     </div>
+                    </>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
 
               {/* Bandeja de revisión — en móvil no se monta con el formulario abierto (evita hueco blanco) */}
               {(!viewportEsMovil || !mostrarFormJustif) ? (
-              <div className={JUSTIF_PANEL_CLASS}>
+              <div className={`justif-historial-panel ${JUSTIF_PANEL_CLASS} xl:mt-0 xl:shrink-0`}>
                 <div className={`${JUSTIF_PANEL_HEADER_CLASS} max-md:flex-col max-md:items-stretch`}>
                   <div className="min-w-0">
                     <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Historial</p>
@@ -3026,7 +3030,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                 </ul>
 
                 {/* Historial — tabla en escritorio (sin cambios) */}
-                <div className="scroll-region-at-lg scroll-region-tablet hidden md:block lg:max-h-[420px]">
+                <div className="scroll-region-at-lg scroll-region-tablet hidden md:block md:max-h-[420px] max-xl:overflow-auto">
                   <table className="min-w-full text-sm">
                     <thead className={JUSTIF_TABLE_HEAD_CLASS}>
                       <tr>

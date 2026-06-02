@@ -788,31 +788,113 @@
   }
 
   /**
-   * Formulario de justificación en móvil: sin estirar el panel ni dejar hueco blanco
-   * tras el selector de archivos (iOS/Android).
+   * Justificaciones · móvil y tablet (<1280px): scroll de toda la sección;
+   * el formulario crece con su contenido (sin alturas fijas ni scroll anidado).
    */
-  @media (max-width: 1023px) {
-    .justif-movil-form-panel {
-      height: auto !important;
-      min-height: 0 !important;
-      flex: 0 0 auto !important;
+  @media (max-width: 1279px) {
+    :root {
+      --app-mobile-bottom-inset: max(env(safe-area-inset-bottom, 0px), 2.25rem);
+    }
+
+    .justif-movil-scroll-section {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 0%;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior-y: contain;
+      -webkit-overflow-scrolling: touch;
+      overflow-anchor: none;
+      padding-bottom: var(--app-mobile-bottom-inset);
+    }
+
+    .justif-layout-column {
+      flex: none !important;
+      min-height: auto !important;
       overflow: visible !important;
     }
 
-    /* Sin scroll interno: solo desplaza la sección principal */
-    .justif-movil-form-scroll {
+    .justif-movil-form-panel {
+      position: relative;
+      z-index: auto;
+      display: flex;
+      flex-direction: column;
+      flex: 0 0 auto;
+      width: 100%;
       height: auto;
       min-height: 0;
       max-height: none;
       overflow: visible;
-      flex: none;
+      margin-bottom: 0.25rem;
     }
 
+    .justif-movil-form-scroll {
+      flex: 0 0 auto;
+      min-height: 0;
+      overflow: visible;
+      padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+    }
+
+    .justif-movil-form-scroll .app-mobile-cta-footer {
+      padding-bottom: 0.5rem;
+    }
+
+    .justif-historial-panel {
+      margin-top: 1rem;
+    }
+  }
+
+  /**
+   * Justificaciones · escritorio (≥1280px): scroll en la columna (página), no dentro del formulario.
+   */
+  @media (min-width: 1280px) {
     .justif-movil-scroll-section {
-      overflow-anchor: none;
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 0%;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .justif-layout-column {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      flex: 1 1 0%;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior-y: contain;
       -webkit-overflow-scrolling: touch;
     }
 
+    .justif-movil-form-panel {
+      position: relative;
+      z-index: auto;
+      display: flex;
+      flex: 0 0 auto;
+      flex-direction: column;
+      width: 100%;
+      max-height: none;
+      min-height: 0;
+      overflow: visible;
+    }
+
+    .justif-movil-form-panel .justif-movil-form-scroll {
+      flex: 0 0 auto;
+      min-height: 0;
+      overflow: visible;
+    }
+
+    .justif-historial-panel {
+      flex: 0 0 auto;
+      min-height: 0;
+      margin-top: 0;
+    }
+  }
+
+  @media (max-width: 1023px) {
     /**
      * Margen inferior bajo la barra de navegación del celular (≈36px + safe-area).
      * Aplica a áreas con scroll y a barras/CTA pegadas abajo.

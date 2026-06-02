@@ -558,34 +558,22 @@ export function AlumnosAdminPage({ onLogout }: Props) {
   }
 
   /**
-   * Tercera línea del listado: prioriza facultad/carrera declaradas al importar (`referencia_*`).
-   * Solo si no hay dato de importación se usan las carreras inferidas por matrículas (módulo académico).
+   * Tercera línea del listado: solo carrera (sin facultad ni semestre).
+   * Si no hay referencia de importación, se usan las carreras inferidas por matrículas.
    */
-  function lineaProgramaAlumnoLista(item: AlumnoBusqueda): string {
-    const fac = item.facultad_referencia_nombre?.trim();
+  function lineaCarreraAlumnoLista(item: AlumnoBusqueda, compacto = false): string {
     const car = item.carrera_referencia_nombre?.trim();
-    const refStr = [fac, car].filter(Boolean).join(' · ');
-    const sem = etiquetaSemestreCurricularAlumno(item.semestre_curricular);
-    const parts = [refStr, sem].filter(Boolean);
-    if (parts.length) return parts.join(' · ');
+    if (car) return car;
 
     const matStr = typeof item.carreras === 'string' ? item.carreras.trim() : '';
-    if (matStr) return matStr;
+    if (matStr) {
+      if (compacto && matStr.length > 48) return `${matStr.slice(0, 45)}…`;
+      return matStr;
+    }
 
     const nMat = Number(item.total_matriculas ?? 0) || 0;
-    return nMat === 0 ? 'Sin matrículas aún' : '—';
-  }
-
-  /** Resumen corto para filas del listado en móvil (más alumnos visibles por pantalla). */
-  function lineaProgramaAlumnoListaMovil(item: AlumnoBusqueda): string {
-    const car = item.carrera_referencia_nombre?.trim();
-    const sem = etiquetaSemestreCurricularAlumno(item.semestre_curricular);
-    const parts = [car, sem].filter(Boolean);
-    if (parts.length) return parts.join(' · ');
-    const matStr = typeof item.carreras === 'string' ? item.carreras.trim() : '';
-    if (matStr) return matStr.length > 48 ? `${matStr.slice(0, 45)}…` : matStr;
-    const nMat = Number(item.total_matriculas ?? 0) || 0;
-    return nMat === 0 ? 'Sin matrículas' : '';
+    if (nMat === 0) return compacto ? 'Sin matrículas' : 'Sin matrículas aún';
+    return compacto ? '' : '—';
   }
 
   function getAsistenciaColor(pct: number) {
@@ -735,7 +723,11 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                         className="w-full min-w-0"
                       />
                     ) : null}
-                    <div className="h-10 w-full max-w-[11rem] rounded-lg bg-slate-200 animate-pulse dark:bg-white/10" />
+                    <div
+                      className={`h-10 w-full rounded-lg bg-slate-200 animate-pulse dark:bg-white/10 ${
+                        esJefeCarrera ? 'max-w-[14rem]' : 'max-w-[11rem]'
+                      }`}
+                    />
                   </div>
                 ) : (
                 <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end min-w-0">
@@ -769,7 +761,11 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                       />
                     </>
                   ) : null}
-                  <label className="flex w-full min-w-0 flex-col gap-1 lg:w-[11rem] lg:shrink-0">
+                  <label
+                    className={`flex w-full min-w-0 flex-col gap-1 lg:shrink-0 ${
+                      esJefeCarrera ? 'lg:min-w-[14rem] lg:w-auto' : 'lg:w-[11rem]'
+                    }`}
+                  >
                     <span className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-500">
                       Semestre curricular
                     </span>
@@ -866,7 +862,8 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                   <ul className="min-w-0 max-lg:divide-y max-lg:divide-slate-100 dark:max-lg:divide-slate-800/70">
                     {resultados.map((item) => {
                       const isSelected = selectedAlumnoId === item.id;
-                      const programaMovil = lineaProgramaAlumnoListaMovil(item);
+                      const carreraLista = lineaCarreraAlumnoLista(item);
+                      const carreraListaMovil = lineaCarreraAlumnoLista(item, true);
                       const matriculas = Number(item.total_matriculas ?? 0);
                       return (
                         <li key={item.id}>
@@ -897,9 +894,9 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                                 {displayNombreAlumno(item)}
                               </p>
                               <p className="mt-0.5 text-xs text-slate-500 lg:hidden">CI {item.numero_documento}</p>
-                              {programaMovil ? (
+                              {carreraListaMovil ? (
                                 <p className="text-[11px] leading-snug text-slate-500 break-words dark:text-slate-400 lg:hidden">
-                                  {programaMovil}
+                                  {carreraListaMovil}
                                 </p>
                               ) : null}
                               <p className="mt-0.5 hidden text-xs text-slate-500 lg:block">CI {item.numero_documento}</p>
@@ -908,9 +905,9 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                                   Año ingreso {item.cohorte_anio}
                                 </p>
                               ) : null}
-                              {lineaProgramaAlumnoLista(item) ? (
-                                <p className="mt-0.5 hidden text-[11px] leading-snug text-slate-500 dark:text-slate-600 lg:block lg:truncate">
-                                  {lineaProgramaAlumnoLista(item)}
+                              {carreraLista ? (
+                                <p className="mt-0.5 hidden text-[11px] leading-snug text-slate-500 break-words whitespace-normal dark:text-slate-600 lg:block">
+                                  {carreraLista}
                                 </p>
                               ) : null}
                             </div>
@@ -1302,7 +1299,7 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                   </div>
 
                   <Dialog open={justificacionesDialogOpen} onOpenChange={setJustificacionesDialogOpen}>
-                    <DialogContent className="w-[calc(100vw-1.5rem)] max-w-[min(96vw,80rem)] gap-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 shadow-xl ring-1 ring-slate-200/70 dark:border-sky-500/25 dark:bg-gradient-to-b dark:from-[#1b355f] dark:to-[#142a4d] dark:shadow-2xl dark:ring-sky-400/15 lg:min-w-[32rem]">
+                    <DialogContent className="top-[50%] w-[calc(100vw-1.5rem)] max-w-[min(96vw,56rem)] translate-y-[-50%] gap-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 shadow-xl ring-1 ring-slate-200/70 dark:border-sky-500/25 dark:bg-gradient-to-b dark:from-[#1b355f] dark:to-[#142a4d] dark:shadow-2xl dark:ring-sky-400/15 max-md:top-[max(0.75rem,env(safe-area-inset-top,0px))] max-md:translate-y-0 md:!max-w-[min(94vw,56rem)] lg:!max-w-[min(92vw,64rem)] md:min-w-[min(94vw,40rem)] lg:min-w-[48rem] max-h-[min(92dvh,calc(100vh-2rem))]">
                       <div className="border-b border-slate-200 bg-slate-50 px-5 py-4 sm:px-6 dark:border-white/10 dark:bg-black/20">
                         <DialogHeader className="space-y-1.5 text-left">
                           <div className="flex items-start gap-3">
@@ -1325,7 +1322,7 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                         </DialogHeader>
                       </div>
                       <div className="px-4 py-3 sm:px-6 sm:py-4">
-                        <div className="scroll-region max-h-[min(58vh,26rem)] rounded-xl border border-slate-200 bg-slate-50 shadow-inner dark:border-white/10 dark:bg-[#0c1a32]/60">
+                        <div className="scroll-region max-h-[min(65vh,32rem)] overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 shadow-inner dark:border-white/10 dark:bg-[#0c1a32]/60">
                           {justificacionesLoading ? (
                             <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-600 dark:text-slate-400">
                               <span className="material-symbols-outlined animate-spin text-[22px] text-sky-600 dark:text-sky-400/80">
@@ -1337,30 +1334,21 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                             <p className="px-4 py-10 text-center text-sm text-slate-600 dark:text-slate-500">Sin registros</p>
                           ) : (
                             <table
-                              className={`w-full table-fixed text-sm text-slate-800 dark:text-slate-200 ${
-                                puedeResolverJustificaciones ? 'min-w-[44rem]' : 'min-w-[36rem]'
+                              className={`w-full min-w-full text-sm text-slate-800 dark:text-slate-200 ${
+                                puedeResolverJustificaciones ? 'min-w-[52rem]' : 'min-w-[42rem]'
                               }`}
                             >
-                              <colgroup>
-                                <col className={puedeResolverJustificaciones ? 'w-[24%]' : 'w-[26%]'} />
-                                <col className={puedeResolverJustificaciones ? 'w-[20%]' : 'w-[24%]'} />
-                                <col className="w-[8%]" />
-                                <col className="w-[10%]" />
-                                <col className={puedeResolverJustificaciones ? 'w-[12%]' : 'w-[18%]'} />
-                                {puedeResolverJustificaciones ? <col className="w-[14%]" /> : null}
-                                <col className="w-[12%]" />
-                              </colgroup>
                               <thead className="sticky top-0 z-[1] bg-slate-100 shadow-[0_1px_0_0_rgba(15,23,42,0.08)] dark:bg-[#0a162c] dark:shadow-[0_1px_0_0_rgba(255,255,255,0.06)]">
                                 <tr className="text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                                  <th className="px-4 py-3 text-left">Fecha(s) clase</th>
-                                  <th className="px-4 py-3 text-left">Materia</th>
-                                  <th className="px-4 py-3 text-left">Módulo</th>
-                                  <th className="px-4 py-3 text-left">Estado</th>
-                                  <th className="px-4 py-3 text-left">Motivo</th>
+                                  <th className="min-w-[7.5rem] whitespace-nowrap px-4 py-3 text-left">Fecha(s) clase</th>
+                                  <th className="min-w-[11rem] px-4 py-3 text-left">Materia</th>
+                                  <th className="min-w-[5.5rem] whitespace-nowrap px-4 py-3 text-left">Módulo</th>
+                                  <th className="min-w-[7.5rem] whitespace-nowrap px-4 py-3 text-left">Estado</th>
+                                  <th className="min-w-[9rem] px-4 py-3 text-left">Motivo</th>
                                   {puedeResolverJustificaciones ? (
-                                    <th className="px-4 py-3 text-left">Acciones</th>
+                                    <th className="min-w-[10rem] px-4 py-3 text-left">Acciones</th>
                                   ) : null}
-                                  <th className="px-4 py-3 text-right">Documento</th>
+                                  <th className="min-w-[6.5rem] whitespace-nowrap px-4 py-3 text-right">Documento</th>
                                 </tr>
                               </thead>
                               <tbody>
