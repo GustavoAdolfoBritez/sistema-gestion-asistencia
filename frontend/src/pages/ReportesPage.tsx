@@ -1567,7 +1567,7 @@ export function ReportesPage({ onLogout }: Props) {
                           <li className="px-4 py-10 text-center text-sm text-slate-500">
                             {!ausentismoPeriodoListo || !ausentismoAlcanceListo
                               ? 'Completá periodo y alcance para ver el ranking.'
-                              : 'Sin estadísticas para este periodo y alcance.'}
+                              : 'Sin estadísticas para este periodo.'}
                           </li>
                         ) : (
                           ausentismoDatos.map((row, idx) => (
@@ -1649,7 +1649,7 @@ export function ReportesPage({ onLogout }: Props) {
                               <td colSpan={6} className="px-3 py-10 text-center text-slate-500">
                                 {!ausentismoPeriodoListo || !ausentismoAlcanceListo
                                   ? 'Completá periodo y alcance para ver el ranking.'
-                                  : 'Sin estadísticas para este periodo y alcance.'}
+                                  : 'Sin estadísticas para este periodo.'}
                               </td>
                             </tr>
                           ) : null}

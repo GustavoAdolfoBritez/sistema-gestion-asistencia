@@ -23,7 +23,7 @@ const router = Router();
 const adminAuth = [autenticar, autorizarRoles(...ROLES_GESTION_USUARIOS)];
 const lecturaAuth = [autenticar, autorizarRoles(...ROLES_LECTURA_DIRECCION)];
 
-const ESTADOS: EstadoUsuario[] = ['activo', 'inactivo', 'suspendido'];
+const ESTADOS: EstadoUsuario[] = ['activo', 'inactivo'];
 
 /** Rutas bajo `/usuarios` (auth admin solo en este prefijo, no en toda la API). */
 const usuariosApi = Router();
@@ -263,15 +263,30 @@ usuariosApi.patch('/:usuarioId/estado', autorizarRoles(...ROLES_GESTION_USUARIOS
         }
         const usuarioAnterior = await obtenerUsuarioPorId(usuarioId);
         const usuario = await actualizarEstadoUsuario(usuarioId, estado);
+        const nombreUsuario = usuarioAnterior
+            ? `${usuarioAnterior.nombres} ${usuarioAnterior.apellidos}`.trim() || usuarioAnterior.email
+            : null;
+        const etiquetaEstado = (e: string | null | undefined) => {
+            const x = (e ?? '').toLowerCase();
+            if (x === 'activo') return 'Activo';
+            if (x === 'inactivo' || x === 'suspendido') return 'Inactivo';
+            return e?.trim() || '(sin estado)';
+        };
+        const recursoResumenEstado =
+            nombreUsuario && usuarioAnterior
+                ? `${nombreUsuario}: ${etiquetaEstado(usuarioAnterior.estado)} → ${etiquetaEstado(usuario.estado)}`
+                : null;
 
         await registrarEventoAuditoriaSegura({
             modulo: 'usuarios',
             accion: 'actualizar_estado_usuario',
             recursoTipo: 'usuario',
             recursoId: usuarioId,
+            recursoResumen: recursoResumenEstado,
             detalle: {
                 estadoAnterior: usuarioAnterior?.estado ?? null,
-                estadoNuevo: usuario.estado
+                estadoNuevo: usuario.estado,
+                nombreCompleto: nombreUsuario
             },
             antes: usuarioAnterior,
             despues: usuario,
@@ -358,6 +373,9 @@ usuariosApi.delete('/:usuarioId', autorizarRoles(...ROLES_ELIMINAR_USUARIOS), as
         const contextoAuditoria = construirContextoAuditoria(req);
         const usuarioId = String(req.params.usuarioId);
         const usuarioAnterior = await obtenerUsuarioPorId(usuarioId);
+        const nombreEliminado = usuarioAnterior
+            ? `${usuarioAnterior.nombres} ${usuarioAnterior.apellidos}`.trim() || usuarioAnterior.email
+            : null;
         await eliminarUsuario(usuarioId);
 
         await registrarEventoAuditoriaSegura({
@@ -365,9 +383,10 @@ usuariosApi.delete('/:usuarioId', autorizarRoles(...ROLES_ELIMINAR_USUARIOS), as
             accion: 'eliminar_usuario',
             recursoTipo: 'usuario',
             recursoId: usuarioId,
+            recursoResumen: nombreEliminado ? `Usuario eliminado: ${nombreEliminado}` : null,
             detalle: {
                 email: usuarioAnterior?.email ?? null,
-                nombreCompleto: usuarioAnterior ? `${usuarioAnterior.nombres} ${usuarioAnterior.apellidos}` : null
+                nombreCompleto: nombreEliminado
             },
             antes: usuarioAnterior,
             contexto: contextoAuditoria
