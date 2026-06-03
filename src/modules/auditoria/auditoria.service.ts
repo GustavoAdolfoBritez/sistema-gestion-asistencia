@@ -124,7 +124,87 @@ function armarResumenDesdeDetallePromocion(accion: string, detalle: unknown): st
     return null;
 }
 
+function etiquetaEstadoUsuarioAuditoria(estado: unknown): string {
+    const e = typeof estado === 'string' ? estado.trim().toLowerCase() : '';
+    if (e === 'activo') return 'Activo';
+    if (e === 'inactivo' || e === 'suspendido') return 'Inactivo';
+    return typeof estado === 'string' && estado.trim() ? estado.trim() : '(sin estado)';
+}
+
+function extraerNombreUsuarioSnapshot(snap: unknown): string | null {
+    if (!snap || typeof snap !== 'object' || Array.isArray(snap)) return null;
+    const s = snap as Record<string, unknown>;
+    const nombres = typeof s.nombres === 'string' ? s.nombres.trim() : '';
+    const apellidos = typeof s.apellidos === 'string' ? s.apellidos.trim() : '';
+    const nombre = [nombres, apellidos].filter(Boolean).join(' ').trim();
+    const email = typeof s.email === 'string' ? s.email.trim() : '';
+    return nombre || email || null;
+}
+
+function armarResumenCambioEstadoUsuario(ev: EventoAuditoria): string | null {
+    if (ev.accion !== 'actualizar_estado_usuario') return null;
+
+    let estadoAnterior: string | null = null;
+    let estadoNuevo: string | null = null;
+    if (ev.detalle && typeof ev.detalle === 'object' && !Array.isArray(ev.detalle)) {
+        const d = ev.detalle as Record<string, unknown>;
+        estadoAnterior = typeof d.estadoAnterior === 'string' ? d.estadoAnterior : null;
+        estadoNuevo = typeof d.estadoNuevo === 'string' ? d.estadoNuevo : null;
+    }
+    if (!estadoAnterior && ev.antes && typeof ev.antes === 'object' && !Array.isArray(ev.antes)) {
+        estadoAnterior = (ev.antes as Record<string, unknown>).estado as string | undefined ?? null;
+    }
+    if (!estadoNuevo && ev.despues && typeof ev.despues === 'object' && !Array.isArray(ev.despues)) {
+        estadoNuevo = (ev.despues as Record<string, unknown>).estado as string | undefined ?? null;
+    }
+
+    const nombre =
+        extraerNombreUsuarioSnapshot(ev.antes) ??
+        extraerNombreUsuarioSnapshot(ev.despues) ??
+        'Usuario';
+
+    return `${nombre}: ${etiquetaEstadoUsuarioAuditoria(estadoAnterior)} → ${etiquetaEstadoUsuarioAuditoria(estadoNuevo)}`;
+}
+
+function armarResumenUsuarioDesdeEvento(ev: EventoAuditoria): string | null {
+    const resumenEstado = armarResumenCambioEstadoUsuario(ev);
+    if (resumenEstado) return resumenEstado;
+
+    const accionesUsuario = new Set([
+        'crear_usuario',
+        'actualizar_usuario',
+        'actualizar_estado_usuario',
+        'actualizar_roles_usuario',
+        'reset_password_usuario',
+        'eliminar_usuario'
+    ]);
+    if (!accionesUsuario.has(ev.accion)) return null;
+
+    const detalle = ev.detalle;
+    if (detalle && typeof detalle === 'object' && !Array.isArray(detalle)) {
+        const d = detalle as Record<string, unknown>;
+        const nombreCompleto = typeof d.nombreCompleto === 'string' ? d.nombreCompleto.trim() : '';
+        const email = typeof d.email === 'string' ? d.email.trim() : '';
+        if (nombreCompleto) {
+            return ev.accion === 'eliminar_usuario' ? `Usuario eliminado: ${nombreCompleto}` : `Usuario: ${nombreCompleto}`;
+        }
+        if (email) {
+            return ev.accion === 'eliminar_usuario' ? `Usuario eliminado: ${email}` : `Usuario: ${email}`;
+        }
+    }
+
+    const etiqueta = extraerNombreUsuarioSnapshot(ev.antes) ?? extraerNombreUsuarioSnapshot(ev.despues);
+    if (!etiqueta) return null;
+    return ev.accion === 'eliminar_usuario' ? `Usuario eliminado: ${etiqueta}` : `Usuario: ${etiqueta}`;
+}
+
 function aplicarResumenRecursoListado(ev: EventoAuditoria, descripciones: RecursoDescripcionMap): void {
+    const resumenCambioEstado = armarResumenCambioEstadoUsuario(ev);
+    if (resumenCambioEstado) {
+        ev.recurso_resumen = resumenCambioEstado;
+        return;
+    }
+
     const rawPersisted = ev.recurso_resumen;
     const persisted =
         typeof rawPersisted === 'string' ? rawPersisted.trim() : String(rawPersisted ?? '').trim();
@@ -137,8 +217,9 @@ function aplicarResumenRecursoListado(ev: EventoAuditoria, descripciones: Recurs
         lookup = descripciones.get(buildRecursoKey(ev.recurso_tipo, ev.recurso_id)) ?? '';
     }
     const desdeDetalle = armarResumenDesdeDetallePromocion(ev.accion, ev.detalle) ?? '';
+    const desdeUsuario = armarResumenUsuarioDesdeEvento(ev) ?? '';
 
-    const partes = [lookup.trim(), desdeDetalle.trim()].filter(Boolean);
+    const partes = [...new Set([lookup.trim(), desdeUsuario.trim(), desdeDetalle.trim()].filter(Boolean))];
     ev.recurso_resumen = partes.length ? partes.join(' · ') : null;
 }
 

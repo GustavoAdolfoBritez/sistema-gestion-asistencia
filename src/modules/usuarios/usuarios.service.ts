@@ -145,7 +145,7 @@ const BASE_FROM = `
     LEFT JOIN docentes doc ON doc.usuario_id = u.id
 `;
 
-const ESTADOS_VALIDOS: EstadoUsuario[] = ['activo', 'inactivo', 'suspendido'];
+const ESTADOS_VALIDOS: EstadoUsuario[] = ['activo', 'inactivo'];
 
 const PERMISOS_DEFAULT: PermisosEspeciales = {
     aprobarHorarios: false,
@@ -523,6 +523,18 @@ export async function actualizarDatosUsuario(
     return usuario;
 }
 
+/** Tabla legacy opcional (instalaciones nuevas solo tienen auditoria_eventos). */
+async function anularUsuarioEnAuditoriasLegacy(cliente: PoolClient, usuarioId: string): Promise<void> {
+  const { rows } = await cliente.query<{ existe: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1 FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = 'auditorias'
+     ) AS existe`
+  );
+  if (!rows[0]?.existe) return;
+  await cliente.query(`UPDATE auditorias SET usuario_id = NULL WHERE usuario_id = $1`, [usuarioId]);
+}
+
 export async function eliminarUsuario(usuarioId: string): Promise<void> {
   const cliente = await pool.connect();
   try {
@@ -546,7 +558,7 @@ export async function eliminarUsuario(usuarioId: string): Promise<void> {
     await cliente.query(`UPDATE alertas_asistencia SET generado_por = NULL WHERE generado_por = $1`, [usuarioId]);
     await cliente.query(`UPDATE habilitaciones_examen SET generado_por = NULL WHERE generado_por = $1`, [usuarioId]);
     await cliente.query(`UPDATE actas_generadas SET generado_por = NULL WHERE generado_por = $1`, [usuarioId]);
-    await cliente.query(`UPDATE auditorias SET usuario_id = NULL WHERE usuario_id = $1`, [usuarioId]);
+    await anularUsuarioEnAuditoriasLegacy(cliente, usuarioId);
     await cliente.query(`UPDATE auditoria_eventos SET actor_usuario_id = NULL WHERE actor_usuario_id = $1`, [
       usuarioId,
     ]);

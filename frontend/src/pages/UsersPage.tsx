@@ -211,22 +211,24 @@ interface UsersPageProps {
   requestedAction?: UsersAction;
 }
 
-const ESTADO_USUARIO_OPTIONS: { value: EstadoUsuario; label: string }[] = [
+const ESTADO_USUARIO_OPTIONS: { value: 'activo' | 'inactivo'; label: string }[] = [
   { value: 'activo', label: 'Activo' },
   { value: 'inactivo', label: 'Inactivo' },
-  { value: 'suspendido', label: 'Suspendido' },
 ];
 
+/** Valor mostrado en el selector (legacy `suspendido` se trata como inactivo). */
+function estadoParaSelector(estado: EstadoUsuario): 'activo' | 'inactivo' {
+  return estado === 'activo' ? 'activo' : 'inactivo';
+}
+
 function etiquetaEstadoUsuario(estado: EstadoUsuario): string {
+  if (estado === 'suspendido') return 'Inactivo';
   return ESTADO_USUARIO_OPTIONS.find((o) => o.value === estado)?.label ?? estado;
 }
 
 function claseEstadoUsuarioMovil(estado: EstadoUsuario): string {
   if (estado === 'activo') {
     return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300';
-  }
-  if (estado === 'suspendido') {
-    return 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300';
   }
   return 'border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-600 dark:bg-slate-700/40 dark:text-slate-400';
 }
@@ -642,7 +644,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
   const doToggleAccess = async () => {
     if (!selectedUser) return;
     setToggleAccessConfirmOpen(false);
-    const nextEstado: EstadoUsuario = selectedUser.estado === 'inactivo' ? 'activo' : 'inactivo';
+    const nextEstado: EstadoUsuario = selectedUser.estado === 'activo' ? 'inactivo' : 'activo';
     await handleChangeUserStatus(selectedUser, nextEstado);
   };
 
@@ -699,7 +701,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
         method: 'PATCH',
         body: JSON.stringify({ estado }),
       });
-      await loadUsers(user.id);
+      await loadUsers();
       toast.success(
         estado === 'activo'
           ? `Acceso reactivado para ${formatName(user)}`
@@ -819,37 +821,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                 </h2>
               </div>
             </div>
-            <div className="shrink-0 max-lg:hidden">
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedUserId(null);
-                  setDraft(null);
-                  setIsEditing(false);
-                  navigate(appPath('usuarios', { usersAction: 'create' }));
-                }}
-                className="btn-modern btn-modern-primary btn-modern-sm"
-              >
-                <span className="material-symbols-outlined text-[18px]">person_add</span>
-                Nuevo usuario
-              </button>
-            </div>
           </header>
-          <div className="shrink-0 px-4 pt-3 pb-0 lg:hidden">
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedUserId(null);
-                setDraft(null);
-                setIsEditing(false);
-                navigate(appPath('usuarios', { usersAction: 'create' }));
-              }}
-              className="btn-modern btn-modern-primary btn-modern-sm w-full"
-            >
-              <span className="material-symbols-outlined text-[18px]">person_add</span>
-              Nuevo usuario
-            </button>
-          </div>
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:flex-row">
             <section
@@ -861,42 +833,57 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
               <div className="min-w-0 space-y-4 max-lg:space-y-2.5">
                 <div className="max-lg:rounded-2xl max-lg:border max-lg:border-slate-200/90 max-lg:bg-white max-lg:p-3 max-lg:shadow-sm dark:max-lg:border-slate-700/80 dark:max-lg:bg-[#0e1e38]">
                 <div className="flex flex-wrap items-center justify-between gap-4 max-lg:flex-col max-lg:gap-3">
-                  <div className="relative w-full min-w-0 max-w-md max-lg:max-w-none">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[20px] text-slate-400 max-lg:left-2.5 max-lg:text-[18px]">
-                      search
-                    </span>
-                    <input
-                      type="search"
-                      aria-label="Buscar usuarios"
-                      className={`${USUARIO_INP} rounded-xl py-2.5 pl-10 pr-4 max-lg:min-h-10 max-lg:rounded-lg max-lg:py-2 max-lg:pl-9 max-lg:text-sm`}
-                      placeholder="Nombre, correo o rol…"
-                      value={searchTerm}
-                      onChange={(event) => setSearchTerm(event.target.value)}
-                    />
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 max-lg:w-full max-lg:flex-col max-lg:items-stretch">
+                    <div className="relative min-w-0 w-full max-w-md flex-1 max-lg:max-w-none max-lg:flex-none">
+                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[20px] text-slate-400 max-lg:left-2.5 max-lg:text-[18px]">
+                        search
+                      </span>
+                      <input
+                        type="search"
+                        aria-label="Buscar usuarios"
+                        className={`${USUARIO_INP} rounded-xl py-2.5 pl-10 pr-4 max-lg:min-h-10 max-lg:rounded-lg max-lg:py-2 max-lg:pl-9 max-lg:text-sm`}
+                        placeholder="Nombre, correo o rol…"
+                        value={searchTerm}
+                        onChange={(event) => setSearchTerm(event.target.value)}
+                      />
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2 max-lg:btn-mobile-row max-lg:w-full max-lg:gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setFiltersOpen((prev) => !prev)}
+                        className={`btn-modern btn-modern-ghost btn-modern-sm max-lg:min-h-10 max-lg:flex-1 max-lg:rounded-lg max-lg:py-2 max-lg:text-xs ${
+                          filtersOpen ? 'border-primary/40 bg-primary/5 dark:bg-primary/10' : ''
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[18px] max-lg:text-[17px]">filter_list</span>
+                        Filtrar
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-modern btn-modern-ghost btn-modern-sm max-lg:min-h-10 max-lg:flex-1 max-lg:rounded-lg max-lg:py-2 max-lg:text-xs"
+                        disabled={exportLoading}
+                        onClick={() => {
+                          void handleExport();
+                        }}
+                      >
+                        <span className="material-symbols-outlined text-[18px] max-lg:text-[17px]">download</span>
+                        {exportLoading ? 'Exportando…' : 'Exportar'}
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 max-lg:btn-mobile-row max-lg:w-full max-lg:gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setFiltersOpen((prev) => !prev)}
-                      className={`btn-modern btn-modern-ghost btn-modern-sm max-lg:min-h-10 max-lg:flex-1 max-lg:rounded-lg max-lg:py-2 max-lg:text-xs ${
-                        filtersOpen ? 'border-primary/40 bg-primary/5 dark:bg-primary/10' : ''
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-[18px] max-lg:text-[17px]">filter_list</span>
-                      Filtrar
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-modern btn-modern-ghost btn-modern-sm max-lg:min-h-10 max-lg:flex-1 max-lg:rounded-lg max-lg:py-2 max-lg:text-xs"
-                      disabled={exportLoading}
-                      onClick={() => {
-                        void handleExport();
-                      }}
-                    >
-                      <span className="material-symbols-outlined text-[18px] max-lg:text-[17px]">download</span>
-                      {exportLoading ? 'Exportando…' : 'Exportar'}
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedUserId(null);
+                      setDraft(null);
+                      setIsEditing(false);
+                      navigate(appPath('usuarios', { usersAction: 'create' }));
+                    }}
+                    className="btn-modern btn-modern-primary btn-modern-sm shrink-0 max-lg:min-h-10 max-lg:w-full max-lg:rounded-lg max-lg:py-2.5 max-lg:text-sm"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">person_add</span>
+                    Nuevo usuario
+                  </button>
                 </div>
 
                 {filtersOpen ? (
@@ -1024,11 +1011,11 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                                 <AppSelect
                                   className="min-w-0 flex-1"
                                   aria-label={`Cambiar estado de ${formatName(user)}`}
-                                  value={user.estado}
+                                  value={estadoParaSelector(user.estado)}
                                   disabled={togglingUserId === user.id}
                                   size="xs"
                                   onChange={(v) => {
-                                    handleChangeUserStatus(user, v as EstadoUsuario);
+                                    handleChangeUserStatus(user, v as 'activo' | 'inactivo');
                                   }}
                                   options={ESTADO_USUARIO_OPTIONS}
                                   triggerClassName="w-full min-h-9 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-800 focus:border-primary dark:border-slate-600 dark:bg-[#0b2147] dark:text-[#e7eef9]"
@@ -1162,12 +1149,12 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                                 >
                                   <AppSelect
                                     aria-label={`Cambiar estado de ${formatName(user)}`}
-                                    value={user.estado}
+                                    value={estadoParaSelector(user.estado)}
                                     disabled={togglingUserId === user.id}
                                     size="xs"
                                     className="!w-auto"
                                     onChange={(v) => {
-                                      handleChangeUserStatus(user, v as EstadoUsuario);
+                                      handleChangeUserStatus(user, v as 'activo' | 'inactivo');
                                     }}
                                     options={ESTADO_USUARIO_OPTIONS}
                                     triggerClassName="!w-auto max-w-full rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wide bg-white border border-slate-300 text-black focus:outline-none focus:border-primary dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
@@ -1356,8 +1343,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                             etiqueta="Estado"
                             valor={
                               <span className="capitalize">
-                                {ESTADO_USUARIO_OPTIONS.find((o) => o.value === selectedUser.estado)?.label ??
-                                  selectedUser.estado}
+                                {etiquetaEstadoUsuario(selectedUser.estado)}
                               </span>
                             }
                           />
@@ -1425,10 +1411,10 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                         <label className={USUARIO_LABEL}>
                           <span>Estado</span>
                           <AppSelect
-                            value={draft?.estado ?? 'activo'}
+                            value={estadoParaSelector(draft?.estado ?? 'activo')}
                             disabled={!isEditing}
                             onChange={(v) =>
-                              setDraft((prev) => (prev ? { ...prev, estado: v as EstadoUsuario } : prev))
+                              setDraft((prev) => (prev ? { ...prev, estado: v as 'activo' | 'inactivo' } : prev))
                             }
                             options={ESTADO_USUARIO_OPTIONS}
                             triggerClassName="w-full rounded-lg px-3 py-2 text-sm bg-white border border-slate-300 text-black focus:border-primary disabled:opacity-50 dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
@@ -1643,7 +1629,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                           className="btn-modern btn-modern-danger btn-modern-sm btn-mobile-cta w-full justify-between lg:justify-between disabled:opacity-50"
                         >
                           <span className="text-xs font-semibold">
-                            {selectedUser?.estado === 'inactivo' ? 'Reactivar acceso' : 'Deshabilitar acceso'}
+                            {selectedUser?.estado !== 'activo' ? 'Reactivar acceso' : 'Deshabilitar acceso'}
                           </span>
                           <span className="material-symbols-outlined text-[18px]">lock</span>
                         </button>
@@ -1775,16 +1761,16 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
         open={toggleAccessConfirmOpen}
         onCancel={() => setToggleAccessConfirmOpen(false)}
         onConfirm={() => { void doToggleAccess(); }}
-        title={selectedUser?.estado === 'inactivo' ? 'Reactivar acceso' : 'Deshabilitar acceso'}
+        title={selectedUser?.estado !== 'activo' ? 'Reactivar acceso' : 'Deshabilitar acceso'}
         description={
           selectedUser
-            ? selectedUser.estado === 'inactivo'
+            ? selectedUser.estado !== 'activo'
               ? `¿Reactivar el acceso de ${formatName(selectedUser)}? Podrá volver a iniciar sesión.`
               : `¿Deshabilitar el acceso de ${formatName(selectedUser)}? No podrá iniciar sesión hasta que lo reactives.`
             : ''
         }
-        confirmLabel={selectedUser?.estado === 'inactivo' ? 'Reactivar' : 'Deshabilitar'}
-        variant={selectedUser?.estado === 'inactivo' ? 'default' : 'danger'}
+        confirmLabel={selectedUser?.estado !== 'activo' ? 'Reactivar' : 'Deshabilitar'}
+        variant={selectedUser?.estado !== 'activo' ? 'default' : 'danger'}
         loading={selectedUser ? togglingUserId === selectedUser.id : false}
       />
     </div>

@@ -249,7 +249,14 @@ function formatearFechaHoraAuditoria(fechaISO: string): { fecha: string; hora: s
 }
 
 function obtenerUsuarioObjetivo(evento: EventoAuditoria): string {
-  const fuentes = [evento.despues, evento.antes];
+  if (esObjeto(evento.detalle)) {
+    const nombreCompleto = obtenerTexto(evento.detalle.nombreCompleto);
+    const emailDetalle = obtenerTexto(evento.detalle.email);
+    if (nombreCompleto) return nombreCompleto;
+    if (emailDetalle) return emailDetalle;
+  }
+
+  const fuentes = [evento.antes, evento.despues];
   for (const fuente of fuentes) {
     if (!esObjeto(fuente)) continue;
     const nombres = obtenerTexto(fuente.nombres);
@@ -267,11 +274,55 @@ function obtenerUsuarioObjetivo(evento: EventoAuditoria): string {
   return evento.recurso_tipo ?? 'recurso';
 }
 
+const ACCIONES_RECURSO_USUARIO = new Set([
+  'crear_usuario',
+  'actualizar_usuario',
+  'actualizar_estado_usuario',
+  'actualizar_roles_usuario',
+  'reset_password_usuario',
+  'eliminar_usuario',
+]);
+
+function etiquetaEstadoAuditoria(estado: string): string {
+  const e = estado.trim().toLowerCase();
+  if (e === 'activo') return 'Activo';
+  if (e === 'inactivo' || e === 'suspendido') return 'Inactivo';
+  return estado.trim() || '(sin estado)';
+}
+
+function formatearRecursoCambioEstadoUsuario(evento: EventoAuditoria): string | null {
+  const detalle = esObjeto(evento.detalle) ? evento.detalle : {};
+  let estadoAnterior = obtenerTexto(detalle.estadoAnterior);
+  let estadoNuevo = obtenerTexto(detalle.estadoNuevo);
+  if (!estadoAnterior && esObjeto(evento.antes)) estadoAnterior = obtenerTexto(evento.antes.estado);
+  if (!estadoNuevo && esObjeto(evento.despues)) estadoNuevo = obtenerTexto(evento.despues.estado);
+  const objetivo = obtenerUsuarioObjetivo(evento);
+  if (!objetivo || /^usuario\s*#/i.test(objetivo)) return null;
+  return `${objetivo}: ${etiquetaEstadoAuditoria(estadoAnterior)} → ${etiquetaEstadoAuditoria(estadoNuevo)}`;
+}
+
 function formatearRecurso(evento: EventoAuditoria): string {
   if (evento.recurso_resumen && evento.recurso_resumen.trim().length > 0) {
     return evento.recurso_resumen;
   }
-  const tipo = (evento.recurso_tipo ?? '-').toLowerCase();
+
+  if (evento.accion === 'actualizar_estado_usuario') {
+    const cambio = formatearRecursoCambioEstadoUsuario(evento);
+    if (cambio) return cambio;
+  }
+
+  const tipo = (evento.recurso_tipo ?? '').toLowerCase();
+  if (
+    tipo === 'usuario' ||
+    evento.modulo === 'usuarios' ||
+    ACCIONES_RECURSO_USUARIO.has(evento.accion)
+  ) {
+    const objetivo = obtenerUsuarioObjetivo(evento);
+    if (objetivo && !/^usuario\s*#/i.test(objetivo)) {
+      return evento.accion === 'eliminar_usuario' ? `Usuario eliminado: ${objetivo}` : `Usuario: ${objetivo}`;
+    }
+  }
+
   const recursoId = evento.recurso_id ? `#${evento.recurso_id}` : '';
   if (tipo === 'sesion' && ['login', 'logout', 'refresh_token'].includes(evento.accion)) {
     return `usuario ${recursoId}`.trim();
