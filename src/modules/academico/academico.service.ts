@@ -1294,6 +1294,24 @@ export async function copiarMatriculasDesdeCurso(
     }
 }
 
+/** Palabras del término (espacios o comas): "acosta laura" y "acosta, laura" buscan igual. */
+function tokensBusquedaAlumno(termino: string): string[] {
+    return termino
+        .split(/[\s,;]+/)
+        .map((t) => t.trim())
+        .filter((t) => t.length > 0);
+}
+
+function condicionTokenBusquedaAlumno(paramIndex: number): string {
+    return `(
+            al.numero_documento ILIKE $${paramIndex}
+            OR al.nombres ILIKE $${paramIndex}
+            OR al.apellidos ILIKE $${paramIndex}
+            OR COALESCE(al.nombre_apellido, '') ILIKE $${paramIndex}
+            OR CONCAT_WS(' ', TRIM(COALESCE(al.apellidos, '')), TRIM(COALESCE(al.nombres, ''))) ILIKE $${paramIndex}
+        )`;
+}
+
 export async function buscarAlumnos(filtro: BusquedaAlumnoFiltro) {
     const termino = filtro.termino.trim();
     const limit = normalizeLimit(filtro.limit, 500, 30);
@@ -1302,15 +1320,10 @@ export async function buscarAlumnos(filtro: BusquedaAlumnoFiltro) {
     const valores: Array<string | number | number[]> = [];
     const condiciones: string[] = [];
 
-    if (termino) {
-        const like = `%${termino}%`;
-        valores.push(like);
-        condiciones.push(`(
-            al.numero_documento ILIKE $1
-            OR al.nombres ILIKE $1
-            OR al.apellidos ILIKE $1
-            OR COALESCE(al.nombre_apellido, '') ILIKE $1
-        )`);
+    const tokens = tokensBusquedaAlumno(termino);
+    for (const token of tokens) {
+        valores.push(`%${token}%`);
+        condiciones.push(condicionTokenBusquedaAlumno(valores.length));
     }
 
     const facIds = filtro.matriculaFacultadIds?.filter((n) => Number.isFinite(n)) ?? [];
