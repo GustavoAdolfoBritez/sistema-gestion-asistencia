@@ -17,6 +17,15 @@ import {
 } from '../utils/justificaciones-grupo';
 import { etiquetaPorcentajeAsistencia, tieneAsistenciaRegistrada } from '../utils/estado-asistencia';
 
+/** Anchos de columnas del modal (colgroup); deben sumar 100%. */
+const JUSTIF_ALUMNO_COLS_SIN_ACCIONES = ['17%', '26%', '10%', '14%', '21%', '12%'] as const;
+const JUSTIF_ALUMNO_COLS_CON_ACCIONES = ['15%', '21%', '8%', '12%', '12%', '17%', '15%'] as const;
+
+const thTablaJustifAlumno =
+  'px-4 py-3.5 text-left align-top text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400';
+const tdTablaJustifAlumno = 'min-w-0 px-4 py-3.5 text-left align-top';
+const tdTablaJustifAlumnoDoc = 'min-w-0 px-4 py-3.5 text-left align-top whitespace-nowrap';
+
 interface Props {
   onLogout?: () => void;
 }
@@ -368,6 +377,16 @@ export function AlumnosAdminPage({ onLogout }: Props) {
     () => agruparJustificacionesPorCarga(justificacionesAlumno, claveGrupoJustificacionCarga),
     [justificacionesAlumno]
   );
+
+  const justificacionesPendientesRevision = useMemo(
+    () =>
+      justificacionesAgrupadas.filter(
+        (g) => (g.representante.estado_revision ?? '').toLowerCase() === 'pendiente',
+      ).length,
+    [justificacionesAgrupadas],
+  );
+  const hayJustifPendientesEnModal = justificacionesPendientesRevision > 0;
+  const mostrarColumnaAccionesJustif = puedeResolverJustificaciones && hayJustifPendientesEnModal;
 
   const resolverJustificacionGrupo = useCallback(
     async (ids: number[], accion: 'aprobar' | 'rechazar') => {
@@ -988,8 +1007,8 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                   <>
                   <div className="scroll-region app-scroll-content flex min-h-0 flex-1 flex-col overflow-y-auto xl:overflow-hidden">
 
-                    <div className="shrink-0 flex flex-col gap-3 border-b border-slate-200 px-3 py-3 dark:border-slate-800 max-lg:gap-2 sm:px-5 sm:py-4 xl:flex-row xl:items-center xl:gap-4">
-                      <div className="flex min-w-0 items-start gap-3 lg:items-center lg:gap-4">
+                    <div className="shrink-0 flex flex-col gap-3 border-b border-slate-200 px-3 py-3 dark:border-slate-800 max-lg:gap-2 sm:px-5 sm:py-4 xl:flex-row xl:items-center xl:justify-between xl:gap-4">
+                      <div className="flex min-w-0 flex-1 items-start gap-3 lg:items-center lg:gap-4">
                         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-blue-200 bg-blue-100 text-sm font-bold text-blue-800 dark:border-blue-500/30 dark:bg-blue-500/15 dark:text-blue-300 max-lg:h-10 max-lg:w-10 lg:h-12 lg:w-12 lg:text-base">
                           {getInitialsAlumno(ficha.alumno)}
                         </div>
@@ -1015,7 +1034,7 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                       </div>
                       <button
                         type="button"
-                        className="btn-modern btn-modern-ghost btn-modern-sm btn-mobile-cta flex w-full shrink-0 items-center justify-center gap-1.5 lg:w-auto"
+                        className="btn-modern btn-modern-ghost btn-modern-sm btn-mobile-cta flex w-full shrink-0 items-center justify-center gap-1.5 max-xl:mx-0 xl:ml-auto xl:w-auto xl:justify-end"
                         onClick={() => void descargarInformeAlumno()}
                         disabled={generandoInforme}
                       >
@@ -1056,10 +1075,55 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                             key={stat.label}
                             type="button"
                             onClick={() => setJustificacionesDialogOpen(true)}
-                            aria-label="Ver justificaciones presentadas y documentos PDF"
-                            className={`${claseTarjeta} hover:bg-slate-100 hover:border-slate-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/50 dark:hover:bg-[#1a335c]/80 dark:hover:border-slate-600`}
+                            aria-label={
+                              justificacionesPendientesRevision > 0
+                                ? `Ver justificaciones: ${justificacionesPendientesRevision} pendiente${justificacionesPendientesRevision === 1 ? '' : 's'} de revisión`
+                                : 'Ver justificaciones presentadas y documentos PDF'
+                            }
+                            className={`${claseTarjeta} hover:bg-slate-100 hover:border-slate-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/50 dark:hover:bg-[#1a335c]/80 dark:hover:border-slate-600 ${
+                              justificacionesPendientesRevision > 0
+                                ? 'border-amber-300/90 bg-amber-50/90 ring-1 ring-amber-200/70 hover:border-amber-400 hover:bg-amber-50 dark:border-amber-500/45 dark:bg-amber-500/10 dark:ring-amber-500/25 dark:hover:border-amber-500/55 dark:hover:bg-amber-500/15 focus-visible:ring-amber-400/50'
+                                : ''
+                            }`}
                           >
-                            {cuerpo}
+                            <div
+                              className={`rounded-lg p-1.5 max-lg:p-1 shrink-0 ${
+                                justificacionesPendientesRevision > 0
+                                  ? 'bg-amber-100 dark:bg-amber-500/20'
+                                  : stat.bg
+                              }`}
+                            >
+                              <span
+                                className={`material-symbols-outlined text-[16px] max-lg:text-[15px] lg:text-[18px] ${
+                                  justificacionesPendientesRevision > 0
+                                    ? 'text-amber-700 dark:text-amber-300'
+                                    : stat.color
+                                }`}
+                              >
+                                {justificacionesPendientesRevision > 0 ? 'pending_actions' : stat.icon}
+                              </span>
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-[10px] font-medium text-slate-500 dark:text-slate-500 max-lg:leading-tight">
+                                {stat.label}
+                              </p>
+                              <p
+                                className={`text-lg font-bold tabular-nums max-lg:text-base lg:text-xl ${
+                                  justificacionesPendientesRevision > 0
+                                    ? 'text-amber-800 dark:text-amber-200'
+                                    : stat.color
+                                }`}
+                              >
+                                {stat.value}
+                              </p>
+                              {justificacionesPendientesRevision > 0 ? (
+                                <p className="mt-0.5 text-[10px] font-semibold leading-snug text-amber-800 dark:text-amber-300">
+                                  {justificacionesPendientesRevision === 1
+                                    ? '1 pendiente de revisión'
+                                    : `${justificacionesPendientesRevision} pendientes de revisión`}
+                                </p>
+                              ) : null}
+                            </div>
                           </button>
                         ) : (
                           <div key={stat.label} className={claseTarjeta}>
@@ -1299,7 +1363,13 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                   </div>
 
                   <Dialog open={justificacionesDialogOpen} onOpenChange={setJustificacionesDialogOpen}>
-                    <DialogContent className="top-[50%] w-[calc(100vw-1.5rem)] max-w-[min(96vw,56rem)] translate-y-[-50%] gap-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 shadow-xl ring-1 ring-slate-200/70 dark:border-sky-500/25 dark:bg-gradient-to-b dark:from-[#1b355f] dark:to-[#142a4d] dark:shadow-2xl dark:ring-sky-400/15 max-md:top-[max(0.75rem,env(safe-area-inset-top,0px))] max-md:translate-y-0 md:!max-w-[min(94vw,56rem)] lg:!max-w-[min(92vw,64rem)] md:min-w-[min(94vw,40rem)] lg:min-w-[48rem] max-h-[min(92dvh,calc(100vh-2rem))]">
+                    <DialogContent
+                      className={`top-[50%] flex max-h-[min(92dvh,calc(100vh-2rem))] w-[calc(100vw-1rem)] translate-y-[-50%] flex-col gap-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 shadow-xl ring-1 ring-slate-200/70 dark:border-sky-500/25 dark:bg-gradient-to-b dark:from-[#1b355f] dark:to-[#142a4d] dark:shadow-2xl dark:ring-sky-400/15 max-md:top-[max(0.75rem,env(safe-area-inset-top,0px))] max-md:translate-y-0 md:min-w-0 ${
+                        mostrarColumnaAccionesJustif
+                          ? 'md:!w-[min(98vw,90rem)] md:!max-w-[min(98vw,90rem)] max-w-[calc(100vw-1rem)]'
+                          : 'md:!w-[min(96vw,62rem)] md:!max-w-[min(96vw,62rem)] max-w-[min(96vw,62rem)]'
+                      }`}
+                    >
                       <div className="border-b border-slate-200 bg-slate-50 px-5 py-4 sm:px-6 dark:border-white/10 dark:bg-black/20">
                         <DialogHeader className="space-y-1.5 text-left">
                           <div className="flex items-start gap-3">
@@ -1321,8 +1391,10 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                           </div>
                         </DialogHeader>
                       </div>
-                      <div className="px-4 py-3 sm:px-6 sm:py-4">
-                        <div className="scroll-region max-h-[min(65vh,32rem)] overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 shadow-inner dark:border-white/10 dark:bg-[#0c1a32]/60">
+                      <div className="min-w-0 flex-1 overflow-hidden px-4 py-3 sm:px-6 sm:py-4">
+                        <div
+                          className="justificaciones-alumno-dialog-scroll w-full max-w-full overflow-x-auto overflow-y-auto overscroll-x-contain rounded-xl border border-slate-200 bg-slate-50 shadow-inner [-webkit-overflow-scrolling:touch] dark:border-white/10 dark:bg-[#0c1a32]/60 max-h-[min(65vh,32rem)]"
+                        >
                           {justificacionesLoading ? (
                             <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-600 dark:text-slate-400">
                               <span className="material-symbols-outlined animate-spin text-[22px] text-sky-600 dark:text-sky-400/80">
@@ -1334,21 +1406,40 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                             <p className="px-4 py-10 text-center text-sm text-slate-600 dark:text-slate-500">Sin registros</p>
                           ) : (
                             <table
-                              className={`w-full min-w-full text-sm text-slate-800 dark:text-slate-200 ${
-                                puedeResolverJustificaciones ? 'min-w-[52rem]' : 'min-w-[42rem]'
+                              className={`w-full table-fixed border-collapse text-sm text-slate-800 dark:text-slate-200 ${
+                                mostrarColumnaAccionesJustif ? 'min-w-[70rem]' : 'min-w-[52rem]'
                               }`}
                             >
+                              <colgroup>
+                                {(mostrarColumnaAccionesJustif
+                                  ? JUSTIF_ALUMNO_COLS_CON_ACCIONES
+                                  : JUSTIF_ALUMNO_COLS_SIN_ACCIONES
+                                ).map((ancho, i) => (
+                                  <col key={i} style={{ width: ancho }} />
+                                ))}
+                              </colgroup>
                               <thead className="sticky top-0 z-[1] bg-slate-100 shadow-[0_1px_0_0_rgba(15,23,42,0.08)] dark:bg-[#0a162c] dark:shadow-[0_1px_0_0_rgba(255,255,255,0.06)]">
-                                <tr className="text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                                  <th className="min-w-[7.5rem] whitespace-nowrap px-4 py-3 text-left">Fecha(s) clase</th>
-                                  <th className="min-w-[11rem] px-4 py-3 text-left">Materia</th>
-                                  <th className="min-w-[5.5rem] whitespace-nowrap px-4 py-3 text-left">Módulo</th>
-                                  <th className="min-w-[7.5rem] whitespace-nowrap px-4 py-3 text-left">Estado</th>
-                                  <th className="min-w-[9rem] px-4 py-3 text-left">Motivo</th>
-                                  {puedeResolverJustificaciones ? (
-                                    <th className="min-w-[10rem] px-4 py-3 text-left">Acciones</th>
-                                  ) : null}
-                                  <th className="min-w-[6.5rem] whitespace-nowrap px-4 py-3 text-right">Documento</th>
+                                <tr>
+                                  {mostrarColumnaAccionesJustif ? (
+                                    <>
+                                      <th className={thTablaJustifAlumno}>Fecha(s) clase</th>
+                                      <th className={thTablaJustifAlumno}>Materia</th>
+                                      <th className={`${thTablaJustifAlumno} whitespace-nowrap`}>Módulo</th>
+                                      <th className={`${thTablaJustifAlumno} whitespace-nowrap`}>Estado</th>
+                                      <th className={thTablaJustifAlumno}>Motivo</th>
+                                      <th className={thTablaJustifAlumno}>Acciones</th>
+                                      <th className={`${thTablaJustifAlumno} whitespace-nowrap`}>Documento</th>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <th className={thTablaJustifAlumno}>Fecha(s) clase</th>
+                                      <th className={thTablaJustifAlumno}>Materia</th>
+                                      <th className={`${thTablaJustifAlumno} whitespace-nowrap`}>Módulo</th>
+                                      <th className={`${thTablaJustifAlumno} whitespace-nowrap`}>Estado</th>
+                                      <th className={thTablaJustifAlumno}>Motivo</th>
+                                      <th className={`${thTablaJustifAlumno} whitespace-nowrap`}>Documento</th>
+                                    </>
+                                  )}
                                 </tr>
                               </thead>
                               <tbody>
@@ -1364,26 +1455,23 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                                       idx % 2 === 1 ? 'bg-slate-50/80 dark:bg-black/10' : 'bg-white dark:bg-transparent'
                                     }`}
                                   >
-                                    <td className="px-4 py-3 align-top">
+                                    <td className={tdTablaJustifAlumno}>
                                       <JustificacionFechasGrupo fechas={g.fechas} variant="light" />
                                     </td>
-                                    <td className="px-4 py-3 align-middle">
-                                      <div className="flex items-start gap-1.5 min-w-0">
+                                    <td className={tdTablaJustifAlumno}>
+                                      <div className="flex min-w-0 items-start gap-2">
                                         <span
                                           className="material-symbols-outlined mt-0.5 shrink-0 text-[16px] text-slate-400 dark:text-slate-500"
                                           aria-hidden
                                         >
                                           menu_book
                                         </span>
-                                        <span
-                                          className="line-clamp-2 text-sm font-medium leading-snug text-slate-800 dark:text-slate-100"
-                                          title={j.materia ?? ''}
-                                        >
+                                        <span className="min-w-0 text-sm font-medium leading-snug text-slate-800 break-words dark:text-slate-100">
                                           {j.materia ?? '—'}
                                         </span>
                                       </div>
                                     </td>
-                                    <td className="px-4 py-3 align-middle whitespace-nowrap">
+                                    <td className={`${tdTablaJustifAlumno} whitespace-nowrap`}>
                                       {etiquetaModuloJustificacion(j.modulo_mes, j.modulo_anio) ? (
                                         <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-slate-700 dark:border-slate-600 dark:bg-slate-800/70 dark:text-slate-300">
                                           {etiquetaModuloJustificacion(j.modulo_mes, j.modulo_anio)}
@@ -1392,11 +1480,11 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                                         <span className="text-slate-400 dark:text-slate-500">—</span>
                                       )}
                                     </td>
-                                    <td className="px-4 py-3 align-middle">
+                                    <td className={tdTablaJustifAlumno}>
                                       <span
-                                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${claseBadgeRevision(j.estado_revision)}`}
+                                        className={`inline-flex w-fit shrink-0 items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap ${claseBadgeRevision(j.estado_revision)}`}
                                       >
-                                        <span className="material-symbols-outlined text-[13px] leading-none" aria-hidden>
+                                        <span className="material-symbols-outlined shrink-0 text-[13px] leading-none" aria-hidden>
                                           {(j.estado_revision ?? '').toLowerCase() === 'aprobada'
                                             ? 'check_circle'
                                             : (j.estado_revision ?? '').toLowerCase() === 'rechazada'
@@ -1406,60 +1494,58 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                                         {etiquetaEstadoRevision(j.estado_revision)}
                                       </span>
                                     </td>
-                                    <td className="px-4 py-3 align-middle">
-                                      <p className="text-sm leading-snug text-slate-600 line-clamp-3 dark:text-slate-300">
+                                    <td className={tdTablaJustifAlumno}>
+                                      <p className="text-sm leading-snug text-slate-600 break-words dark:text-slate-300">
                                         {j.motivo?.trim() ? j.motivo : '—'}
                                       </p>
                                     </td>
-                                    {puedeResolverJustificaciones ? (
-                                      <td className="px-4 py-3 align-top">
-                                        {pendiente ? (
-                                          <div className="flex flex-col gap-2">
-                                            <input
-                                              type="text"
-                                              aria-label="Comentario opcional para la resolución"
-                                              className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900 placeholder:text-slate-400 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500/30 dark:border-slate-600 dark:bg-[#0b1827] dark:text-[#e7eef9] dark:placeholder:text-slate-500 dark:shadow-none"
-                                              placeholder="Comentario (opcional)"
-                                              value={comentariosJustModal[idGrupo] ?? ''}
-                                              onChange={(e) =>
-                                                setComentariosJustModal((prev) => ({
-                                                  ...prev,
-                                                  [idGrupo]: e.target.value,
-                                                }))
-                                              }
+                                    {mostrarColumnaAccionesJustif && pendiente ? (
+                                      <td className={tdTablaJustifAlumno}>
+                                        <div className="inline-flex w-fit flex-col gap-1.5">
+                                          <input
+                                            type="text"
+                                            aria-label="Comentario opcional para la resolución"
+                                            className="w-full min-w-0 max-w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-900 placeholder:text-slate-400 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500/30 dark:border-slate-600 dark:bg-[#0b1827] dark:text-[#e7eef9] dark:placeholder:text-slate-500 dark:shadow-none"
+                                            placeholder="Comentario (opc.)"
+                                            value={comentariosJustModal[idGrupo] ?? ''}
+                                            onChange={(e) =>
+                                              setComentariosJustModal((prev) => ({
+                                                ...prev,
+                                                [idGrupo]: e.target.value,
+                                              }))
+                                            }
+                                            disabled={resolviendoFila}
+                                          />
+                                          <div className="flex flex-wrap gap-1">
+                                            <button
+                                              type="button"
+                                              className="btn-modern btn-modern-success btn-modern-xs shrink-0 px-2"
                                               disabled={resolviendoFila}
-                                            />
-                                            <div className="btn-mobile-row flex flex-wrap gap-1.5 max-lg:pt-1 lg:contents">
-                                              <button
-                                                type="button"
-                                                className="btn-modern btn-modern-success btn-modern-xs btn-mobile-cta max-lg:min-h-10"
-                                                disabled={resolviendoFila}
-                                                onClick={() => void resolverJustificacionGrupo(g.ids, 'aprobar')}
-                                              >
-                                                <span className="material-symbols-outlined text-[14px] leading-none" aria-hidden>
-                                                  check_circle
-                                                </span>
-                                                Aprobar{g.ids.length > 1 ? ` (${g.ids.length})` : ''}
-                                              </button>
-                                              <button
-                                                type="button"
-                                                className="btn-modern btn-modern-danger btn-modern-xs btn-mobile-cta max-lg:min-h-10"
-                                                disabled={resolviendoFila}
-                                                onClick={() => void resolverJustificacionGrupo(g.ids, 'rechazar')}
-                                              >
-                                                <span className="material-symbols-outlined text-[14px] leading-none" aria-hidden>
-                                                  cancel
-                                                </span>
-                                                Rechazar
-                                              </button>
-                                            </div>
+                                              onClick={() => void resolverJustificacionGrupo(g.ids, 'aprobar')}
+                                            >
+                                              <span className="material-symbols-outlined text-[13px] leading-none" aria-hidden>
+                                                check_circle
+                                              </span>
+                                              {g.ids.length > 1 ? `Aprob. (${g.ids.length})` : 'Aprobar'}
+                                            </button>
+                                            <button
+                                              type="button"
+                                              className="btn-modern btn-modern-danger btn-modern-xs shrink-0 px-2"
+                                              disabled={resolviendoFila}
+                                              onClick={() => void resolverJustificacionGrupo(g.ids, 'rechazar')}
+                                            >
+                                              <span className="material-symbols-outlined text-[13px] leading-none" aria-hidden>
+                                                cancel
+                                              </span>
+                                              Rechazar
+                                            </button>
                                           </div>
-                                        ) : (
-                                          <span className="text-xs text-slate-400 dark:text-slate-500">—</span>
-                                        )}
+                                        </div>
                                       </td>
+                                    ) : mostrarColumnaAccionesJustif ? (
+                                      <td className={tdTablaJustifAlumno} aria-hidden />
                                     ) : null}
-                                    <td className="px-4 py-3 text-right align-middle whitespace-nowrap">
+                                    <td className={tdTablaJustifAlumnoDoc}>
                                       {j.documento_url ? (
                                         <a
                                           href="#"
@@ -1471,7 +1557,7 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                                           }}
                                           target="_blank"
                                           rel="noopener noreferrer"
-                                          className="inline-flex items-center justify-center gap-1 rounded-lg border border-sky-600 bg-sky-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:border-sky-700 hover:bg-sky-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 focus-visible:ring-offset-1 dark:border-sky-400/40 dark:bg-sky-500/30 dark:text-sky-50 dark:hover:border-sky-300/60 dark:hover:bg-sky-500/45 dark:focus-visible:ring-sky-400/60 dark:focus-visible:ring-offset-[#0c1a32]"
+                                          className="inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-lg border border-sky-600 bg-sky-600 px-2 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:border-sky-700 hover:bg-sky-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 focus-visible:ring-offset-1 dark:border-sky-400/40 dark:bg-sky-500/30 dark:text-sky-50 dark:hover:border-sky-300/60 dark:hover:bg-sky-500/45 dark:focus-visible:ring-sky-400/60 dark:focus-visible:ring-offset-[#0c1a32]"
                                         >
                                           <span className="material-symbols-outlined text-[16px] leading-none" aria-hidden>
                                             picture_as_pdf

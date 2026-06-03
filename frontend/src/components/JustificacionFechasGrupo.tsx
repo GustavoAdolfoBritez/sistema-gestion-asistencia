@@ -44,7 +44,7 @@ export function JustificacionFechasGrupo({ fechas, variant = 'light' }: Props) {
   }
 
   return (
-    <div className={`min-w-[10rem] max-w-[15rem] space-y-1.5 ${cajaCls}`}>
+    <div className={`min-w-0 max-w-full w-full space-y-1.5 ${cajaCls}`}>
       <div className="flex items-start gap-1.5">
         <span className={`material-symbols-outlined shrink-0 text-[17px] mt-0.5 ${iconCls}`} aria-hidden>
           date_range
