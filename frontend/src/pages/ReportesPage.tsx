@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { AppSidebar } from '../components/AppSidebar';
+import { ReportesPanelListaScroll } from '../components/reportes/ReportesPanelListaScroll';
 import { ReportesCursoPicker } from '../components/reportes/ReportesCursoPicker';
 import { ScopeSelector, ScopeSelectorSkeleton, useAutoAssignScopeId } from '../components/ScopeSelector';
 import { calcularContextoSelectorListo, deriveAlcanceVisual } from '../hooks/useAlcanceVisual';
@@ -1167,15 +1168,15 @@ export function ReportesPage({ onLogout }: Props) {
                       {actas.length}
                     </span>
                   </div>
-                  <div className="lg:scroll-region-at-lg lg:max-h-[300px]">
+                  <ReportesPanelListaScroll vacio={!actas.length}>
                     {actas.length ? (
-                      <ul className="divide-y divide-slate-200 dark:divide-slate-800/70 max-lg:-mx-0.5 lg:space-y-2 lg:divide-y-0">
+                      <ul className="reportes-panel-lista-items max-lg:flex max-lg:flex-col max-lg:gap-2 lg:space-y-2">
                         {actas.map((a) => (
                           <li
                             key={a.id}
-                            className="max-lg:py-0 lg:rounded-xl lg:border lg:border-slate-200 lg:bg-slate-50 lg:p-3 dark:lg:border-slate-800 dark:lg:bg-[#0c1a3b]"
+                            className="max-lg:rounded-xl max-lg:border max-lg:border-slate-200 max-lg:bg-slate-50 max-lg:p-3 dark:max-lg:border-slate-800 dark:max-lg:bg-[#0c1a3b] lg:rounded-xl lg:border lg:border-slate-200 lg:bg-slate-50 lg:p-3 dark:lg:border-slate-800 dark:lg:bg-[#0c1a3b]"
                           >
-                            <div className="flex items-center gap-3 py-2.5 max-lg:py-2.5 lg:items-start lg:justify-between">
+                            <div className="flex items-center gap-3 lg:items-start lg:justify-between">
                               <div className="flex min-w-0 flex-1 items-center gap-2.5 max-lg:gap-2 lg:items-start lg:gap-3">
                                 <div
                                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-cyan-200/80 bg-cyan-50 text-cyan-700 dark:border-cyan-500/25 dark:bg-cyan-500/10 dark:text-cyan-300 max-lg:h-8 max-lg:w-8"
@@ -1230,7 +1231,7 @@ export function ReportesPage({ onLogout }: Props) {
                         <p className="text-sm">Sin actas generadas.</p>
                       </div>
                     )}
-                  </div>
+                  </ReportesPanelListaScroll>
                 </div>
 
                 <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#2d466d]/70 dark:bg-[#132a52] dark:shadow-none max-lg:p-3">
@@ -1240,17 +1241,17 @@ export function ReportesPage({ onLogout }: Props) {
                       {habilitadosCount}
                     </span>
                   </div>
-                  <div className="lg:scroll-region-at-lg lg:max-h-[300px]">
+                  <ReportesPanelListaScroll vacio={!habilitados.filter((h) => h.habilitado).length}>
                     {habilitados.filter((h) => h.habilitado).length ? (
-                      <ul className="divide-y divide-slate-200 dark:divide-slate-800/70 max-lg:-mx-0.5 lg:space-y-2 lg:divide-y-0">
+                      <ul className="reportes-panel-lista-items max-lg:flex max-lg:flex-col max-lg:gap-2 lg:space-y-2">
                         {habilitados
                           .filter((h) => h.habilitado)
                           .map((h) => (
                             <li
                               key={h.matricula_id}
-                              className="max-lg:py-0 lg:rounded-xl lg:border lg:border-slate-200 lg:bg-slate-50 lg:px-3 lg:py-2.5 dark:lg:border-slate-800 dark:lg:bg-[#0c1a3b]"
+                              className="max-lg:rounded-xl max-lg:border max-lg:border-slate-200 max-lg:bg-slate-50 max-lg:px-3 max-lg:py-2.5 dark:max-lg:border-slate-800 dark:max-lg:bg-[#0c1a3b] lg:rounded-xl lg:border lg:border-slate-200 lg:bg-slate-50 lg:px-3 lg:py-2.5 dark:lg:border-slate-800 dark:lg:bg-[#0c1a3b]"
                             >
-                              <div className="flex items-center justify-between gap-2 py-2.5 max-lg:py-2 lg:py-0">
+                              <div className="flex items-center justify-between gap-2 lg:py-0">
                                 <div className="flex min-w-0 flex-1 items-center gap-2.5">
                                   <div
                                     className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
@@ -1282,7 +1283,7 @@ export function ReportesPage({ onLogout }: Props) {
                         <p className="text-sm">{cursoValido ? 'Sin habilitados.' : 'Consultá un curso.'}</p>
                       </div>
                     )}
-                  </div>
+                  </ReportesPanelListaScroll>
                 </div>
               </div>
             </div>
