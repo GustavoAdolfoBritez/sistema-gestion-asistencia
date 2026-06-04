@@ -1551,7 +1551,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                       </div>
                     </div>
 
-                    <div className="import-detalle-registros flex min-h-0 flex-1 flex-col gap-3 overflow-hidden rounded-xl border border-slate-800 bg-[#132a52] p-4 xl:border-slate-200 xl:bg-white dark:xl:border-slate-700 dark:xl:bg-[#132a52] xl:p-4">
+                    <div className="import-detalle-registros flex flex-col gap-3 overflow-visible rounded-xl border border-slate-800 bg-[#132a52] p-4 max-lg:shrink-0 lg:min-h-0 lg:flex-1 lg:overflow-hidden xl:border-slate-200 xl:bg-white dark:xl:border-slate-700 dark:xl:bg-[#132a52] xl:p-4">
                       <div className="flex shrink-0 flex-col gap-2.5">
                         <div>
                           <p className="text-sm font-medium text-[#f0f4f8] xl:text-slate-900 dark:xl:text-[#f0f4f8]">
@@ -1575,11 +1575,11 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                         </div>
                       </div>
 
-                      <div className="import-detalle-registros-body flex min-h-0 flex-1 flex-col">
+                      <div className="import-detalle-registros-body flex flex-col max-lg:overflow-visible lg:min-h-0 lg:flex-1">
                       {recordsLoading ? (
                         <p className="py-4 text-center text-sm text-slate-500">Cargando registros...</p>
                       ) : records.length ? (
-                        <div className="import-detalle-registros-lista flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-y-contain pr-1">
+                        <div className="import-detalle-registros-lista flex flex-col gap-3 max-lg:overflow-visible lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-y-contain lg:pr-1">
                           {records.map((registro) => {
                             const { entries, truncated, total } = recordPreviewEntries(registro);
                             const invalid = registro.valido === false;

@@ -1558,7 +1558,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
         <AppSidebar sidebarOpen={sidebarOpen} onLogout={onLogout} onClose={() => setSidebarOpen(false)} />
 
         <main className="app-layout-main">
-          <header className="flex-shrink-0 flex flex-col gap-2 py-2.5 px-4 sm:px-6 bg-white/95 backdrop-blur-md border-b border-slate-200 z-10 dark:bg-[#132a52]/90 dark:border-slate-800">
+          <header className="flex shrink-0 min-w-0 flex-col gap-2 overflow-visible py-2.5 px-4 sm:px-6 bg-white/95 backdrop-blur-md border-b border-slate-200 z-10 dark:bg-[#132a52]/90 dark:border-slate-800">
             <div className="flex flex-wrap items-center justify-between gap-3 min-h-10 min-w-0">
               <div className="flex min-w-0 flex-1 items-center gap-3">
                 <button
@@ -1574,12 +1574,6 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                   <h1 className="text-xl font-semibold text-black dark:text-[#e7eef9] leading-snug">Períodos y Cursos</h1>
                 </div>
               </div>
-              {loading ? (
-                <div className="flex items-center gap-2 text-sm text-slate-600 shrink-0 dark:text-slate-400">
-                  <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                  Cargando...
-                </div>
-              ) : null}
             </div>
             <AcademicoSubnav />
           </header>

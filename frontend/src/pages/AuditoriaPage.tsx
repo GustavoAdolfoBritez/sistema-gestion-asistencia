@@ -376,6 +376,20 @@ function DetalleCampoMovil({ etiqueta, valor }: { etiqueta: string; valor: React
   );
 }
 
+function BotonVolverAuditoriaMovil({ onClick, className = '' }: { onClick: () => void; className?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg px-2 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-white/10 ${className}`}
+      aria-label="Volver al listado de eventos"
+    >
+      <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+      Volver al listado
+    </button>
+  );
+}
+
 function DetalleEventoEncabezadoMovil({ evento }: { evento: EventoAuditoria }) {
   const actor = parsearActor(evento);
   const { icono, tono } = iconoModuloAuditoria(evento.modulo);
@@ -808,7 +822,11 @@ export function AuditoriaPage({ onLogout }: Props) {
         <AppSidebar sidebarOpen={sidebarOpen} onLogout={onLogout} onClose={() => setSidebarOpen(false)} />
 
         <main className="app-layout-main">
-          <header className="flex-shrink-0 min-h-16 bg-[#132a52]/90 backdrop-blur-md border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3 z-10">
+          <header
+            className={`z-10 flex min-h-16 shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-800 bg-[#132a52]/90 px-4 py-3 backdrop-blur-md sm:px-6 ${
+              seleccionado ? 'max-xl:hidden' : ''
+            }`}
+          >
             <div className="flex min-w-0 items-center gap-3">
               <button className="app-menu-toggle text-slate-400" onClick={() => setSidebarOpen((prev) => !prev)} aria-label="Abrir menú">
                 <span className="material-symbols-outlined">menu</span>
@@ -825,7 +843,7 @@ export function AuditoriaPage({ onLogout }: Props) {
             ref={auditoriaPageSectionRef}
             className={`auditoria-page-section flex min-h-0 flex-1 flex-col gap-4 p-4 sm:gap-5 sm:p-6 max-lg:gap-2 max-lg:p-2 sm:max-lg:gap-2.5 sm:max-lg:p-3 ${
               seleccionado
-                ? 'max-xl:overflow-hidden'
+                ? 'max-xl:gap-0 max-xl:overflow-hidden max-xl:p-0'
                 : 'max-lg:min-h-0 max-lg:flex-1 max-lg:overflow-y-auto max-lg:overscroll-y-contain xl:overflow-hidden'
             }`}
             data-has-selection={seleccionado ? 'true' : 'false'}
@@ -989,10 +1007,20 @@ export function AuditoriaPage({ onLogout }: Props) {
             </div>
 
             <div
-              className="auditoria-workspace flex min-h-0 flex-col gap-3 max-lg:shrink-0 sm:gap-4 lg:min-h-0 lg:flex-1 lg:overflow-hidden"
+              className={`auditoria-workspace flex min-h-0 flex-col gap-3 sm:gap-4 lg:min-h-0 lg:flex-1 lg:overflow-hidden ${
+                seleccionado
+                  ? 'max-xl:min-h-0 max-xl:flex-1 max-xl:overflow-hidden max-xl:gap-0'
+                  : 'max-lg:shrink-0 max-lg:overflow-visible'
+              }`}
               data-has-selection={seleccionado ? 'true' : 'false'}
             >
-            <div className="auditoria-tabla-panel flex min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-slate-50/80 max-lg:shrink-0 max-lg:overflow-visible dark:border-slate-800 dark:bg-[#132a52] lg:flex-1">
+            <div
+              className={`auditoria-tabla-panel flex min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-[#132a52] lg:flex-1 ${
+                seleccionado
+                  ? 'max-xl:min-h-0 max-xl:flex-1 max-xl:overflow-hidden max-xl:rounded-none max-xl:border-0 max-xl:bg-transparent'
+                  : 'max-lg:shrink-0 max-lg:overflow-visible'
+              }`}
+            >
               {!eventos.length ? (
                 <div
                   className={`auditoria-tabla-scroll flex min-h-0 min-w-0 flex-1 flex-col max-lg:overflow-y-auto max-lg:overscroll-y-contain lg:min-h-0 lg:overflow-auto${seleccionado ? ' max-xl:hidden' : ''}`}
@@ -1202,16 +1230,11 @@ export function AuditoriaPage({ onLogout }: Props) {
               ) : null}
 
             {seleccionado ? (
-            <div className="auditoria-detail-panel auditoria-detail-panel--activo shrink-0 border-t border-slate-200 p-4 max-xl:flex max-xl:min-h-0 max-xl:flex-1 max-xl:flex-col max-xl:overflow-hidden max-xl:p-3 xl:flex xl:max-h-[min(45vh,28rem)] xl:flex-col xl:overflow-hidden dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={cerrarDetalleEvento}
-                  className="mb-3 flex w-full shrink-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:bg-slate-800 xl:hidden"
-                >
-                  <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-                  Volver al listado
-                </button>
-              <div className="mb-3 flex shrink-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <div className="auditoria-detail-panel auditoria-detail-panel--activo shrink-0 border-t border-slate-200 p-4 max-xl:flex max-xl:min-h-0 max-xl:flex-1 max-xl:flex-col max-xl:overflow-hidden max-xl:p-0 xl:flex xl:max-h-[min(45vh,28rem)] xl:flex-col xl:overflow-hidden xl:p-4 dark:border-slate-800">
+                <div className="auditoria-detalle-volver-bar flex shrink-0 items-center border-b border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-[#132a52] xl:hidden">
+                  <BotonVolverAuditoriaMovil onClick={cerrarDetalleEvento} />
+                </div>
+              <div className="mb-3 hidden shrink-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between xl:flex max-xl:px-3 max-xl:pt-3">
                 <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
                   <h2 className="text-base font-semibold text-slate-900 dark:text-[#f0f4f8]">Detalle del evento</h2>
                     <button
@@ -1244,7 +1267,7 @@ export function AuditoriaPage({ onLogout }: Props) {
                   </div>
               </div>
                 <div
-                  className={`auditoria-detail-body min-h-0 text-sm max-xl:flex-1 max-xl:overflow-y-auto xl:flex-1 xl:overflow-y-auto ${
+                  className={`auditoria-detail-body min-h-0 text-sm max-xl:flex-1 max-xl:overflow-y-auto max-xl:overscroll-y-contain max-xl:px-3 max-xl:pb-4 xl:flex-1 xl:overflow-y-auto ${
                     mostrarDatosTecnicos
                       ? 'max-xl:max-h-[min(42vh,24rem)] max-xl:overflow-x-auto max-xl:overflow-y-auto max-xl:overscroll-y-contain'
                       : ''
@@ -1425,6 +1448,9 @@ export function AuditoriaPage({ onLogout }: Props) {
                       </div>
                     ) : null}
                   </div>
+                </div>
+                <div className="auditoria-detalle-volver-pie flex shrink-0 border-t border-slate-200 bg-white px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] dark:border-slate-800 dark:bg-[#132a52] xl:hidden">
+                  <BotonVolverAuditoriaMovil onClick={cerrarDetalleEvento} />
                 </div>
             </div>
             ) : null}

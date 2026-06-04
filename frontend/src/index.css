@@ -1030,6 +1030,46 @@
       padding-bottom: max(5rem, env(safe-area-inset-bottom, 0px), var(--app-mobile-bottom-inset, 2.25rem)) !important;
       scroll-padding-bottom: max(5rem, env(safe-area-inset-bottom, 0px), 3.5rem);
     }
+
+    /**
+     * Importaciones · detalle del lote en móvil: el scroll va en .import-detalle-scroll;
+     * «Registros cargados» debe crecer con su contenido (evita lista con altura 0 por flex anidado).
+     */
+    .importaciones-root.master-detail-root[data-has-selection='true'] {
+      min-height: 0;
+      flex: 1 1 auto;
+      overflow: hidden;
+    }
+
+    .importaciones-root.master-detail-root[data-has-selection='true'] .importaciones-detail-panel {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      flex: 1 1 auto;
+      overflow: hidden;
+    }
+
+    .importaciones-detail-panel .import-detalle-scroll {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto !important;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .importaciones-detail-panel .import-detalle-registros,
+    .importaciones-detail-panel .import-detalle-registros-body,
+    .importaciones-detail-panel .import-detalle-registros-lista {
+      flex: 0 0 auto !important;
+      min-height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
+    }
+
+    .importaciones-detail-panel .import-detalle-registros-lista > * {
+      flex-shrink: 0;
+    }
   }
 
   /**
@@ -1227,6 +1267,53 @@ html:not(.dark) .usuario-detail-panel .usuario-detail-panel-card {
     flex: 1 1 0%;
     min-height: 0;
     overflow: hidden;
+  }
+
+  .app-layout-main:has(.auditoria-page-section[data-has-selection='true']) {
+    padding-top: 0;
+  }
+
+  .auditoria-page-section[data-has-selection='true'] .auditoria-filtros {
+    display: none;
+  }
+
+  .auditoria-page-section[data-has-selection='true'] .auditoria-workspace {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .auditoria-page-section[data-has-selection='true'] .auditoria-tabla-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex !important;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .auditoria-page-section[data-has-selection='true'] .auditoria-detail-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex !important;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .auditoria-page-section[data-has-selection='true'] .auditoria-detalle-volver-bar,
+  .auditoria-page-section[data-has-selection='true'] .auditoria-detalle-volver-pie {
+    flex-shrink: 0;
+  }
+
+  .auditoria-page-section[data-has-selection='true'] .auditoria-detalle-volver-bar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+  }
+
+  .auditoria-detalle-volver-bar {
+    padding-top: max(0.625rem, env(safe-area-inset-top, 0px));
   }
 
   .auditoria-filtros {
@@ -1678,8 +1765,37 @@ html:not(.dark) .usuario-detail-panel .usuario-detail-panel-card {
   }
 }
 
+/** Auditoría · móvil/tablet: sin padding superior del layout cuando el detalle ocupa pantalla (header oculto). */
+@media (max-width: 1279px) {
+  .app-layout-main:has(.auditoria-page-section[data-has-selection='true']) {
+    padding-top: 0;
+  }
+}
+
 /** Auditoría · móvil + tablet vertical + tablet horizontal: detalle a pantalla completa con scroll interno. */
 @media (max-width: 1279px) {
+  .auditoria-page-section[data-has-selection='true'] .auditoria-workspace {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .auditoria-page-section[data-has-selection='true'] .auditoria-tabla-panel,
+  .auditoria-page-section[data-has-selection='true'] .auditoria-detail-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .auditoria-page-section[data-has-selection='true'] .auditoria-detalle-volver-bar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    flex-shrink: 0;
+  }
+
   .auditoria-detail-panel--activo {
     display: flex;
     min-height: 0;

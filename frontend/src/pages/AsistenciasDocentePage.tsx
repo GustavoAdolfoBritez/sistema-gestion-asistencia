@@ -1868,8 +1868,8 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                   if (!open && cerrandoSesionId == null) setCerrarListaModalOpen(false);
                 }}
               >
-                <DialogContent className="max-w-md gap-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 text-slate-900 shadow-2xl dark:border-slate-600/40 dark:bg-gradient-to-b dark:from-[#162d55] dark:to-[#0f2244] dark:text-[#e7eef9]">
-                  <div className="border-b border-slate-200 bg-slate-50 px-5 pb-4 pt-5 sm:px-6 dark:border-white/10 dark:bg-[#0c1a32]/90">
+                <DialogContent className="flex max-h-[min(92dvh,calc(100vh-1.5rem))] max-w-md flex-col gap-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 text-slate-900 shadow-2xl dark:border-slate-600/40 dark:bg-gradient-to-b dark:from-[#162d55] dark:to-[#0f2244] dark:text-[#e7eef9] max-md:overflow-hidden">
+                  <div className="shrink-0 border-b border-slate-200 bg-slate-50 px-5 pb-4 pt-5 sm:px-6 dark:border-white/10 dark:bg-[#0c1a32]/90">
                     <DialogHeader className="space-y-2 text-left">
                       <DialogTitle className="text-lg font-semibold text-slate-900 dark:text-white">
                         Revisar y cerrar lista
@@ -1880,7 +1880,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                     </DialogHeader>
                   </div>
 
-                  <div className="space-y-4 px-5 py-5 sm:px-6">
+                  <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-y-contain px-5 py-5 sm:px-6 [-webkit-overflow-scrolling:touch]">
                     <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm dark:border-white/10 dark:bg-[#0a162c]/80">
                       <dl className="grid gap-2.5">
                         <div>
@@ -1932,8 +1932,10 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                         Asistencia completa — Sin alumnos ausentes
                       </p>
                     )}
+                  </div>
 
-                    <div className="btn-mobile-stack flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end sm:gap-3">
+                  <div className="shrink-0 border-t border-slate-200 bg-white px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] sm:px-6 dark:border-white/10 dark:bg-[#0f2244]">
+                    <div className="btn-mobile-stack flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
                       <button
                         type="button"
                         className="btn-modern btn-modern-ghost btn-mobile-cta lg:h-10 lg:min-h-0 lg:w-auto"
@@ -1944,12 +1946,12 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                       </button>
                       <button
                         type="button"
-                        className="btn-modern btn-modern-sm btn-mobile-cta flex items-center justify-center gap-1.5 border-0 bg-rose-600 font-semibold text-white shadow-md hover:bg-rose-500 lg:h-10 lg:min-h-0 lg:w-auto"
+                        className="btn-modern btn-modern-sm btn-mobile-cta flex min-h-11 items-center justify-center gap-1.5 border-0 bg-rose-600 font-semibold text-white shadow-md hover:bg-rose-500 lg:h-10 lg:min-h-0 lg:w-auto"
                         onClick={() => void confirmarCierreLista()}
                         disabled={!sesionListaAbierta || cerrandoSesionId != null}
                       >
                         <span className="material-symbols-outlined text-[18px]">check_circle</span>
-                        {cerrandoSesionId != null ? 'Cerrando...' : 'Confirmar'}
+                        {cerrandoSesionId != null ? 'Cerrando...' : 'Confirmar y cerrar lista'}
                       </button>
                     </div>
                   </div>
