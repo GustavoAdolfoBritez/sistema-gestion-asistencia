@@ -1301,8 +1301,7 @@ html:not(.dark) .usuario-detail-panel .usuario-detail-panel-card {
     overflow: hidden;
   }
 
-  .auditoria-page-section[data-has-selection='true'] .auditoria-detalle-volver-bar,
-  .auditoria-page-section[data-has-selection='true'] .auditoria-detalle-volver-pie {
+  .auditoria-page-section[data-has-selection='true'] .auditoria-detalle-volver-bar {
     flex-shrink: 0;
   }
 

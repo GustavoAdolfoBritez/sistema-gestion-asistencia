@@ -6,6 +6,7 @@ import { AppSidebar } from '../components/AppSidebar';
 import { UserAvatar } from '../components/ui/user-avatar';
 import { SkeletonRow } from '../components/ui/skeleton';
 import { AppSelect } from '../components/ui/app-select';
+import { BotonVolverListadoMovil } from '../components/ui/boton-volver-listado-movil';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { generarYAbrirPdf, apiFetch } from '../utils/api';
 import { formatDateOnly } from '../utils/datetime';
@@ -1219,14 +1220,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                 className={`master-detail-detail z-10 flex h-full w-full min-w-0 flex-col border-t border-slate-200 shadow-xl max-lg:min-h-0 max-lg:flex-1 max-lg:max-h-none max-lg:overflow-hidden dark:border-[#1c2a50] lg:max-h-none lg:w-[450px] lg:shrink-0 lg:border-t-0 lg:border-l ${USUARIO_DETAIL_SHELL}`}
               >
                 <div className={`shrink-0 px-3 py-2.5 lg:hidden ${USUARIO_DETAIL_HEADER}`}>
-                  <button
-                    type="button"
-                    onClick={cerrarPanelDetalle}
-                    className="btn-mobile-cta flex w-full min-h-11 items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-[#f0f4f8]"
-                  >
-                    <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-                    Volver al listado
-                  </button>
+                  <BotonVolverListadoMovil onClick={cerrarPanelDetalle} />
                 </div>
 
                 <div className={`hidden shrink-0 p-4 sm:p-6 lg:block ${USUARIO_DETAIL_HEADER}`}>
@@ -1679,14 +1673,13 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                         <span className="material-symbols-outlined text-[18px]">edit</span>
                         Editar datos
                       </button>
+                      <BotonVolverListadoMovil onClick={cerrarPanelDetalle} className="lg:hidden" />
                       <button
                         type="button"
                         onClick={cerrarPanelDetalle}
-                        className="btn-modern btn-modern-ghost btn-modern-sm btn-mobile-cta w-full"
+                        className="btn-modern btn-modern-ghost btn-modern-sm btn-mobile-cta hidden w-full lg:inline-flex"
                       >
-                        <span className="material-symbols-outlined text-[18px] lg:hidden">arrow_back</span>
-                        <span className="lg:hidden">Volver al listado</span>
-                        <span className="hidden lg:inline">Cerrar</span>
+                        Cerrar
                       </button>
                       <button
                         type="button"
@@ -1714,14 +1707,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                 className={`master-detail-detail z-10 flex h-full w-full min-w-0 flex-col border-t border-slate-200 shadow-xl max-lg:min-h-0 max-lg:flex-1 max-lg:max-h-none max-lg:overflow-hidden dark:border-[#1c2a50] lg:max-h-none lg:w-[450px] lg:shrink-0 lg:border-t-0 lg:border-l ${USUARIO_DETAIL_SHELL}`}
               >
                 <div className={`shrink-0 px-3 py-2.5 lg:hidden ${USUARIO_DETAIL_HEADER}`}>
-                  <button
-                    type="button"
-                    onClick={cerrarPanelDetalle}
-                    className="btn-mobile-cta flex w-full min-h-11 items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-[#f0f4f8]"
-                  >
-                    <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-                    Volver al listado
-                  </button>
+                  <BotonVolverListadoMovil onClick={cerrarPanelDetalle} />
                 </div>
                 <CreateUserModal
                   onClose={cerrarPanelDetalle}

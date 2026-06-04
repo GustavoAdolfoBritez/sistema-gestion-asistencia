@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import { AppSidebar } from '../components/AppSidebar';
 import { AppSelect } from '../components/ui/app-select';
+import { BotonVolverListadoMovil, VolverListadoMovilBar } from '../components/ui/boton-volver-listado-movil';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import {
   ImportConfirmOverlay,
@@ -1368,22 +1369,20 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                 successMessage={confirmSuccessMessage}
                 onDismissError={dismissConfirmError}
               />
-              <div className="importaciones-detail-header flex min-w-0 shrink-0 flex-col gap-3 border-b border-slate-800 bg-[#132a52] px-4 py-3 max-xl:py-4 xl:flex-row xl:items-start xl:justify-between xl:gap-4 xl:border-slate-200 xl:bg-white dark:xl:border-slate-700 dark:xl:bg-[#132a52] xl:px-5 xl:py-4">
-                {selectedBatchId ? (
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1.5 self-start rounded-lg px-1 py-1 text-sm font-medium text-slate-300 hover:bg-slate-800/60 max-xl:inline-flex xl:hidden"
+              {selectedBatchId ? (
+                <VolverListadoMovilBar className="xl:hidden dark:border-slate-800 dark:bg-[#0f1f3d]">
+                  <BotonVolverListadoMovil
+                    label="Volver"
+                    ariaLabel="Volver al asistente de importación"
                     onClick={() => {
                       setSelectedBatchId(null);
                       setBatchDetail(null);
                       setRecords([]);
                     }}
-                    aria-label="Volver al asistente de importación"
-                  >
-                    <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-                    Volver
-                  </button>
-                ) : null}
+                  />
+                </VolverListadoMovilBar>
+              ) : null}
+              <div className="importaciones-detail-header flex min-w-0 shrink-0 flex-col gap-3 border-b border-slate-800 bg-[#132a52] px-4 py-3 max-xl:py-4 xl:flex-row xl:items-start xl:justify-between xl:gap-4 xl:border-slate-200 xl:bg-white dark:xl:border-slate-700 dark:xl:bg-[#132a52] xl:px-5 xl:py-4">
                 <div className="min-w-0 flex-1">
                   <h3 className="text-base font-semibold text-[#f0f4f8] xl:text-slate-900 dark:xl:text-[#f0f4f8]">Detalle del lote</h3>
                   <p className="mt-0.5 text-xs text-slate-400 max-xl:block xl:hidden">

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { AppSidebar } from '../components/AppSidebar';
+import { BotonVolverListadoMovil, VolverListadoMovilBar } from '../components/ui/boton-volver-listado-movil';
 import { AppSelect } from '../components/ui/app-select';
 import { generarYAbrirPdf, apiFetch } from '../utils/api';
 import { etiquetasRoles } from '../utils/role-labels';
@@ -373,20 +374,6 @@ function DetalleCampoMovil({ etiqueta, valor }: { etiqueta: string; valor: React
       <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">{etiqueta}</p>
       <div className="mt-1.5 text-sm leading-relaxed text-slate-800 dark:text-slate-100">{valor}</div>
     </div>
-  );
-}
-
-function BotonVolverAuditoriaMovil({ onClick, className = '' }: { onClick: () => void; className?: string }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg px-2 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-white/10 ${className}`}
-      aria-label="Volver al listado de eventos"
-    >
-      <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-      Volver al listado
-    </button>
   );
 }
 
@@ -1231,9 +1218,12 @@ export function AuditoriaPage({ onLogout }: Props) {
 
             {seleccionado ? (
             <div className="auditoria-detail-panel auditoria-detail-panel--activo shrink-0 border-t border-slate-200 p-4 max-xl:flex max-xl:min-h-0 max-xl:flex-1 max-xl:flex-col max-xl:overflow-hidden max-xl:p-0 xl:flex xl:max-h-[min(45vh,28rem)] xl:flex-col xl:overflow-hidden xl:p-4 dark:border-slate-800">
-                <div className="auditoria-detalle-volver-bar flex shrink-0 items-center border-b border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-[#132a52] xl:hidden">
-                  <BotonVolverAuditoriaMovil onClick={cerrarDetalleEvento} />
-                </div>
+                <VolverListadoMovilBar className="auditoria-detalle-volver-bar xl:hidden">
+                  <BotonVolverListadoMovil
+                    onClick={cerrarDetalleEvento}
+                    ariaLabel="Volver al listado de eventos"
+                  />
+                </VolverListadoMovilBar>
               <div className="mb-3 hidden shrink-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between xl:flex max-xl:px-3 max-xl:pt-3">
                 <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
                   <h2 className="text-base font-semibold text-slate-900 dark:text-[#f0f4f8]">Detalle del evento</h2>
@@ -1448,9 +1438,6 @@ export function AuditoriaPage({ onLogout }: Props) {
                       </div>
                     ) : null}
                   </div>
-                </div>
-                <div className="auditoria-detalle-volver-pie flex shrink-0 border-t border-slate-200 bg-white px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] dark:border-slate-800 dark:bg-[#132a52] xl:hidden">
-                  <BotonVolverAuditoriaMovil onClick={cerrarDetalleEvento} />
                 </div>
             </div>
             ) : null}
