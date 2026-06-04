@@ -4,6 +4,7 @@ import { AppSidebar } from '../components/AppSidebar';
 import { JustificacionFechasGrupo } from '../components/JustificacionFechasGrupo';
 import { ScopeSelector, ScopeSelectorSkeleton } from '../components/ScopeSelector';
 import { AppSelect } from '../components/ui/app-select';
+import { BotonVolverListadoMovil, VolverListadoMovilBar } from '../components/ui/boton-volver-listado-movil';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { useMisAlcances } from '../hooks/useMisAlcances';
 import { useScopeForm } from '../hooks/useScopeForm';
@@ -965,20 +966,15 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                 }`}
               >
                 {selectedAlumnoId ? (
-                  <div className="flex shrink-0 items-center gap-2 border-b border-slate-200 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-[#0c1a32]/50 max-lg:flex lg:hidden">
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-200/80 dark:text-slate-200 dark:hover:bg-slate-800/60"
+                  <VolverListadoMovilBar className="max-lg:flex lg:hidden dark:bg-[#0c1a32]/80">
+                    <BotonVolverListadoMovil
+                      ariaLabel="Volver al listado de alumnos"
                       onClick={() => {
                         setSelectedAlumnoId(null);
                         setFicha(null);
                       }}
-                      aria-label="Volver al listado de alumnos"
-                    >
-                      <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-                      Volver al listado
-                    </button>
-                  </div>
+                    />
+                  </VolverListadoMovilBar>
                 ) : null}
 
                 {/* Estado vacío (solo escritorio; en móvil no hay panel sin selección) */}
