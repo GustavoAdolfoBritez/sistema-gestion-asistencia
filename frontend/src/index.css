@@ -923,6 +923,145 @@
   }
 
   /**
+   * Reportes · cierre: actas / habilitados en móvil y tablet vertical (<lg).
+   * Cuadro con altura acotada y scroll interno (misma idea que max-h en PC).
+   */
+  @media (max-width: 1023px) {
+    /* Barra lateral solo si hay overflow; vacío o poco contenido = sin barra ni altura fija. */
+    .reportes-lista-scroll-outer {
+      display: block;
+      min-height: 0;
+    }
+
+    .reportes-lista-scroll-outer.reportes-lista-scroll-outer--con-barra {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 14px;
+      align-items: stretch;
+      max-height: 18.75rem;
+    }
+
+    .reportes-lista-scroll-outer:not(.reportes-lista-scroll-outer--con-barra) {
+      touch-action: auto;
+      overscroll-behavior: auto;
+    }
+
+    /* Vacío: no captura el dedo; la página scrollea debajo. */
+    .reportes-panel-lista-scroll--sin-overflow {
+      max-height: none !important;
+      height: auto !important;
+      overflow: visible !important;
+      overscroll-behavior: auto !important;
+      touch-action: auto !important;
+      -webkit-overflow-scrolling: auto;
+    }
+
+    /* Con ítems: caja fija como en PC; luego se decide si hace falta barra lateral. */
+    .reportes-panel-lista-scroll--con-lista {
+      max-height: 18.75rem;
+      padding: 0.25rem 0.125rem 0.25rem 0.25rem;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+      scrollbar-width: none;
+      pointer-events: auto;
+    }
+
+    .reportes-panel-lista-scroll--con-lista::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+      display: none;
+    }
+
+    .reportes-panel-lista-scroll .reportes-panel-lista-items {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .reportes-lista-scrollbar-rail {
+      display: flex;
+      flex-direction: column;
+      width: 14px;
+      min-height: 0;
+      max-height: 18.75rem;
+      overflow: hidden;
+      border-radius: 0 6px 6px 0;
+      border: 1px solid #e2e8f0;
+      border-left: none;
+      background: #f1f5f9;
+    }
+
+    .dark .reportes-lista-scrollbar-rail {
+      border-color: #2a4a7f;
+      background: #0d1b2e;
+    }
+
+    .reportes-lista-scrollbar-arrow {
+      display: flex;
+      flex-shrink: 0;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 12px;
+      padding: 0;
+      color: #64748b;
+      background: #f1f5f9;
+      border: none;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .reportes-lista-scrollbar-arrow--down {
+      border-bottom: none;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .dark .reportes-lista-scrollbar-arrow {
+      color: #94a3b8;
+      background: #0d1b2e;
+      border-color: #2a4a7f;
+    }
+
+    .reportes-lista-scrollbar-track {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 0;
+      margin: 1px 2px;
+      background: #f1f5f9;
+    }
+
+    .dark .reportes-lista-scrollbar-track {
+      background: #0d1b2e;
+    }
+
+    .reportes-lista-scrollbar-thumb {
+      position: absolute;
+      left: 0;
+      right: 0;
+      border-radius: 4px;
+      background-color: #cbd5e1;
+      border: 1px solid #f1f5f9;
+      pointer-events: none;
+    }
+
+    .dark .reportes-lista-scrollbar-thumb {
+      background-color: #2a4272;
+      border-color: #0d1b2e;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .reportes-lista-scroll-outer {
+      display: block;
+    }
+
+    .reportes-lista-scrollbar-rail {
+      display: none !important;
+    }
+  }
+
+  /**
    * Scroll interno desde md+ (tablet/desktop). En T1 el padre scrollea.
    */
   .scroll-region-at-lg {
