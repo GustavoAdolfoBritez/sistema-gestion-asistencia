@@ -6,12 +6,10 @@ import {
     resolverAlcanceMatriculasFacultad,
     type AlcanceMatriculasFacultad,
 } from '../../utils/alumnos-scope';
-import { SQL_ALUMNO_APELLIDOS_COMA_NOMBRES } from '../../utils/alumno-nombre-sql';
+import { SQL_ALUMNO_APELLIDOS_COMA_NOMBRES, SQL_ORDEN_MATRICULA_PLANILLA } from '../../utils/alumno-nombre-sql';
 import { recalcularMetricasCurso } from '../../utils/metricas-asistencia';
 
-/** Orden de filas en planilla: importación primero; legacy sin orden → apellido. */
-export const SQL_ORDEN_MATRICULA_PLANILLA =
-    'mat.orden_lista NULLS LAST, al.apellidos NULLS LAST, al.nombres NULLS LAST, al.nombre_apellido NULLS LAST, mat.id';
+export { SQL_ORDEN_MATRICULA_PLANILLA };
 
 const ROLES_APROBADORES_JUSTIFICACIONES_NORMALIZADOS = ROLES_APROBADORES_JUSTIFICACIONES.map((r) =>
     normalizarRolComparacion(r)
@@ -389,7 +387,23 @@ export async function obtenerResumenCurso(cursoId: number) {
 
 export async function obtenerHabilitados(cursoId: number) {
     const { rows } = await pool.query(
-        `SELECT * FROM vw_habilitados_examen WHERE curso_id = $1 ORDER BY alumno`,
+        `SELECT
+            v.habilitacion_id,
+            v.curso_id,
+            v.materia,
+            v.anio,
+            v.mes,
+            v.matricula_id,
+            ${SQL_ALUMNO_APELLIDOS_COMA_NOMBRES} AS alumno,
+            v.numero_documento,
+            v.porcentaje_final,
+            v.habilitado,
+            v.generado_en
+         FROM vw_habilitados_examen v
+         JOIN matriculas mat ON mat.id = v.matricula_id
+         JOIN alumnos al ON al.id = mat.alumno_id
+         WHERE v.curso_id = $1
+         ORDER BY ${SQL_ORDEN_MATRICULA_PLANILLA}`,
         [cursoId]
     );
     return rows;

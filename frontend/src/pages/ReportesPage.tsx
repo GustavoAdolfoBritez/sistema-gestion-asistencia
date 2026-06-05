@@ -1019,47 +1019,50 @@ export function ReportesPage({ onLogout }: Props) {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+            <div className="reportes-cierre-cuadros-grid grid grid-cols-1 gap-4 xl:grid-cols-3 xl:grid-rows-2 xl:gap-5 xl:items-stretch">
 
-              {/* Izquierda: flujo + checklist */}
-              <div className="xl:col-span-2 space-y-4">
-
-                {/* Pasos del flujo */}
-                <div className="rounded-2xl border border-[#2d466d]/70 bg-[#132a52] p-5">
+                {/* Pasos del flujo — fila 1 izquierda */}
+                <div className="reportes-cierre-panel reportes-cierre-panel--flujo rounded-2xl border border-[#2d466d]/70 bg-[#132a52] p-5 xl:col-span-2 xl:row-start-1 xl:h-full">
                   <p className="text-xs font-semibold uppercase tracking-widest text-slate-600 dark:text-[#eff3ff] mb-4">Flujo de cierre guiado</p>
                   <div className="space-y-3">
 
-                    <div className="flex flex-col gap-3 p-3 rounded-xl bg-[#0c1a3b] border border-slate-800 sm:flex-row sm:items-center sm:gap-4">
-                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-blue-300 text-sm font-bold">1</div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold">Recalcular ausentismo</p>
-                        <p className="text-xs text-slate-400">Actualiza las estadísticas de asistencia del periodo.</p>
+                    <div className="flex flex-col gap-3 p-3 rounded-xl bg-[#0c1a3b] border border-slate-800 lg:flex-row lg:items-center lg:gap-4">
+                      <div className="flex min-w-0 flex-1 items-start gap-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-blue-500/40 bg-blue-500/20 text-sm font-bold text-blue-300">1</div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold">Recalcular ausentismo</p>
+                          <p className="text-xs text-slate-400">Actualiza las estadísticas de asistencia del periodo.</p>
+                        </div>
                       </div>
-                      <button type="button" className="btn-modern btn-modern-primary btn-modern-sm btn-mobile-cta shrink-0 flex items-center justify-center gap-1.5 lg:w-auto" onClick={() => void recalcular()} disabled={!cursoValido || loading}>
+                      <button type="button" className="btn-modern btn-modern-primary btn-modern-sm btn-mobile-cta flex w-full shrink-0 items-center justify-center gap-1.5 lg:w-auto lg:min-w-[9rem]" onClick={() => void recalcular()} disabled={!cursoValido || loading}>
                         <span className="material-symbols-outlined text-[15px]">refresh</span>
                         Recalcular
                       </button>
                     </div>
 
-                    <div className="flex flex-col gap-3 p-3 rounded-xl bg-[#0c1a3b] border border-slate-800 sm:flex-row sm:items-center sm:gap-4">
-                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300 text-sm font-bold">2</div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold">Generar acta habilitados/no habilitados</p>
-                        <p className="text-xs text-slate-400">Registra quiénes quedan habilitados para el examen final.</p>
+                    <div className="flex flex-col gap-3 p-3 rounded-xl bg-[#0c1a3b] border border-slate-800 lg:flex-row lg:items-center lg:gap-4">
+                      <div className="flex min-w-0 flex-1 items-start gap-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-emerald-500/40 bg-emerald-500/20 text-sm font-bold text-emerald-300">2</div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold">Generar acta habilitados/no habilitados</p>
+                          <p className="text-xs text-slate-400">Registra quiénes quedan habilitados para el examen final.</p>
+                        </div>
                       </div>
-                      <button type="button" className="btn-modern btn-modern-success btn-modern-sm btn-mobile-cta shrink-0 flex items-center justify-center gap-1.5 lg:w-auto" onClick={() => void generarActa('habilitados_no_habilitados')} disabled={!cursoValido || loading}>
+                      <button type="button" className="btn-modern btn-modern-success btn-modern-sm btn-mobile-cta flex w-full shrink-0 items-center justify-center gap-1.5 lg:w-auto lg:min-w-[9rem]" onClick={() => void generarActa('habilitados_no_habilitados')} disabled={!cursoValido || loading}>
                         <span className="material-symbols-outlined text-[15px]">how_to_reg</span>
                         Generar
                       </button>
                     </div>
 
-                    <div className="flex flex-col gap-3 p-3 rounded-xl bg-[#0c1a3b] border border-slate-800 sm:flex-row sm:items-center sm:gap-4">
-                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-blue-600 text-sm font-bold">3</div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold">Generar PDF legal</p>
-                        <p className="text-xs text-slate-400">Documento oficial con el registro de asistencias del periodo.</p>
+                    <div className="flex flex-col gap-3 p-3 rounded-xl bg-[#0c1a3b] border border-slate-800 lg:flex-row lg:items-center lg:gap-4">
+                      <div className="flex min-w-0 flex-1 items-start gap-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-cyan-500/40 bg-cyan-500/20 text-sm font-bold text-blue-600">3</div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold">Generar PDF legal</p>
+                          <p className="text-xs text-slate-400">Documento oficial con el registro de asistencias del periodo.</p>
+                        </div>
                       </div>
-                      <button type="button" className="btn-modern btn-modern-info btn-modern-sm btn-mobile-cta shrink-0 flex items-center justify-center gap-1.5 lg:w-auto" onClick={() => void generarActa('pdf_legal')} disabled={!cursoValido || loading}>
+                      <button type="button" className="btn-modern btn-modern-info btn-modern-sm btn-mobile-cta flex w-full shrink-0 items-center justify-center gap-1.5 lg:w-auto lg:min-w-[9rem]" onClick={() => void generarActa('pdf_legal')} disabled={!cursoValido || loading}>
                         <span className="material-symbols-outlined text-[15px]">picture_as_pdf</span>
                         Generar PDF
                       </button>
@@ -1067,44 +1070,46 @@ export function ReportesPage({ onLogout }: Props) {
 
                     {puedeCerrarModulo ? (
                       <div
-                        className={`flex flex-col gap-3 p-3 rounded-xl border sm:flex-row sm:items-center sm:gap-4 ${
+                        className={`flex flex-col gap-3 rounded-xl border p-3 lg:flex-row lg:items-center lg:gap-4 ${
                           checklist?.puedeCerrar
                             ? 'bg-rose-50 border-rose-300/70 dark:bg-[rgba(59,18,29,0.5)] dark:border-rose-500/60 dark:shadow-[inset_0_0_0_1px_rgba(244,63,94,0.35)]'
                             : 'bg-[#0c1a3b] border-slate-800'
                         }`}
                       >
-                        <div
-                          className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                            checklist?.puedeCerrar
-                              ? 'bg-rose-100 border border-rose-400 text-rose-800 dark:bg-[rgba(171,18,51,0.45)] dark:border-rose-400/80 dark:text-rose-100'
-                              : 'bg-slate-700/30 border border-slate-700 text-slate-500'
-                          }`}
-                        >
-                          4
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p
-                            className={`text-sm font-semibold ${
-                              checklist?.puedeCerrar ? 'text-rose-900 dark:text-rose-50' : 'text-[#f0f4f8]'
-                            }`}
-                          >
-                            Cerrar módulo mensual
-                          </p>
-                          <p
-                            className={`text-xs ${
+                        <div className="flex min-w-0 flex-1 items-start gap-3">
+                          <div
+                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
                               checklist?.puedeCerrar
-                                ? 'text-rose-800/90 dark:text-rose-200'
-                                : 'text-slate-400'
+                                ? 'border border-rose-400 bg-rose-100 text-rose-800 dark:border-rose-400/80 dark:bg-[rgba(171,18,51,0.45)] dark:text-rose-100'
+                                : 'border border-slate-700 bg-slate-700/30 text-slate-500'
                             }`}
                           >
-                            {checklist?.puedeCerrar
-                              ? 'Todos los requisitos están cumplidos. Puedes cerrar el módulo.'
-                              : 'Completa los pasos anteriores para habilitar el cierre.'}
-                          </p>
+                            4
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p
+                              className={`text-sm font-semibold ${
+                                checklist?.puedeCerrar ? 'text-rose-900 dark:text-rose-50' : 'text-[#f0f4f8]'
+                              }`}
+                            >
+                              Cerrar módulo mensual
+                            </p>
+                            <p
+                              className={`text-xs ${
+                                checklist?.puedeCerrar
+                                  ? 'text-rose-800/90 dark:text-rose-200'
+                                  : 'text-slate-400'
+                              }`}
+                            >
+                              {checklist?.puedeCerrar
+                                ? 'Todos los requisitos están cumplidos. Puedes cerrar el módulo.'
+                                : 'Completa los pasos anteriores para habilitar el cierre.'}
+                            </p>
+                          </div>
                         </div>
                         <button
                           type="button"
-                          className="btn-modern btn-modern-danger btn-modern-sm btn-mobile-cta shrink-0 flex items-center justify-center gap-1.5 lg:w-auto"
+                          className="btn-modern btn-modern-danger btn-modern-sm btn-mobile-cta flex w-full shrink-0 items-center justify-center gap-1.5 lg:w-auto lg:min-w-[9rem]"
                           onClick={() => setConfirmCloseOpen(true)}
                           disabled={!checklist?.puedeCerrar || closing}
                         >
@@ -1120,9 +1125,9 @@ export function ReportesPage({ onLogout }: Props) {
                   </div>
                 </div>
 
-                {/* Checklist de validaciones */}
-                <div className="rounded-2xl border border-[#2d466d]/70 bg-[#132a52] p-5">
-                  <div className="flex items-center justify-between mb-4">
+                {/* Checklist de validaciones — fila 2 izquierda */}
+                <div className="reportes-cierre-panel reportes-cierre-panel--checklist rounded-2xl border border-[#2d466d]/70 bg-[#132a52] p-5 xl:col-span-2 xl:row-start-2 xl:flex xl:h-full xl:flex-col xl:min-h-0">
+                  <div className="mb-4 flex shrink-0 items-center justify-between">
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-widest text-slate-600 dark:text-[#eff3ff]">Checklist de cierre</p>
                       <p className="text-xs text-slate-500 mt-0.5">Requisitos que deben cumplirse para habilitar el cierre.</p>
@@ -1135,7 +1140,7 @@ export function ReportesPage({ onLogout }: Props) {
                   </div>
 
                   {checklist ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 xl:flex-1 xl:min-h-0">
                       {checklist.validaciones.map((item) => (
                         <div key={item.id} className={`rounded-xl border p-3 ${getEstadoClasses(item.estado)}`}>
                           <div className="flex items-center gap-2 mb-1">
@@ -1150,25 +1155,23 @@ export function ReportesPage({ onLogout }: Props) {
                       ))}
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center justify-center py-8 text-slate-500">
+                    <div className="flex flex-col items-center justify-center py-8 text-slate-500 xl:flex-1">
                       <span className="material-symbols-outlined text-4xl mb-2 opacity-40">checklist</span>
                       <p className="text-sm">Consultá un curso para ver el checklist.</p>
                     </div>
                   )}
                 </div>
-              </div>
 
-              {/* Derecha: actas y habilitados */}
-              <div className="space-y-4">
-
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#2d466d]/70 dark:bg-[#132a52] dark:shadow-none max-lg:p-3">
-                  <div className="mb-3 flex items-center justify-between gap-2 max-lg:mb-2">
+                {/* Actas generadas — fila 1 derecha */}
+                <div className="reportes-cierre-panel reportes-cierre-panel--actas rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#2d466d]/70 dark:bg-[#132a52] dark:shadow-none max-lg:p-3 xl:col-span-1 xl:col-start-3 xl:row-start-1 xl:flex xl:h-full xl:flex-col xl:min-h-0">
+                  <div className="mb-3 flex shrink-0 items-center justify-between gap-2 max-lg:mb-2">
                     <p className="text-xs font-semibold uppercase tracking-widest text-slate-600 dark:text-[#eff3ff]">Actas generadas</p>
                     <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-slate-600 dark:border-slate-800 dark:bg-[#0c1a3b] dark:text-slate-400">
                       {actas.length}
                     </span>
                   </div>
-                  <ReportesPanelListaScroll vacio={!actas.length}>
+                  <div className="reportes-cierre-panel-scroll-body min-h-0 xl:flex xl:flex-1 xl:flex-col">
+                  <ReportesPanelListaScroll vacio={!actas.length} barraCustomHastaXl>
                     {actas.length ? (
                       <ul className="reportes-panel-lista-items max-lg:flex max-lg:flex-col max-lg:gap-2 lg:space-y-2">
                         {actas.map((a) => (
@@ -1232,15 +1235,18 @@ export function ReportesPage({ onLogout }: Props) {
                       </div>
                     )}
                   </ReportesPanelListaScroll>
+                  </div>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#2d466d]/70 dark:bg-[#132a52] dark:shadow-none max-lg:p-3">
-                  <div className="mb-3 flex items-center justify-between gap-2 max-lg:mb-2">
+                {/* Habilitados a examen — fila 2 derecha */}
+                <div className="reportes-cierre-panel reportes-cierre-panel--habilitados rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#2d466d]/70 dark:bg-[#132a52] dark:shadow-none max-lg:p-3 xl:col-span-1 xl:col-start-3 xl:row-start-2 xl:flex xl:h-full xl:flex-col xl:min-h-0">
+                  <div className="mb-3 flex shrink-0 items-center justify-between gap-2 max-lg:mb-2">
                     <p className="text-xs font-semibold uppercase tracking-widest text-slate-600 dark:text-[#eff3ff]">Habilitados a examen</p>
                     <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-semibold tabular-nums text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
                       {habilitadosCount}
                     </span>
                   </div>
+                  <div className="reportes-cierre-panel-scroll-body min-h-0 xl:flex xl:flex-1 xl:flex-col">
                   <ReportesPanelListaScroll vacio={!habilitados.filter((h) => h.habilitado).length}>
                     {habilitados.filter((h) => h.habilitado).length ? (
                       <ul className="reportes-panel-lista-items max-lg:flex max-lg:flex-col max-lg:gap-2 lg:space-y-2">
@@ -1284,8 +1290,8 @@ export function ReportesPage({ onLogout }: Props) {
                       </div>
                     )}
                   </ReportesPanelListaScroll>
+                  </div>
                 </div>
-              </div>
             </div>
             </>
             ) : null}
@@ -1341,7 +1347,7 @@ export function ReportesPage({ onLogout }: Props) {
                     options={[
                       { value: 'faltas_desc', label: 'Orden: más faltas' },
                       { value: 'asistencia_asc', label: 'Orden: menor asistencia' },
-                      { value: 'alumno_asc', label: 'Orden: alumno A-Z' },
+                      { value: 'alumno_asc', label: 'Orden: lista (planilla)' },
                     ]}
                     triggerClassName={selectReportesTriggerClass}
                   />
