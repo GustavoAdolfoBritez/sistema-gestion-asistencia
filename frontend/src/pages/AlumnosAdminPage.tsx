@@ -22,6 +22,13 @@ import { etiquetaPorcentajeAsistencia, tieneAsistenciaRegistrada } from '../util
 const JUSTIF_ALUMNO_COLS_SIN_ACCIONES = ['17%', '26%', '10%', '14%', '21%', '12%'] as const;
 const JUSTIF_ALUMNO_COLS_CON_ACCIONES = ['15%', '21%', '8%', '12%', '12%', '17%', '15%'] as const;
 
+/** Tarjeta Justificadas (ficha) — ámbar estático como las demás KPI; borde sutil al abrir el diálogo. */
+const FICHA_JUSTIF_COLOR = 'text-amber-700 dark:text-amber-300';
+const FICHA_JUSTIF_ICON_BG = 'bg-amber-100 dark:bg-amber-500/10';
+/** Solo borde/anillo al presionar; sin rellenar el interior (armonía en dark con las otras tarjetas). */
+const FICHA_JUSTIF_PRESSED_CARD =
+  'border-amber-400/70 ring-1 ring-amber-300/40 dark:border-amber-500/40 dark:ring-amber-500/20';
+
 const thTablaJustifAlumno =
   'px-4 py-3.5 text-left align-top text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400';
 const tdTablaJustifAlumno = 'min-w-0 px-4 py-3.5 text-left align-top';
@@ -1044,7 +1051,13 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                         { label: 'Matrículas', value: ficha.resumen.totalMatriculas, icon: 'school', color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100 dark:bg-blue-500/10' },
                         { label: 'Activas', value: ficha.resumen.activas, icon: 'check_circle', color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100 dark:bg-emerald-500/10' },
                         { label: 'Ausencias', value: ficha.resumen.totalAusencias, icon: 'event_busy', color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100 dark:bg-amber-500/10' },
-                        { label: 'Justificadas', value: ficha.resumen.totalJustificadas, icon: 'task_alt', color: 'text-purple-700 dark:text-purple-300', bg: 'bg-purple-100 dark:bg-purple-500/10' },
+                        {
+                          label: 'Justificadas',
+                          value: ficha.resumen.totalJustificadas,
+                          icon: 'pending_actions',
+                          color: FICHA_JUSTIF_COLOR,
+                          bg: FICHA_JUSTIF_ICON_BG,
+                        },
                       ].map((stat) => {
                         const cuerpo = (
                           <>
@@ -1076,10 +1089,12 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                                 ? `Ver justificaciones: ${justificacionesPendientesRevision} pendiente${justificacionesPendientesRevision === 1 ? '' : 's'} de revisión`
                                 : 'Ver justificaciones presentadas y documentos PDF'
                             }
-                            className={`${claseTarjeta} hover:bg-slate-100 hover:border-slate-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/50 dark:hover:bg-[#1a335c]/80 dark:hover:border-slate-600 ${
+                            className={`${claseTarjeta} focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 ${
                               justificacionesPendientesRevision > 0
                                 ? 'border-amber-300/90 bg-amber-50/90 ring-1 ring-amber-200/70 hover:border-amber-400 hover:bg-amber-50 dark:border-amber-500/45 dark:bg-amber-500/10 dark:ring-amber-500/25 dark:hover:border-amber-500/55 dark:hover:bg-amber-500/15 focus-visible:ring-amber-400/50'
-                                : ''
+                                : justificacionesDialogOpen
+                                  ? FICHA_JUSTIF_PRESSED_CARD
+                                  : 'hover:border-amber-300/50 hover:bg-slate-100 dark:hover:border-amber-500/25 dark:hover:bg-[#1a335c]/80'
                             }`}
                           >
                             <div

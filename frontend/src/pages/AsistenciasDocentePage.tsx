@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import {
+  ACADEMICO_TAB_ACTIVE,
+  ACADEMICO_TAB_BASE,
+  ACADEMICO_TAB_INACTIVE,
+} from '../components/AcademicoSubnav';
 import { AppSidebar } from '../components/AppSidebar';
 import { AppSelect } from '../components/ui/app-select';
 import {
@@ -311,6 +316,10 @@ function claseFilaPlanilla(estado: EstadoFilaPlanilla, idx: number): string {
   if (estado === 'riesgo') return 'planilla-fila-riesgo';
   return idx % 2 === 0 ? 'planilla-fila-regular-par' : 'planilla-fila-regular-impar';
 }
+
+/** Pestaña Justificaciones activa — ámbar del panel de inicio (Secretaría Académica). */
+const JUSTIF_TAB_ACTIVE =
+  'border-amber-400/80 text-amber-800 dark:text-amber-100 bg-amber-50 dark:bg-amber-500/15';
 
 /** Paneles del módulo justificaciones: blanco en claro, azul oscuro en dark (como referencia UI). */
 const JUSTIF_PANEL_CLASS =
@@ -1380,32 +1389,35 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
           </header>
 
           <section className="justif-movil-scroll-section app-scroll-content flex min-h-0 min-w-0 flex-1 flex-col gap-4 p-4 sm:p-6 max-lg:bg-background-light dark:max-lg:bg-[#0d1830] xl:overflow-hidden">
-            <div className="btn-mobile-tabs btn-mobile-tabs--inline-md flex w-full flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-[#132a52] sm:w-auto md:inline-flex">
+            <nav
+              className={`grid w-full min-w-0 gap-2 pb-0.5 max-md:gap-1.5 md:flex md:max-w-full md:flex-nowrap md:items-center md:overflow-x-auto md:overflow-visible ${
+                mostrarModuloJustificaciones ? 'grid-cols-2' : 'grid-cols-1'
+              }`}
+              aria-label="Secciones de asistencias"
+            >
               <button
                 type="button"
                 onClick={() => setSubView('planilla')}
-                className={`rounded-lg px-3 py-2 text-sm font-semibold ${
-                  subView === 'planilla'
-                    ? 'bg-primary text-white'
-                    : 'text-slate-700 dark:text-white hover:bg-slate-100 dark:hover:bg-white/10'
+                className={`${ACADEMICO_TAB_BASE} ${
+                  subView === 'planilla' ? ACADEMICO_TAB_ACTIVE : ACADEMICO_TAB_INACTIVE
                 }`}
               >
-                 Planilla de Asistencia
+                <span className="material-symbols-outlined shrink-0 text-base max-md:hidden">fact_check</span>
+                Planilla de Asistencia
               </button>
               {mostrarModuloJustificaciones ? (
                 <button
                   type="button"
                   onClick={() => setSubView('justificaciones')}
-                  className={`rounded-lg px-3 py-2 text-sm font-semibold ${
-                    subView === 'justificaciones'
-                      ? 'bg-primary text-white'
-                      : 'text-slate-700 dark:text-white hover:bg-slate-100 dark:hover:bg-white/10'
-                }`}
+                  className={`${ACADEMICO_TAB_BASE} ${
+                    subView === 'justificaciones' ? JUSTIF_TAB_ACTIVE : ACADEMICO_TAB_INACTIVE
+                  }`}
                 >
-                   Justificaciones
+                  <span className="material-symbols-outlined shrink-0 text-base max-md:hidden">pending_actions</span>
+                  Justificaciones
                 </button>
               ) : null}
-            </div>
+            </nav>
 
             {subView === 'planilla' ? (
             <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden max-lg:flex-none max-lg:overflow-visible">
