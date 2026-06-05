@@ -7,7 +7,13 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { readStoredUser } from './utils/session-user';
 import { appPath } from './navigation/app-paths';
 import { RequireAuth } from './navigation/RequireAuth';
-import { clearLocalSession, logoutOnServer, resetSessionExpiredState, UNAUTHORIZED_EVENT } from './utils/api';
+import {
+  clearAsistenciasCursoIdPersistido,
+  clearLocalSession,
+  logoutOnServer,
+  resetSessionExpiredState,
+  UNAUTHORIZED_EVENT,
+} from './utils/api';
 
 const INSTITUTION_LOGO_URL = '/ung-logo.jpg';
 
@@ -83,6 +89,7 @@ function LoginRoute({ setUser }: { setUser: (u: SessionUser | null) => void }) {
     <LoginPage
       onOpenLegalPage={(page) => navigate(`/${page}`)}
       onLoginSuccess={(usuario) => {
+        clearAsistenciasCursoIdPersistido();
         setUser(usuario ?? null);
         navigate(appPath(getHomeViewForUser(usuario ?? null)), { replace: true });
       }}

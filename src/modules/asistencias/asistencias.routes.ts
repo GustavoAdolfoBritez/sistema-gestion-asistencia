@@ -100,8 +100,8 @@ router.get(
         }
 
         const contexto = obtenerContexto(req);
-        const planilla = await obtenerPlanillaConPermisos({ cursoId, fecha }, contexto);
-        res.json({ total: planilla.length, datos: planilla });
+        const { curso, datos } = await obtenerPlanillaConPermisos({ cursoId, fecha }, contexto);
+        res.json({ curso, total: datos.length, datos });
     } catch (error) {
         if (error instanceof Error) {
             return res.status(400).json({ mensaje: error.message });

@@ -63,8 +63,8 @@ router.get('/asistencias/planilla', ...auth_middleware_1.autenticarConPoliticaAl
             return res.status(400).json({ mensaje: 'Debe seleccionar un curso' });
         }
         const contexto = obtenerContexto(req);
-        const planilla = await (0, asistencias_service_1.obtenerPlanillaConPermisos)({ cursoId, fecha }, contexto);
-        res.json({ total: planilla.length, datos: planilla });
+        const { curso, datos } = await (0, asistencias_service_1.obtenerPlanillaConPermisos)({ cursoId, fecha }, contexto);
+        res.json({ curso, total: datos.length, datos });
     }
     catch (error) {
         if (error instanceof Error) {

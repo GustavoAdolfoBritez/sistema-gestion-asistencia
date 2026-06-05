@@ -147,6 +147,34 @@ async function obtenerSesionPorCursoFecha(cursoId, fecha) {
     const { rows } = await database_1.pool.query(`SELECT * FROM sesiones_clase WHERE curso_id = $1 AND fecha = $2`, [cursoId, fecha]);
     return rows[0] ?? null;
 }
+async function obtenerMetadatosCursoPlanilla(cursoId) {
+    const { rows } = await database_1.pool.query(`SELECT
+            c.id AS curso_id,
+            c.modulo_id,
+            m.nombre AS materia,
+            m.semestre AS semestre,
+            ca.nombre AS carrera,
+            f.nombre AS facultad,
+            ma.fecha_inicio::text AS fecha_inicio,
+            ma.fecha_fin::text AS fecha_fin,
+            ma.estado AS estado_modulo,
+            c.aula,
+            c.horario_inicio::text AS horario_inicio,
+            c.horario_fin::text AS horario_fin,
+            c.notas,
+            (SELECT COUNT(*)::int FROM matriculas mt WHERE mt.curso_id = c.id) AS total_matriculas,
+            CONCAT(u.nombres, ' ', u.apellidos) AS docente
+         FROM cursos c
+         JOIN modulos_academicos ma ON ma.id = c.modulo_id
+         JOIN materias m ON m.id = ma.materia_id
+         JOIN planes_estudio pe ON pe.id = m.plan_id
+         JOIN carreras ca ON ca.id = pe.carrera_id
+         JOIN facultades f ON f.id = ca.facultad_id
+         JOIN docentes d ON d.id = c.docente_id
+         JOIN usuarios u ON u.id = d.usuario_id
+         WHERE c.id = $1`, [cursoId]);
+    return rows[0] ?? null;
+}
 async function obtenerPlanilla(filtro) {
     const valores = [filtro.cursoId];
     let where = 'c.id = $1';
@@ -191,7 +219,14 @@ async function obtenerPlanilla(filtro) {
 }
 async function obtenerPlanillaConPermisos(filtro, contexto) {
     await asegurarPermisoCurso(filtro.cursoId, contexto);
-    return obtenerPlanilla(filtro);
+    const [curso, datos] = await Promise.all([
+        obtenerMetadatosCursoPlanilla(filtro.cursoId),
+        obtenerPlanilla(filtro),
+    ]);
+    if (!curso) {
+        throw new Error('Curso no encontrado');
+    }
+    return { curso, datos };
 }
 async function listarPlanillasAsignadas(contexto, filtro = {}) {
     const valores = [];
@@ -211,6 +246,7 @@ async function listarPlanillasAsignadas(contexto, filtro = {}) {
             c.id AS curso_id,
             c.modulo_id,
             m.nombre AS materia,
+            m.semestre AS semestre,
             ca.nombre AS carrera,
             f.nombre AS facultad,
             ma.fecha_inicio::text,
@@ -513,6 +549,7 @@ async function listarJustificaciones(filtro, contexto) {
             sc.fecha,
             c.id AS curso_id,
             m.nombre AS materia,
+            m.semestre AS semestre,
             mat.id AS matricula_id,
             ${alumno_nombre_sql_1.SQL_ALUMNO_APELLIDOS_COMA_NOMBRES} AS alumno,
             al.numero_orden,

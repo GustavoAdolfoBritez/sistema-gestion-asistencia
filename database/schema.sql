@@ -587,6 +587,7 @@ CREATE OR REPLACE VIEW vw_resumen_asistencia_curso AS
 SELECT
     c.id AS curso_id,
     m.nombre AS materia,
+    m.semestre AS semestre,
     mo.anio,
     mo.mes,
     COUNT(mat.id) AS total_matriculas,
@@ -599,7 +600,7 @@ FROM cursos c
 JOIN modulos_academicos mo ON mo.id = c.modulo_id
 JOIN materias m ON m.id = mo.materia_id
 JOIN matriculas mat ON mat.curso_id = c.id
-GROUP BY c.id, m.nombre, mo.anio, mo.mes;
+GROUP BY c.id, m.nombre, m.semestre, mo.anio, mo.mes;
 
 -- vw_habilitados_examen: ver nota en vw_planilla_asistencia.
 CREATE OR REPLACE VIEW vw_habilitados_examen AS

@@ -9,7 +9,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../components/ui/dialog';
-import { API_BASE_URL, abrirDocumento, apiFetch, generarYAbrirPdf, notifySessionExpired } from '../utils/api';
+import {
+  ASISTENCIAS_CURSO_ID_STORAGE_KEY,
+  abrirDocumento,
+  apiFetch,
+  clearAsistenciasCursoIdPersistido,
+  generarYAbrirPdf,
+} from '../utils/api';
 import {
   contarFaltasDesdeSesiones,
   descripcionEstadoAsistencia,
@@ -75,6 +81,8 @@ type PlanillaAsignada = {
   curso_id: number;
   modulo_id: number;
   materia: string;
+  /** Semestre curricular del plan (`materias.semestre`). */
+  semestre: number;
   carrera: string;
   facultad: string;
   fecha_inicio: string;
@@ -93,6 +101,64 @@ type PlanillaAsignada = {
 interface ApiList<T> {
   total: number;
   datos: T[];
+}
+
+type MetadatosCursoPlanilla = Omit<PlanillaAsignada, 'activa_hoy' | 'periodo_label'>;
+
+/** Respuesta nueva del backend; `curso` es opcional para tolerar despliegues desfasados. */
+interface ApiPlanillaResponse {
+  curso?: MetadatosCursoPlanilla | null;
+  total?: number;
+  datos?: Record<string, any>[];
+}
+
+function leerCursoIdPersistido(): string {
+  try {
+    return sessionStorage.getItem(ASISTENCIAS_CURSO_ID_STORAGE_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function esMetadatosCursoPlanillaValidos(valor: unknown): valor is MetadatosCursoPlanilla {
+  if (!valor || typeof valor !== 'object') return false;
+  const curso = valor as Record<string, unknown>;
+  return (
+    Number.isFinite(Number(curso.curso_id)) &&
+    typeof curso.materia === 'string' &&
+    typeof curso.fecha_inicio === 'string' &&
+    typeof curso.fecha_fin === 'string'
+  );
+}
+
+/** Acepta respuesta nueva `{ curso, datos }` o legado `{ total, datos }` sin romper la UI. */
+function extraerFilasPlanilla(resp: ApiPlanillaResponse | null | undefined): Record<string, any>[] {
+  return Array.isArray(resp?.datos) ? resp.datos : [];
+}
+
+function extraerMetadatosCursoPlanilla(
+  resp: ApiPlanillaResponse | null | undefined
+): MetadatosCursoPlanilla | null {
+  return esMetadatosCursoPlanillaValidos(resp?.curso) ? resp.curso : null;
+}
+
+function elegirCursoIdPreferido(items: PlanillaAsignada[]): string {
+  const preferida = items.find((item) => item.activa_hoy) ?? items[0];
+  return preferida ? String(preferida.curso_id) : '';
+}
+
+function enriquecerMetadatosCurso(curso: MetadatosCursoPlanilla, fechaReferencia?: string): PlanillaAsignada {
+  const hoy = fechaReferencia ?? new Date().toISOString().slice(0, 10);
+  const inicio = normalizeDate(curso.fecha_inicio);
+  const fin = normalizeDate(curso.fecha_fin);
+  return {
+    ...curso,
+    activa_hoy: inicio <= hoy && hoy <= fin,
+    periodo_label: new Date(`${inicio}T00:00:00`).toLocaleDateString('es-AR', {
+      month: 'long',
+      year: 'numeric',
+    }),
+  };
 }
 
 type JustificacionEstado = 'pendiente' | 'aprobada' | 'rechazada';
@@ -156,6 +222,12 @@ function clampFechaIso(val: string, minD: string, maxD: string) {
   if (val < minD) return minD;
   if (val > maxD) return maxD;
   return val;
+}
+
+function etiquetaSemestreCurricularPlanilla(semestre: number | null | undefined): string {
+  const n = Number(semestre);
+  if (!Number.isFinite(n) || n < 1) return '—';
+  return `${Math.trunc(n)}° Semestre`;
 }
 
 function formatDateLabel(value?: string | null, long = false) {
@@ -330,6 +402,10 @@ function PlanillaDiaCeldaMovil({
   const etiquetaDia = f.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric' });
   const esActiva = s ? sesionActivaId === s.id : false;
   const dimmed = sesionActivaId !== null && !esActiva;
+  const cerrada = s ? s.estado.toLowerCase() === 'cerrada' : false;
+  const celda = s ? entry.celdas.get(s.id) : undefined;
+  const estado = celda?.estadoAsistencia ?? null;
+  const editable = Boolean(s && sesionActivaId !== null && esActiva && !cerrada && estado !== 'justificada');
   const pointerStartRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
   const swipeTriggeredRef = useRef(false);
   const resetSwipe = () => {
@@ -349,9 +425,6 @@ function PlanillaDiaCeldaMovil({
     );
   }
 
-  const celda = entry.celdas.get(s.id);
-  const estado = celda?.estadoAsistencia ?? null;
-  const cerrada = s.estado.toLowerCase() === 'cerrada';
   const siguiente = getEstadoSiguiente(estado);
   const cellLabel = estado === 'presente' ? 'P' : estado === 'ausente' ? 'A' : estado === 'justificada' ? 'J' : '—';
   const badgeCerrada =
@@ -374,7 +447,7 @@ function PlanillaDiaCeldaMovil({
       <span className={`text-[9px] font-semibold uppercase ${esActiva ? 'text-primary' : 'text-slate-500'}`}>
         {etiquetaDia}
       </span>
-      {cerrada ? (
+      {!editable ? (
         estado === null ? (
           <span className="text-slate-600 text-[10px] font-black">—</span>
         ) : (
@@ -382,10 +455,6 @@ function PlanillaDiaCeldaMovil({
             {cellLabel}
           </span>
         )
-      ) : estado === 'justificada' ? (
-        <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-amber-400 bg-amber-100 text-sm font-bold text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
-          J
-        </span>
       ) : (
         <button
           type="button"
@@ -399,14 +468,12 @@ function PlanillaDiaCeldaMovil({
                 : 'border-0 bg-transparent text-lg text-slate-500 dark:text-slate-600'
           }`}
           onPointerDown={(e) => {
-            if (cerrada) return;
             pointerStartRef.current = { x: e.clientX, y: e.clientY, pointerId: e.pointerId };
             swipeTriggeredRef.current = false;
           }}
           onPointerCancel={resetSwipe}
           onPointerUp={resetSwipe}
           onPointerMove={(e) => {
-            if (cerrada) return;
             const start = pointerStartRef.current;
             if (!start || start.pointerId !== e.pointerId) return;
             if (swipeTriggeredRef.current) return;
@@ -432,314 +499,6 @@ function PlanillaDiaCeldaMovil({
           {estado === 'presente' ? 'P' : estado === 'ausente' ? 'A' : '—'}
         </button>
       )}
-    </div>
-  );
-}
-
-/** Fracción del ancho de la tarjeta que hay que deslizar para confirmar P/A (solo al soltar). */
-const SWIPE_UMBRAL_FRACCION = 0.55;
-
-function PlanillaAlumnoSwipeCardMovil({
-  matriculaId,
-  idx,
-  entry,
-  sesion,
-  estado,
-  onMarcar,
-}: {
-  matriculaId: number;
-  idx: number;
-  entry: PlanillaMatrixEntry;
-  sesion: Sesion;
-  estado: 'presente' | 'ausente' | 'justificada' | null;
-  onMarcar: (matriculaId: number, estado: 'presente' | 'ausente') => void;
-}) {
-  const [dragX, setDragX] = useState(0);
-  const [dragging, setDragging] = useState(false);
-  const startRef = useRef<{ x: number; y: number } | null>(null);
-  const dragXRef = useRef(0);
-  const cardRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const maxDragRef = useRef(340);
-  const umbralRef = useRef(160);
-  const axisRef = useRef<'none' | 'x' | 'y'>('none');
-
-  useLayoutEffect(() => {
-    const medir = () => {
-      const w = containerRef.current?.offsetWidth ?? 340;
-      maxDragRef.current = Math.max(280, Math.round(w * 0.92));
-      umbralRef.current = Math.max(130, Math.round(maxDragRef.current * SWIPE_UMBRAL_FRACCION));
-    };
-    medir();
-    window.addEventListener('resize', medir);
-    return () => window.removeEventListener('resize', medir);
-  }, []);
-
-  const cerrada = sesion.estado?.toLowerCase?.() === 'cerrada';
-  const canSwipe = !cerrada && estado !== 'justificada';
-
-  const abs = Math.abs(dragX);
-  const umbralActual = umbralRef.current;
-  const intensidadTinte = Math.min(1, abs / Math.max(umbralActual, 1));
-  const listoParaConfirmar = abs >= umbralActual;
-  const tintePresente = dragX > 0;
-  const tinteAusente = dragX < 0;
-
-  const resetDrag = useCallback(() => {
-    setDragX(0);
-    dragXRef.current = 0;
-    setDragging(false);
-    startRef.current = null;
-    axisRef.current = 'none';
-  }, []);
-
-  const aplicarMarca = useCallback(
-    (target: 'presente' | 'ausente') => {
-      if (!canSwipe || estado === target) {
-        resetDrag();
-        return;
-      }
-      onMarcar(matriculaId, target);
-      resetDrag();
-    },
-    [canSwipe, estado, matriculaId, onMarcar, resetDrag]
-  );
-
-  const onMove = useCallback(
-    (clientX: number, clientY: number, preventScroll: () => void) => {
-      const start = startRef.current;
-      if (!start || !canSwipe) return;
-
-      const dx = clientX - start.x;
-      const dy = clientY - start.y;
-
-      if (axisRef.current === 'none') {
-        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-        if (Math.abs(dy) > Math.abs(dx) * 1.05) {
-          axisRef.current = 'y';
-          setDragging(false);
-          startRef.current = null;
-          return;
-        }
-        axisRef.current = 'x';
-      }
-      if (axisRef.current === 'y') return;
-
-      preventScroll();
-      const max = maxDragRef.current;
-      const clamped = Math.max(-max, Math.min(max, dx));
-      dragXRef.current = clamped;
-      setDragX(clamped);
-    },
-    [canSwipe]
-  );
-
-  const onEnd = useCallback(() => {
-    if (!canSwipe) return;
-    const finalX = dragXRef.current;
-    const umbral = umbralRef.current;
-    if (Math.abs(finalX) >= umbral) {
-      aplicarMarca(finalX > 0 ? 'presente' : 'ausente');
-      return;
-    }
-    resetDrag();
-  }, [aplicarMarca, canSwipe, resetDrag]);
-
-  const onMoveRef = useRef(onMove);
-  const onEndRef = useRef(onEnd);
-  onMoveRef.current = onMove;
-  onEndRef.current = onEnd;
-
-  useEffect(() => {
-    const el = cardRef.current;
-    if (!el || !canSwipe) return;
-
-    const onTouchStart = (e: TouchEvent) => {
-      if (e.touches.length !== 1) return;
-      const t = e.touches[0];
-      startRef.current = { x: t.clientX, y: t.clientY };
-      axisRef.current = 'none';
-      setDragging(true);
-    };
-
-    const onTouchMove = (e: TouchEvent) => {
-      if (e.touches.length !== 1) return;
-      const t = e.touches[0];
-      onMoveRef.current(t.clientX, t.clientY, () => e.preventDefault());
-    };
-
-    const onTouchEnd = () => {
-      if (axisRef.current === 'y') {
-        resetDrag();
-        return;
-      }
-      onEndRef.current();
-    };
-
-    el.addEventListener('touchstart', onTouchStart, { passive: true });
-    el.addEventListener('touchmove', onTouchMove, { passive: false });
-    el.addEventListener('touchend', onTouchEnd);
-    el.addEventListener('touchcancel', onTouchEnd);
-
-    return () => {
-      el.removeEventListener('touchstart', onTouchStart);
-      el.removeEventListener('touchmove', onTouchMove);
-      el.removeEventListener('touchend', onTouchEnd);
-      el.removeEventListener('touchcancel', onTouchEnd);
-    };
-  }, [canSwipe, resetDrag]);
-
-  const insigniaEstado =
-    estado === 'presente'
-      ? {
-          letra: 'P',
-          etiqueta: 'Presente',
-          caja: 'bg-emerald-50 ring-1 ring-emerald-300 dark:bg-emerald-500/15 dark:ring-emerald-400/45',
-          letraCls: 'text-emerald-700 dark:text-emerald-200',
-          etiquetaCls: 'text-emerald-600 dark:text-emerald-400/90',
-        }
-      : estado === 'ausente'
-        ? {
-            letra: 'A',
-            etiqueta: 'Ausente',
-            caja: 'bg-rose-50 ring-1 ring-rose-300 dark:bg-rose-500/15 dark:ring-rose-400/45',
-            letraCls: 'text-rose-700 dark:text-rose-200',
-            etiquetaCls: 'text-rose-600 dark:text-rose-400/90',
-          }
-        : estado === 'justificada'
-          ? {
-              letra: 'J',
-              etiqueta: 'Justif.',
-              caja: 'bg-amber-50 ring-1 ring-amber-300 dark:bg-amber-500/15 dark:ring-amber-400/45',
-              letraCls: 'text-amber-800 dark:text-amber-200',
-              etiquetaCls: 'text-amber-700 dark:text-amber-400/90',
-            }
-          : {
-              letra: '—',
-              etiqueta: 'Sin marcar',
-              caja: 'bg-slate-100 ring-1 ring-slate-300 dark:bg-slate-800/60 dark:ring-slate-600/50',
-              letraCls: 'text-slate-500',
-              etiquetaCls: 'text-slate-500',
-            };
-
-  return (
-    <div
-      ref={containerRef}
-      className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-[#0f1a30]"
-    >
-      {tinteAusente ? (
-        <div
-          className={`absolute inset-0 z-0 transition-colors ${
-            listoParaConfirmar
-              ? 'bg-gradient-to-r from-rose-600 via-rose-500 to-rose-600/40'
-              : 'bg-gradient-to-r from-rose-700/90 via-rose-600/70 to-transparent'
-          }`}
-          style={{ opacity: 0.45 + intensidadTinte * 0.55 }}
-          aria-hidden
-        />
-      ) : null}
-      {tintePresente ? (
-        <div
-          className={`absolute inset-0 z-0 transition-colors ${
-            listoParaConfirmar
-              ? 'bg-gradient-to-l from-emerald-600 via-emerald-500 to-emerald-600/40'
-              : 'bg-gradient-to-l from-emerald-700/90 via-emerald-600/70 to-transparent'
-          }`}
-          style={{ opacity: 0.45 + intensidadTinte * 0.55 }}
-          aria-hidden
-        />
-      ) : null}
-
-      <div
-        ref={cardRef}
-        className={`relative z-10 rounded-2xl bg-white px-4 py-4 transition-[transform,border-color] select-none dark:bg-[#0f1a30] ${
-          dragging ? 'duration-0' : 'duration-200'
-        } ${
-          listoParaConfirmar && tinteAusente
-            ? 'ring-2 ring-rose-400/60 ring-inset'
-            : listoParaConfirmar && tintePresente
-              ? 'ring-2 ring-emerald-400/60 ring-inset'
-              : ''
-        }`}
-        style={{
-          transform: `translateX(${dragX}px)`,
-          touchAction: 'pan-y',
-        }}
-        onPointerDown={(e) => {
-          if (!canSwipe || e.pointerType === 'touch') return;
-          startRef.current = { x: e.clientX, y: e.clientY };
-          axisRef.current = 'none';
-          setDragging(true);
-          cardRef.current?.setPointerCapture?.(e.pointerId);
-        }}
-        onPointerMove={(e) => {
-          if (!canSwipe || e.pointerType === 'touch') return;
-          onMove(e.clientX, e.clientY, () => e.preventDefault());
-        }}
-        onPointerUp={(e) => {
-          if (!canSwipe || e.pointerType === 'touch') return;
-          try {
-            cardRef.current?.releasePointerCapture?.(e.pointerId);
-          } catch {
-            /* ya liberado */
-          }
-          onEnd();
-        }}
-        onPointerCancel={(e) => {
-          if (e.pointerType === 'touch') return;
-          resetDrag();
-        }}
-      >
-        <div className="flex items-start gap-2.5">
-          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold tabular-nums text-slate-600 dark:bg-slate-800/90 dark:text-slate-400">
-            {idx + 1}
-          </span>
-
-          <div className="relative min-w-0 flex-1 pr-[4.75rem]">
-            <div
-              className={`absolute right-0 top-0 flex flex-col items-center justify-center rounded-xl px-2 py-1.5 ${insigniaEstado.caja}`}
-              aria-label={insigniaEstado.etiqueta}
-            >
-              <span className={`text-xl font-black leading-none ${insigniaEstado.letraCls}`}>{insigniaEstado.letra}</span>
-              <span className={`mt-0.5 max-w-[4rem] text-center text-[8px] font-semibold uppercase leading-tight tracking-wide ${insigniaEstado.etiquetaCls}`}>
-                {insigniaEstado.etiqueta}
-              </span>
-            </div>
-
-            <p className="text-[15px] font-semibold leading-snug text-slate-900 [overflow-wrap:anywhere] dark:text-[#e8eef8]">
-              {formatoNombreLegible(entry.alumno)}
-            </p>
-            <p className="mt-1 text-xs text-slate-600 dark:text-slate-500">CI {entry.documento || '—'}</p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] tabular-nums text-slate-600 dark:bg-slate-800/70 dark:text-slate-400">
-                {entry.porcentajeAsistencia != null ? `${entry.porcentajeAsistencia}% asist.` : '—% asist.'}
-              </span>
-              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] tabular-nums text-slate-600 dark:bg-slate-800/70 dark:text-slate-400">
-                {entry.faltasAcumuladas ?? 0} faltas
-              </span>
-              {cerrada ? (
-                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500 dark:bg-slate-800/50 dark:text-slate-600">
-                  Lista cerrada
-                </span>
-              ) : null}
-            </div>
-          </div>
-        </div>
-
-        {!canSwipe ? (
-          <p className="mt-3 border-t border-slate-200 pt-2.5 text-center text-[11px] text-slate-500 dark:border-slate-800/80 dark:text-slate-600">
-            {cerrada ? 'No se puede modificar: lista cerrada.' : 'No se puede deslizar: estado justificado.'}
-          </p>
-        ) : (
-          <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-200 pt-2.5 text-[10px] font-medium uppercase tracking-wide dark:border-slate-800/80">
-            <span className="text-rose-600 dark:text-rose-400/85">← Ausente</span>
-            <span className="material-symbols-outlined text-[15px] text-slate-400 dark:text-slate-600" aria-hidden>
-              swipe
-            </span>
-            <span className="text-emerald-600 dark:text-emerald-400/85">Presente →</span>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
@@ -780,7 +539,8 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
   const [planillasAsignadas, setPlanillasAsignadas] = useState<PlanillaAsignada[]>([]);
   const [planillasLoading, setPlanillasLoading] = useState(false);
   const [planillasError, setPlanillasError] = useState<string | null>(null);
-  const [cursoId, setCursoId] = useState('');
+  const [cursoId, setCursoId] = useState(leerCursoIdPersistido);
+  const [metadatosCursoPlanilla, setMetadatosCursoPlanilla] = useState<MetadatosCursoPlanilla | null>(null);
 
   // Selector de mes (YYYY-MM)
   const [mesAnio, setMesAnio] = useState(() => {
@@ -822,10 +582,14 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
   );
   const listaAbiertaSyncKeyRef = useRef<string | null>(null);
 
-  const planillaSeleccionada = useMemo(
-    () => planillasAsignadas.find((item) => String(item.curso_id) === cursoId) ?? null,
-    [cursoId, planillasAsignadas]
-  );
+  const planillaSeleccionada = useMemo(() => {
+    const fromList = planillasAsignadas.find((item) => String(item.curso_id) === cursoId) ?? null;
+    if (metadatosCursoPlanilla && String(metadatosCursoPlanilla.curso_id) === cursoId) {
+      const fromPlanilla = enriquecerMetadatosCurso(metadatosCursoPlanilla);
+      return fromList ? { ...fromList, ...fromPlanilla } : fromPlanilla;
+    }
+    return fromList;
+  }, [cursoId, planillasAsignadas, metadatosCursoPlanilla]);
 
   const metricasModulo = useMemo(() => {
     if (!planillaSeleccionada) return null;
@@ -1089,8 +853,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
       setPlanillasAsignadas(items);
       setCursoId((prev) => {
         if (prev && items.some((item) => String(item.curso_id) === prev)) return prev;
-        const preferida = items.find((item) => item.activa_hoy) ?? items[0];
-        return preferida ? String(preferida.curso_id) : '';
+        return elegirCursoIdPreferido(items);
       });
       if (!items.length) { setSesiones([]); setPlanillaMatrix(new Map()); setPendingChanges(new Map()); }
     } catch (error) {
@@ -1111,9 +874,11 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
     try {
       const [sesionesResp, planillaResp, alumnosResp] = await Promise.all([
         apiFetch<ApiList<Sesion>>(`/asistencias/sesiones?cursoId=${cursoNum}`),
-        apiFetch<ApiList<Record<string, any>>>(`/asistencias/planilla?cursoId=${cursoNum}`),
+        apiFetch<ApiPlanillaResponse>(`/asistencias/planilla?cursoId=${cursoNum}`),
         apiFetch<ApiList<Record<string, any>>>(`/asistencias/alumnos-curso?cursoId=${cursoNum}`),
       ]);
+      const metadatosCurso = extraerMetadatosCursoPlanilla(planillaResp);
+      setMetadatosCursoPlanilla(metadatosCurso);
       const todasSesiones = sesionesResp?.datos ?? [];
       setSesiones(todasSesiones);
       // Modalidades
@@ -1134,7 +899,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
         });
       }
       // Superponer datos de sesiones sobre el matrix (nuevo formato agregado)
-      for (const alumno of (planillaResp?.datos ?? [])) {
+      for (const alumno of extraerFilasPlanilla(planillaResp)) {
         const mid = Number(alumno.matricula_id);
         const entry = matrix.get(mid);
         if (!entry) continue;
@@ -1164,10 +929,19 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
       const mensaje = error instanceof Error ? error.message : 'No se pudo cargar la planilla';
       setSessionError(mensaje);
       toast.error(mensaje);
+      setMetadatosCursoPlanilla(null);
+      setSesiones([]);
+      setPlanillaMatrix(new Map());
+      setPendingChanges(new Map());
     } finally {
       setLoading(false);
     }
   }, [cursoId]);
+
+  const handleCursoIdChange = useCallback((value: string) => {
+    setSessionError(null);
+    setCursoId(value);
+  }, []);
 
   const handleRegistrar = useCallback(
     (matriculaId: number, sesionId: number, estado: 'presente' | 'ausente') => {
@@ -1196,34 +970,6 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
       });
     },
     [cursoId]
-  );
-
-  /** Móvil: guarda cada marca al instante (el swipe no espera a «Cerrar lista»). */
-  const registrarAsistenciaMovil = useCallback(
-    async (matriculaId: number, sesionId: number, estado: 'presente' | 'ausente') => {
-      const key = `${matriculaId}:${sesionId}`;
-      handleRegistrar(matriculaId, sesionId, estado);
-      try {
-        await apiFetch('/asistencias/registro', {
-          method: 'POST',
-          body: JSON.stringify({
-            sesionId,
-            matriculaId,
-            estado,
-            justificada: false,
-          }),
-        });
-        setPendingChanges((prev) => {
-          const next = new Map(prev);
-          next.delete(key);
-          return next;
-        });
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'No se pudo guardar la asistencia');
-        void cargarPlanillaMes();
-      }
-    },
-    [cargarPlanillaMes, handleRegistrar]
   );
 
   const guardarCambiosLote = useCallback(async () => {
@@ -1439,24 +1185,13 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
     }
     setSubiendoJustif(true);
     try {
-      // 1. Subir el archivo una sola vez
-      const token = localStorage.getItem('token') ?? sessionStorage.getItem('token') ?? '';
+      // 1. Subir el archivo una sola vez (apiFetch renueva token y reintenta si expiró)
       const formData = new FormData();
       formData.append('archivo', justifArchivo);
-      const uploadResp = await fetch(`${API_BASE_URL}/asistencias/justificaciones/upload`, {
+      const { url } = await apiFetch<{ url: string }>('/asistencias/justificaciones/upload', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
-      if (uploadResp.status === 401) {
-        notifySessionExpired();
-        throw new Error('Sesión expirada. Iniciá sesión de nuevo.');
-      }
-      if (!uploadResp.ok) {
-        const err = await uploadResp.json().catch(() => ({}));
-        throw new Error((err as any)?.mensaje ?? 'Error al subir el archivo');
-      }
-      const { url } = await uploadResp.json() as { url: string };
 
       // 2. Registrar una justificación por cada día seleccionado
       for (const diaKey of justifDiasSeleccionados) {
@@ -1493,15 +1228,37 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
   }, [cargarPlanillasAsignadas]);
 
   useEffect(() => {
+    try {
+      if (cursoId) sessionStorage.setItem(ASISTENCIAS_CURSO_ID_STORAGE_KEY, cursoId);
+      else sessionStorage.removeItem(ASISTENCIAS_CURSO_ID_STORAGE_KEY);
+    } catch {
+      /* sessionStorage no disponible */
+    }
+  }, [cursoId]);
+
+  useEffect(() => {
     if (!mostrarModuloJustificaciones && subView === 'justificaciones') {
       setSubView('planilla');
     }
   }, [mostrarModuloJustificaciones, subView]);
 
   useEffect(() => {
-    if (subView !== 'planilla' || !cursoId || planillasLoading) return;
+    if (subView !== 'planilla' || !cursoId) return;
     void cargarPlanillaMes();
-  }, [cursoId, subView, planillasLoading, cargarPlanillaMes]);
+  }, [cursoId, subView, cargarPlanillaMes]);
+
+  /** Recuperación ante cursoId persistido huérfano (curso eliminado, desasignado o IDs migrados). */
+  useEffect(() => {
+    if (planillasLoading || !cursoId || !planillasAsignadas.length) return;
+    if (planillasAsignadas.some((item) => String(item.curso_id) === cursoId)) return;
+    clearAsistenciasCursoIdPersistido();
+    setSessionError(null);
+    setMetadatosCursoPlanilla(null);
+    setSesiones([]);
+    setPlanillaMatrix(new Map());
+    setPendingChanges(new Map());
+    setCursoId(elegirCursoIdPreferido(planillasAsignadas));
+  }, [cursoId, planillasAsignadas, planillasLoading]);
 
   useEffect(() => {
     listaAbiertaSyncKeyRef.current = null;
@@ -1664,7 +1421,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                     <p className="text-xs text-slate-400 leading-relaxed break-words">
                       {planillaSeleccionada.carrera} · {planillaSeleccionada.total_matriculas} alumnos
                       {' · '}
-                      {(() => { const mes = new Date(`${planillaSeleccionada.fecha_inicio}T00:00:00`).getMonth() + 1; return mes <= 6 ? '1er Semestre' : '2do Semestre'; })()}
+                      {etiquetaSemestreCurricularPlanilla(planillaSeleccionada.semestre)}
                     </p>
                   ) : null}
                 </div>
@@ -1674,8 +1431,8 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                     className="w-full min-w-0 lg:min-w-[12rem] lg:w-auto"
                     aria-label="Seleccionar curso"
                     value={cursoId}
-                    onChange={setCursoId}
-                    disabled={planillasLoading || !planillasAsignadas.length}
+                    onChange={handleCursoIdChange}
+                    disabled={planillasLoading && !planillasAsignadas.length}
                     loading={planillasLoading}
                     placeholder="Selecciona un curso"
                     allowEmpty
@@ -1964,12 +1721,6 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                   {planillasError}
                 </div>
               ) : null}
-              {sessionError ? (
-                <div className="flex items-center gap-2 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-100">
-                  <span className="material-symbols-outlined text-[16px]">error</span>
-                  {sessionError}
-                </div>
-              ) : null}
             </div>
 
             {/* KPI + leyenda — móvil compacto */}
@@ -2092,6 +1843,23 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                   <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
                   Cargando planilla...
                 </div>
+              ) : sessionError ? (
+                <div className="flex flex-col items-center justify-center gap-3 px-4 py-16 text-center">
+                  <span className="material-symbols-outlined text-[40px] text-rose-400">error</span>
+                  <p className="max-w-md text-sm font-medium text-rose-800 dark:text-rose-200">{sessionError}</p>
+                  <p className="max-w-md text-xs text-slate-500 dark:text-slate-400">
+                    El selector de curso sigue disponible arriba. Elegí otra materia o usá «Actualizar» para reintentar.
+                  </p>
+                  <button
+                    type="button"
+                    className="btn-modern btn-modern-ghost btn-modern-sm"
+                    onClick={() => void cargarPlanillaMes()}
+                    disabled={!cursoId || loading}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">refresh</span>
+                    Reintentar carga
+                  </button>
+                </div>
               ) : !cursoId ? (
                 <div className="flex flex-col items-center justify-center py-16 text-slate-500 gap-2">
                   <span className="material-symbols-outlined text-[40px]">assignment</span>
@@ -2108,205 +1876,80 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                   {/* Planilla móvil — tarjetas por alumno */}
                   <div className="app-mobile-bottom-bar space-y-3 px-3 pt-3 pb-3 md:hidden">
                     {sesionMovilLista ? (
-                      <div className="space-y-3">
-                        <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 dark:border-slate-700 dark:bg-[#0f1a30] dark:text-slate-500">
-                          <p className="font-semibold text-slate-800 dark:text-slate-300">
-                            Tomar lista · {formatDateLabel(sesionMovilLista.fecha, true)}
-                          </p>
-                          <p className="mt-0.5">
-                            Deslizá <span className="font-semibold text-rose-600 dark:text-rose-300">izquierda</span>{' '}
-                            para Ausente y{' '}
-                            <span className="font-semibold text-emerald-600 dark:text-emerald-300">derecha</span> para
-                            Presente.
-                          </p>
-                        </div>
-
-                        <ul className="space-y-3">
-                          {alumnosOrdenadosMovil.map(([matriculaId, entry], idx) => {
-                            const celda = entry.celdas.get(sesionMovilLista.id);
-                            const estado = celda?.estadoAsistencia ?? null;
-                            return (
-                              <li key={matriculaId}>
-                                <PlanillaAlumnoSwipeCardMovil
-                                  matriculaId={matriculaId}
-                                  idx={idx}
-                                  entry={entry}
-                                  sesion={sesionMovilLista}
-                                  estado={estado}
-                                  onMarcar={(mid, est) => void registrarAsistenciaMovil(mid, sesionMovilLista.id, est)}
-                                />
-                              </li>
-                            );
-                          })}
-                        </ul>
+                      <div className="rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-slate-600 dark:border-primary/40 dark:bg-primary/10 dark:text-slate-400">
+                        <p className="font-semibold text-slate-800 dark:text-slate-200">
+                          Tomar lista · {formatDateLabel(sesionMovilLista.fecha, true)}
+                        </p>
+                        <p className="mt-0.5">
+                          Solo la columna del día seleccionado es editable. Deslizá{' '}
+                          <span className="font-semibold text-rose-600 dark:text-rose-300">izquierda</span> para Ausente y{' '}
+                          <span className="font-semibold text-emerald-600 dark:text-emerald-300">derecha</span> para Presente.
+                        </p>
                       </div>
                     ) : null}
-
-                    {/* Vista por días del mes (solo si no hay lista abierta) */}
-                    {!sesionMovilLista ? (
-                      <>
-                        {!sesionesDelMes.length ? (
-                          <>
-                            <p className="text-center text-xs text-slate-500">
-                              Sin sesiones en {mesAnio}. Agregá una desde «Tomar lista» arriba.
-                            </p>
-                            <ul className="space-y-2">
-                              {alumnosOrdenadosMovil.map(([matriculaId, entry], idx) => {
-                                const evaluado = evaluarAlumnoPlanilla(entry, sesiones, metricasModulo);
-                                const borde =
-                                  evaluado.estado === 'inhabilitado'
-                                    ? 'border-rose-300 dark:border-rose-500/40'
-                                    : evaluado.estado === 'riesgo'
-                                      ? 'border-amber-300 dark:border-amber-500/40'
-                                      : 'border-slate-200 dark:border-slate-700';
-                                return (
-                                  <li
-                                    key={matriculaId}
-                                    className={`rounded-xl border bg-white px-3 py-3 dark:bg-[#0f1a30] ${borde}`}
-                                    title={evaluado.tooltip}
-                                  >
-                                    <div className="flex gap-2">
-                                      <span className="w-6 shrink-0 text-center text-xs font-semibold text-slate-500">
-                                        {idx + 1}
-                                      </span>
-                                      <div className="min-w-0 flex-1">
-                                        <p className="text-sm font-semibold leading-snug text-slate-900 dark:text-[#e7eef9]">
-                                          {formatoNombreLegible(entry.alumno)}
-                                        </p>
-                                        <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-500">
-                                          CI {entry.documento || '—'} · {evaluado.faltas} faltas ·{' '}
-                                          {entry.porcentajeAsistencia != null ? `${entry.porcentajeAsistencia}%` : '—'} asist.
-                                        </p>
-                                      </div>
-                                    </div>
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          </>
-                        ) : (
-                          <>
-                            <ul className="space-y-3">
-                              {alumnosOrdenadosMovil.map(([matriculaId, entry], idx) => {
-                                const evaluado = evaluarAlumnoPlanilla(entry, sesiones, metricasModulo);
-                                const borde =
-                                  evaluado.estado === 'inhabilitado'
-                                    ? 'border-rose-300 dark:border-rose-500/40'
-                                    : evaluado.estado === 'riesgo'
-                                      ? 'border-amber-300 dark:border-amber-500/40'
-                                      : 'border-slate-200 dark:border-slate-700';
-                                return (
-                                  <li
-                                    key={matriculaId}
-                                    className={`rounded-xl border bg-white p-3 dark:bg-[#0f1a30] ${borde}`}
-                                    title={evaluado.tooltip}
-                                  >
-                                    <div className="flex items-start gap-2">
-                                      <span className="mt-0.5 w-6 shrink-0 text-center text-xs font-semibold text-slate-500">
-                                        {idx + 1}
-                                      </span>
-                                      <div className="min-w-0 flex-1">
-                                        <p className="text-sm font-semibold leading-snug text-slate-900 dark:text-[#e7eef9]">
-                                          {formatoNombreLegible(entry.alumno)}
-                                        </p>
-                                        <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-500">
-                                          CI {entry.documento || '—'}
-                                        </p>
-                                        <p className="mt-1 text-xs font-medium tabular-nums text-slate-500 dark:text-slate-400">
-                                          {evaluado.faltas} faltas ·{' '}
-                                          {entry.porcentajeAsistencia != null ? `${entry.porcentajeAsistencia}%` : '—'} asistencia
-                                        </p>
-                                      </div>
-                                    </div>
-                                    <div className="-mx-1 mt-3 flex gap-1.5 overflow-x-auto overscroll-x-contain pb-1 pt-0.5">
-                                      {columnasDelMes.map((col) => (
-                                        <PlanillaDiaCeldaMovil
-                                          key={col.fecha}
-                                          col={col}
-                                          matriculaId={matriculaId}
-                                          entry={entry}
-                                          sesionActivaId={sesionActivaId}
-                                          getEstadoSiguiente={getEstadoSiguiente}
-                                          onRegistrar={handleRegistrar}
-                                        />
-                                      ))}
-                                    </div>
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          </>
-                        )}
-                        {!alumnosOrdenados.length && !loading ? (
-                          <p className="py-8 text-center text-sm text-slate-500">No hay alumnos matriculados en este curso.</p>
-                        ) : null}
-                      </>
+                    {!columnasDelMes.length ? (
+                      <p className="text-center text-xs text-slate-500">
+                        Sin días lectivos en {mesAnio} para el rango del módulo.
+                      </p>
+                    ) : null}
+                    <ul className="space-y-3">
+                      {alumnosOrdenadosMovil.map(([matriculaId, entry], idx) => {
+                        const evaluado = evaluarAlumnoPlanilla(entry, sesiones, metricasModulo);
+                        const borde =
+                          evaluado.estado === 'inhabilitado'
+                            ? 'border-rose-300 dark:border-rose-500/40'
+                            : evaluado.estado === 'riesgo'
+                              ? 'border-amber-300 dark:border-amber-500/40'
+                              : 'border-slate-200 dark:border-slate-700';
+                        return (
+                          <li
+                            key={matriculaId}
+                            className={`rounded-xl border bg-white p-3 dark:bg-[#0f1a30] ${borde}`}
+                            title={evaluado.tooltip}
+                          >
+                            <div className="flex items-start gap-2">
+                              <span className="mt-0.5 w-6 shrink-0 text-center text-xs font-semibold text-slate-500">
+                                {entry.ordenLista ?? idx + 1}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-semibold leading-snug text-slate-900 dark:text-[#e7eef9]">
+                                  {formatoNombreLegible(entry.alumno)}
+                                </p>
+                                <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-500">
+                                  CI {entry.documento || '—'}
+                                </p>
+                                <p className="mt-1 text-xs font-medium tabular-nums text-slate-500 dark:text-slate-400">
+                                  {evaluado.faltas} faltas ·{' '}
+                                  {entry.porcentajeAsistencia != null ? `${entry.porcentajeAsistencia}%` : '—'} asistencia
+                                </p>
+                              </div>
+                            </div>
+                            {columnasDelMes.length > 0 ? (
+                              <div className="-mx-1 mt-3 flex gap-1.5 overflow-x-auto overscroll-x-contain pb-1 pt-0.5">
+                                {columnasDelMes.map((col) => (
+                                  <PlanillaDiaCeldaMovil
+                                    key={col.fecha}
+                                    col={col}
+                                    matriculaId={matriculaId}
+                                    entry={entry}
+                                    sesionActivaId={sesionActivaId}
+                                    getEstadoSiguiente={getEstadoSiguiente}
+                                    onRegistrar={handleRegistrar}
+                                  />
+                                ))}
+                              </div>
+                            ) : null}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    {!alumnosOrdenados.length && !loading ? (
+                      <p className="py-8 text-center text-sm text-slate-500">No hay alumnos matriculados en este curso.</p>
                     ) : null}
                   </div>
 
-                  {/* Planilla escritorio — tablas */}
+                  {/* Planilla escritorio — grilla fija (#, datos, fechas del cronograma) */}
                   <div className="scroll-region-tablet hidden min-h-0 flex-1 flex-col overflow-hidden md:flex">
-              {!sesionesDelMes.length ? (
-                <div className="w-full min-w-0 lg:scroll-region lg:min-h-0 lg:flex-1">
-                  <table className="text-sm border-collapse w-full min-w-max">
-                    <thead className="sticky top-0 z-50 bg-[#0d1b2e] border-b border-slate-800/40">
-                      <tr>
-                        <th
-                          className="bg-[#0d1b2e] px-3 py-2 text-left border-b border-r border-slate-800/40 font-semibold text-slate-300 whitespace-nowrap"
-                          style={{ width: stickyPlanillaLeft.nombreW, minWidth: stickyPlanillaLeft.nombreW }}
-                        >
-                          Apellidos y Nombres
-                        </th>
-                        <th className="bg-[#0d1b2e] px-0 py-2 border-b border-r border-slate-800/40 w-20 min-w-[5rem]">
-                          <span className="flex w-full items-center justify-center font-semibold text-slate-300 text-xs">CI</span>
-                        </th>
-                        <th className="bg-[#0d1b2e] px-0 py-2 border-b border-r border-slate-800/40">
-                          <span className="flex w-full items-center justify-center font-semibold text-slate-300 text-xs">Faltas</span>
-                        </th>
-                        <th className="bg-[#0d1b2e] px-0 py-2 border-b border-slate-800/40">
-                          <span className="flex w-full items-center justify-center font-semibold text-slate-300 text-xs">% Asist.</span>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {alumnosOrdenados.map(([matriculaId, entry]) => {
-                        const evaluado = evaluarAlumnoPlanilla(entry, sesiones, metricasModulo);
-                        return (
-                        <tr
-                          key={matriculaId}
-                          className={`border-t border-slate-800/40 hover:bg-slate-900/30 ${evaluado.estado === 'inhabilitado' ? 'planilla-fila-inhabilitado' : evaluado.estado === 'riesgo' ? 'planilla-fila-riesgo' : ''}`}
-                          title={evaluado.tooltip}
-                        >
-                          <td
-                            className="px-3 py-2 text-[#e7eef9] font-medium align-middle whitespace-nowrap"
-                            style={{ width: stickyPlanillaLeft.nombreW, minWidth: stickyPlanillaLeft.nombreW, maxWidth: stickyPlanillaLeft.nombreW }}
-                          >
-                            {formatoNombreLegible(entry.alumno)}
-                          </td>
-                          <td className="px-0 py-2 align-middle w-20 min-w-[5rem]">
-                            <span className="flex w-full items-center justify-center text-xs text-slate-400">
-                              {entry.documento}
-                            </span>
-                          </td>
-                          <td className="px-2 py-2 text-center">
-                            <span className={`text-xs font-bold planilla-celda-metrica ${evaluado.estado === 'regular' ? 'text-slate-300' : ''}`}>
-                              {evaluado.faltas}
-                            </span>
-                          </td>
-                          <td className="px-0 py-2 align-middle">
-                            <span className="flex w-full items-center justify-center text-xs text-slate-300 tabular-nums">
-                              {entry.porcentajeAsistencia != null ? `${entry.porcentajeAsistencia}%` : '—'}
-                            </span>
-                          </td>
-                        </tr>
-                      );})}
-                    </tbody>
-                  </table>
-                  <div className="px-4 py-3 text-center text-xs text-slate-500 border-t border-slate-800/40">
-                    Sin sesiones en {mesAnio} — agrega una desde el formulario de arriba para registrar asistencia
-                  </div>
-                </div>
-              ) : (
                 <div className="isolate w-full min-w-0 flex-1 rounded-t-xl lg:scroll-region lg:min-h-0">
                   <table
                     className="text-sm border-separate border-spacing-0 w-full min-w-max table-fixed"
@@ -2507,6 +2150,8 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                               const siguiente = getEstadoSiguiente(estado);
                               const esActiva = sesionActivaId === s.id;
                               const dimmed = sesionActivaId !== null && !esActiva;
+                              const editable =
+                                sesionActivaId !== null && esActiva && !cerrada && estado !== 'justificada';
 
                               const cellLabel = estado === 'presente' ? 'P'
                                 : estado === 'ausente' ? 'A'
@@ -2525,9 +2170,9 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                               return (
                                 <td
                                   key={col.fecha}
-                                  className={`px-1 py-1.5 ${celdaBase} ${celdaFila} text-center min-w-[56px] transition-opacity ${dimmed ? 'opacity-40' : ''}`}
+                                  className={`px-1 py-1.5 ${celdaBase} ${celdaFila} text-center min-w-[56px] transition-opacity ${dimmed ? 'opacity-40' : ''} ${esActiva ? 'bg-primary/5' : ''}`}
                                 >
-                                  {cerrada ? (
+                                  {!editable ? (
                                     estado === null ? (
                                       <span className="text-slate-600 text-[10px] font-black">—</span>
                                     ) : (
@@ -2537,8 +2182,6 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                                         {cellLabel}
                                       </span>
                                     )
-                                  ) : estado === 'justificada' ? (
-                                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-sm font-bold border text-amber-900 bg-amber-100 border-amber-400 dark:text-amber-300 dark:bg-amber-500/10 dark:border-amber-500/30">J</span>
                                   ) : (
                                     <div className="flex justify-center">
                                       <button
@@ -2573,7 +2216,6 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                     </tbody>
                   </table>
                 </div>
-              )}
                   </div>
                 </>
               )}
@@ -2603,10 +2245,10 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                       aria-label="Seleccionar curso para justificación"
                       value={cursoId}
                       onChange={(v) => {
-                        setCursoId(v);
+                        handleCursoIdChange(v);
                         void cargarAusencias(v);
                       }}
-                      disabled={planillasLoading || !planillasAsignadas.length}
+                      disabled={planillasLoading && !planillasAsignadas.length}
                       placeholder="Selecciona una planilla"
                       options={planillasAsignadas.map((item) => ({
                         value: String(item.curso_id),

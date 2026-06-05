@@ -57,7 +57,7 @@ const BASE_FROM = `
     LEFT JOIN roles r ON r.id = ur.rol_id
     LEFT JOIN docentes doc ON doc.usuario_id = u.id
 `;
-const ESTADOS_VALIDOS = ['activo', 'inactivo', 'suspendido'];
+const ESTADOS_VALIDOS = ['activo', 'inactivo'];
 const PERMISOS_DEFAULT = {
     aprobarHorarios: false,
     gestionarMatriculas: false,
@@ -356,6 +356,16 @@ async function actualizarDatosUsuario(usuarioId, input) {
     }
     return usuario;
 }
+/** Tabla legacy opcional (instalaciones nuevas solo tienen auditoria_eventos). */
+async function anularUsuarioEnAuditoriasLegacy(cliente, usuarioId) {
+    const { rows } = await cliente.query(`SELECT EXISTS (
+       SELECT 1 FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = 'auditorias'
+     ) AS existe`);
+    if (!rows[0]?.existe)
+        return;
+    await cliente.query(`UPDATE auditorias SET usuario_id = NULL WHERE usuario_id = $1`, [usuarioId]);
+}
 async function eliminarUsuario(usuarioId) {
     const cliente = await database_1.pool.connect();
     try {
@@ -372,7 +382,7 @@ async function eliminarUsuario(usuarioId) {
         await cliente.query(`UPDATE alertas_asistencia SET generado_por = NULL WHERE generado_por = $1`, [usuarioId]);
         await cliente.query(`UPDATE habilitaciones_examen SET generado_por = NULL WHERE generado_por = $1`, [usuarioId]);
         await cliente.query(`UPDATE actas_generadas SET generado_por = NULL WHERE generado_por = $1`, [usuarioId]);
-        await cliente.query(`UPDATE auditorias SET usuario_id = NULL WHERE usuario_id = $1`, [usuarioId]);
+        await anularUsuarioEnAuditoriasLegacy(cliente, usuarioId);
         await cliente.query(`UPDATE auditoria_eventos SET actor_usuario_id = NULL WHERE actor_usuario_id = $1`, [
             usuarioId,
         ]);
