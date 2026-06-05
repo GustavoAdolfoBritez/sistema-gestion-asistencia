@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { AppSidebar } from '../components/AppSidebar';
 import { JustificacionFechasGrupo } from '../components/JustificacionFechasGrupo';
@@ -15,6 +15,7 @@ import {
   agruparJustificacionesPorCarga,
   claveGrupoJustificacionCarga,
   etiquetaModuloJustificacion,
+  type GrupoJustificacion,
 } from '../utils/justificaciones-grupo';
 import { etiquetaPorcentajeAsistencia, tieneAsistenciaRegistrada } from '../utils/estado-asistencia';
 
@@ -33,6 +34,169 @@ const thTablaJustifAlumno =
   'px-4 py-3.5 text-left align-top text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400';
 const tdTablaJustifAlumno = 'min-w-0 px-4 py-3.5 text-left align-top';
 const tdTablaJustifAlumnoDoc = 'min-w-0 px-4 py-3.5 text-left align-top whitespace-nowrap';
+
+function etiquetaEstadoRevision(estado: string | null) {
+  const e = (estado ?? '').toLowerCase();
+  if (e === 'pendiente') return 'Pendiente';
+  if (e === 'aprobada' || e === 'aprobado') return 'Aprobada';
+  if (e === 'rechazada' || e === 'rechazado') return 'Rechazada';
+  return estado || '—';
+}
+
+function claseBadgeRevision(estado: string | null) {
+  const e = (estado ?? '').toLowerCase();
+  if (e === 'pendiente') {
+    return 'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-500/35 dark:bg-amber-500/10 dark:text-amber-200';
+  }
+  if (e === 'aprobada' || e === 'aprobado') {
+    return 'border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-500/35 dark:bg-emerald-500/10 dark:text-emerald-200';
+  }
+  if (e === 'rechazada' || e === 'rechazado') {
+    return 'border-rose-300 bg-rose-50 text-rose-900 dark:border-rose-500/35 dark:bg-rose-500/10 dark:text-rose-200';
+  }
+  return 'border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300';
+}
+
+function CampoJustifMovil({ etiqueta, valor }: { etiqueta: string; valor: ReactNode }) {
+  return (
+    <div className="border-b border-slate-200/90 px-3 py-2.5 last:border-b-0 dark:border-slate-700/70">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">{etiqueta}</p>
+      <div className="mt-1.5 text-sm leading-snug text-slate-800 dark:text-slate-100">{valor}</div>
+    </div>
+  );
+}
+
+function JustificacionAlumnoFilaMovil({
+  grupo,
+  mostrarAcciones,
+  comentario,
+  onComentarioChange,
+  resolviendo,
+  onAprobar,
+  onRechazar,
+  onAbrirPdf,
+}: {
+  grupo: GrupoJustificacion<JustificacionAlumnoFicha>;
+  mostrarAcciones: boolean;
+  comentario: string;
+  onComentarioChange: (valor: string) => void;
+  resolviendo: boolean;
+  onAprobar: () => void;
+  onRechazar: () => void;
+  onAbrirPdf: () => void;
+}) {
+  const j = grupo.representante;
+  const pendiente = (j.estado_revision ?? '').toLowerCase() === 'pendiente';
+  const modulo = etiquetaModuloJustificacion(j.modulo_mes, j.modulo_anio);
+
+  return (
+    <li className="space-y-3 bg-white px-4 py-4 dark:bg-transparent">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-2">
+          <span className="material-symbols-outlined mt-0.5 shrink-0 text-[18px] text-slate-400 dark:text-slate-500" aria-hidden>
+            menu_book
+          </span>
+          <p className="min-w-0 break-words text-base font-semibold leading-snug text-slate-900 dark:text-slate-100">
+            {j.materia ?? '—'}
+          </p>
+        </div>
+        <span
+          className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap ${claseBadgeRevision(j.estado_revision)}`}
+        >
+          <span className="material-symbols-outlined shrink-0 text-[13px] leading-none" aria-hidden>
+            {(j.estado_revision ?? '').toLowerCase() === 'aprobada'
+              ? 'check_circle'
+              : (j.estado_revision ?? '').toLowerCase() === 'rechazada'
+                ? 'cancel'
+                : 'schedule'}
+          </span>
+          {etiquetaEstadoRevision(j.estado_revision)}
+        </span>
+      </div>
+
+      <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white/80 dark:border-slate-700/60 dark:bg-slate-900/25">
+        <CampoJustifMovil
+          etiqueta="Fecha(s) clase"
+          valor={<JustificacionFechasGrupo fechas={grupo.fechas} variant="light" />}
+        />
+        <CampoJustifMovil
+          etiqueta="Módulo"
+          valor={
+            modulo ? (
+              <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-slate-700 dark:border-slate-600 dark:bg-slate-800/70 dark:text-slate-300">
+                {modulo}
+              </span>
+            ) : (
+              <span className="text-slate-400 dark:text-slate-500">—</span>
+            )
+          }
+        />
+        <CampoJustifMovil
+          etiqueta="Motivo"
+          valor={<span className="break-words">{j.motivo?.trim() ? j.motivo : '—'}</span>}
+        />
+        <CampoJustifMovil
+          etiqueta="Documento"
+          valor={
+            j.documento_url ? (
+              <button
+                type="button"
+                onClick={onAbrirPdf}
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-sky-600 bg-sky-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:border-sky-700 hover:bg-sky-700 dark:border-sky-400/40 dark:bg-sky-500/30 dark:text-sky-50 dark:hover:border-sky-300/60 dark:hover:bg-sky-500/45 sm:w-auto"
+              >
+                <span className="material-symbols-outlined text-[16px] leading-none" aria-hidden>
+                  picture_as_pdf
+                </span>
+                Ver PDF
+              </button>
+            ) : (
+              <span className="text-slate-400 dark:text-slate-500">—</span>
+            )
+          }
+        />
+      </div>
+
+      {mostrarAcciones && pendiente ? (
+        <div className="space-y-2 rounded-xl border border-amber-200/80 bg-amber-50/50 p-3 dark:border-amber-500/25 dark:bg-amber-500/5">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-200">Acciones</p>
+          <input
+            type="text"
+            aria-label="Comentario opcional para la resolución"
+            className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-2 text-xs text-slate-900 placeholder:text-slate-400 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500/30 dark:border-slate-600 dark:bg-[#0b1827] dark:text-[#e7eef9] dark:placeholder:text-slate-500"
+            placeholder="Comentario (opcional)"
+            value={comentario}
+            onChange={(e) => onComentarioChange(e.target.value)}
+            disabled={resolviendo}
+          />
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn-modern btn-modern-success btn-modern-xs min-h-9 flex-1 px-3 sm:flex-none"
+              disabled={resolviendo}
+              onClick={onAprobar}
+            >
+              <span className="material-symbols-outlined text-[13px] leading-none" aria-hidden>
+                check_circle
+              </span>
+              {grupo.ids.length > 1 ? `Aprobar (${grupo.ids.length})` : 'Aprobar'}
+            </button>
+            <button
+              type="button"
+              className="btn-modern btn-modern-danger btn-modern-xs min-h-9 flex-1 px-3 sm:flex-none"
+              disabled={resolviendo}
+              onClick={onRechazar}
+            >
+              <span className="material-symbols-outlined text-[13px] leading-none" aria-hidden>
+                cancel
+              </span>
+              Rechazar
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </li>
+  );
+}
 
 interface Props {
   onLogout?: () => void;
@@ -631,28 +795,6 @@ export function AlumnosAdminPage({ onLogout }: Props) {
     return estado || '—';
   }
 
-  function etiquetaEstadoRevision(estado: string | null) {
-    const e = (estado ?? '').toLowerCase();
-    if (e === 'pendiente') return 'Pendiente';
-    if (e === 'aprobada' || e === 'aprobado') return 'Aprobada';
-    if (e === 'rechazada' || e === 'rechazado') return 'Rechazada';
-    return estado || '—';
-  }
-
-  function claseBadgeRevision(estado: string | null) {
-    const e = (estado ?? '').toLowerCase();
-    if (e === 'pendiente') {
-      return 'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-500/35 dark:bg-amber-500/10 dark:text-amber-200';
-    }
-    if (e === 'aprobada' || e === 'aprobado') {
-      return 'border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-500/35 dark:bg-emerald-500/10 dark:text-emerald-200';
-    }
-    if (e === 'rechazada' || e === 'rechazado') {
-      return 'border-rose-300 bg-rose-50 text-rose-900 dark:border-rose-500/35 dark:bg-rose-500/10 dark:text-rose-200';
-    }
-    return 'border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300';
-  }
-
   return (
     <div className="system-bg app-shell-viewport text-slate-800 dark:text-[#e7eef9] min-h-screen h-screen overflow-hidden">
       <div className="app-layout-row">
@@ -678,7 +820,10 @@ export function AlumnosAdminPage({ onLogout }: Props) {
             </div>
           </header>
 
-          <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-5 max-lg:gap-2.5 max-lg:p-3 max-lg:pb-0">
+          <section
+            className="alumnos-page-section flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-5 max-lg:gap-2.5 max-lg:p-3 max-lg:pb-0"
+            data-has-selection={selectedAlumnoId ? 'true' : 'false'}
+          >
 
             <div className={`relative shrink-0 ${selectedAlumnoId ? 'max-lg:hidden' : ''}`}>
               <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-[20px] max-lg:left-2.5 max-lg:text-[18px]">
@@ -1159,7 +1304,7 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                             Trayectoria · año
                           </p>
                         </div>
-                        <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto lg:flex-col lg:items-end lg:gap-2">
+                        <div className="flex shrink-0 items-center justify-end sm:w-auto lg:flex-col lg:items-end lg:gap-2">
                           <label
                             htmlFor="anio-trayectoria"
                             className="sr-only"
@@ -1168,6 +1313,9 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                           </label>
                           <AppSelect
                             aria-label="Año de trayectoria"
+                            className="w-auto max-w-[7rem]"
+                            size="sm"
+                            compactMenu
                             value={anioPromedioSeleccionado != null ? String(anioPromedioSeleccionado) : ''}
                             disabled={!anioPromedioOptions.length}
                             onChange={(v) => setAnioPromedioSeleccionado(Number(v))}
@@ -1175,7 +1323,7 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                               value: String(a),
                               label: String(a),
                             }))}
-                            triggerClassName={`${inpYearSelect} max-lg:min-h-[2.25rem] max-lg:flex-1`}
+                            triggerClassName={inpYearSelect}
                           />
                         </div>
                       </div>
@@ -1404,7 +1552,7 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                       </div>
                       <div className="min-w-0 flex-1 overflow-hidden px-4 py-3 sm:px-6 sm:py-4">
                         <div
-                          className="justificaciones-alumno-dialog-scroll w-full max-w-full overflow-x-auto overflow-y-auto overscroll-x-contain rounded-xl border border-slate-200 bg-slate-50 shadow-inner [-webkit-overflow-scrolling:touch] dark:border-white/10 dark:bg-[#0c1a32]/60 max-h-[min(65vh,32rem)]"
+                          className="justificaciones-alumno-dialog-scroll w-full max-w-full overflow-y-auto overscroll-y-contain rounded-xl border border-slate-200 bg-slate-50 shadow-inner [-webkit-overflow-scrolling:touch] dark:border-white/10 dark:bg-[#0c1a32]/60 max-h-[min(65vh,32rem)] max-lg:overflow-x-hidden lg:overflow-x-auto lg:overscroll-x-contain"
                         >
                           {justificacionesLoading ? (
                             <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-600 dark:text-slate-400">
@@ -1416,8 +1564,37 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                           ) : justificacionesAlumno.length === 0 ? (
                             <p className="px-4 py-10 text-center text-sm text-slate-600 dark:text-slate-500">Sin registros</p>
                           ) : (
+                            <>
+                            <ul className="divide-y divide-slate-200 dark:divide-white/10 lg:hidden">
+                              {justificacionesAgrupadas.map((g) => {
+                                const idGrupo = g.ids[0];
+                                const resolviendoFila = g.ids.some((id) => resolviendoJustId === id);
+                                return (
+                                  <JustificacionAlumnoFilaMovil
+                                    key={g.ids.join('-')}
+                                    grupo={g}
+                                    mostrarAcciones={mostrarColumnaAccionesJustif}
+                                    comentario={comentariosJustModal[idGrupo] ?? ''}
+                                    onComentarioChange={(valor) =>
+                                      setComentariosJustModal((prev) => ({
+                                        ...prev,
+                                        [idGrupo]: valor,
+                                      }))
+                                    }
+                                    resolviendo={resolviendoFila}
+                                    onAprobar={() => void resolverJustificacionGrupo(g.ids, 'aprobar')}
+                                    onRechazar={() => void resolverJustificacionGrupo(g.ids, 'rechazar')}
+                                    onAbrirPdf={() =>
+                                      void abrirDocumento(g.representante.documento_url).catch((err) =>
+                                        toast.error(err instanceof Error ? err.message : 'No se pudo abrir el PDF')
+                                      )
+                                    }
+                                  />
+                                );
+                              })}
+                            </ul>
                             <table
-                              className={`w-full table-fixed border-collapse text-sm text-slate-800 dark:text-slate-200 ${
+                              className={`hidden w-full table-fixed border-collapse text-sm text-slate-800 dark:text-slate-200 lg:table ${
                                 mostrarColumnaAccionesJustif ? 'min-w-[70rem]' : 'min-w-[52rem]'
                               }`}
                             >
@@ -1584,6 +1761,7 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                                 })}
                               </tbody>
                             </table>
+                            </>
                           )}
                         </div>
                       </div>

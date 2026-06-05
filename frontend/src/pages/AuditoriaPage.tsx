@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { toast } from 'sonner';
 import { AppSidebar } from '../components/AppSidebar';
 import { BotonVolverListadoMovil, VolverListadoMovilBar } from '../components/ui/boton-volver-listado-movil';
@@ -374,6 +374,116 @@ function DetalleCampoMovil({ etiqueta, valor }: { etiqueta: string; valor: React
       <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">{etiqueta}</p>
       <div className="mt-1.5 text-sm leading-relaxed text-slate-800 dark:text-slate-100">{valor}</div>
     </div>
+  );
+}
+
+function CuadroDetalleEventoMovil({ evento }: { evento: EventoAuditoria }) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white/80 dark:border-slate-700/60 dark:bg-slate-900/25">
+      <DetalleCampoMovil
+        etiqueta="Qué se hizo"
+        valor={<span className="break-words">{construirResumenCambio(evento)}</span>}
+      />
+      <DetalleCampoMovil
+        etiqueta="Quién lo hizo"
+        valor={<span className="break-words">{obtenerActor(evento)}</span>}
+      />
+      <DetalleCampoMovil
+        etiqueta="Cuándo"
+        valor={<span className="tabular-nums">{formatearFechaLarga(evento.fecha_hora)}</span>}
+      />
+      <DetalleCampoMovil
+        etiqueta="Módulo / Acción"
+        valor={
+          <span className="break-words">
+            {evento.modulo} / {etiquetaAccion(evento.accion)}
+          </span>
+        }
+      />
+      <DetalleCampoMovil
+        etiqueta="Recurso"
+        valor={<span className="break-words">{formatearRecurso(evento)}</span>}
+      />
+      <DetalleCampoMovil
+        etiqueta="Resultado"
+        valor={
+          <span
+            className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold uppercase ${claseBadgeResultadoAuditoria(evento.resultado)}`}
+          >
+            {evento.resultado}
+          </span>
+        }
+      />
+    </div>
+  );
+}
+
+function ContenidoDatosTecnicosEvento({
+  evento,
+  panelRef,
+  mostrarTituloMovil = false,
+}: {
+  evento: EventoAuditoria;
+  panelRef?: RefObject<HTMLDivElement | null>;
+  mostrarTituloMovil?: boolean;
+}) {
+  return (
+    <>
+      {mostrarTituloMovil ? (
+        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Datos técnicos</p>
+      ) : null}
+      <div
+        ref={panelRef}
+        className="w-full rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900/40 max-xl:max-h-[min(50vh,24rem)] max-xl:overflow-y-auto max-xl:shadow-sm xl:max-h-none xl:overflow-visible"
+      >
+        <div className="space-y-2 text-xs text-slate-700 dark:text-slate-300">
+          <p className="break-words">
+            <strong>ID:</strong> {evento.id}
+          </p>
+          <p className="break-words">
+            <strong>IP:</strong> {evento.ip ?? '-'}
+          </p>
+          <p className="break-words leading-snug">
+            <strong>User-Agent:</strong>{' '}
+            <span className="font-mono text-[11px]">{evento.user_agent ?? '-'}</span>
+          </p>
+          <p className="break-words">
+            <strong>Roles:</strong> {(evento.actor_roles ?? []).join(', ') || '-'}
+          </p>
+          {tieneContenidoTecnico(evento.detalle) ? (
+            <div>
+              <p className="mb-1 text-xs uppercase text-slate-400">Detalle JSON</p>
+              <pre className="max-h-48 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words rounded-lg border border-slate-700 bg-slate-900 p-3 text-xs text-slate-200 xl:max-h-none xl:overflow-y-visible">
+                {JSON.stringify(evento.detalle, null, 2)}
+              </pre>
+            </div>
+          ) : null}
+          {tieneContenidoTecnico(evento.antes) ? (
+            <div>
+              <p className="mb-1 text-xs uppercase text-slate-400">Antes</p>
+              <pre className="max-h-40 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words rounded-lg border border-slate-700 bg-slate-900 p-3 text-xs text-slate-200 xl:max-h-none xl:overflow-y-visible">
+                {JSON.stringify(evento.antes, null, 2)}
+              </pre>
+            </div>
+          ) : null}
+          {tieneContenidoTecnico(evento.despues) ? (
+            <div>
+              <p className="mb-1 text-xs uppercase text-slate-400">Después</p>
+              <pre className="max-h-40 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words rounded-lg border border-slate-700 bg-slate-900 p-3 text-xs text-slate-200 xl:max-h-none xl:overflow-y-visible">
+                {JSON.stringify(evento.despues, null, 2)}
+              </pre>
+            </div>
+          ) : null}
+          {!tieneContenidoTecnico(evento.detalle) &&
+          !tieneContenidoTecnico(evento.antes) &&
+          !tieneContenidoTecnico(evento.despues) ? (
+            <div className="rounded-lg border border-slate-700 bg-slate-900/40 p-3 text-xs text-slate-400">
+              Este evento no incluye campos técnicos adicionales para mostrar.
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -1277,44 +1387,19 @@ export function AuditoriaPage({ onLogout }: Props) {
                     >
                       <div className="auditoria-detalle-movil-stack flex w-full flex-col gap-4 xl:hidden">
                         <DetalleEventoEncabezadoMovil evento={seleccionado} />
-                        {!mostrarDatosTecnicos ? (
-                          <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white/80 dark:border-slate-700/60 dark:bg-slate-900/25">
-                            <DetalleCampoMovil
-                              etiqueta="Qué se hizo"
-                              valor={<span className="break-words">{construirResumenCambio(seleccionado)}</span>}
-                            />
-                            <DetalleCampoMovil
-                              etiqueta="Quién lo hizo"
-                              valor={<span className="break-words">{obtenerActor(seleccionado)}</span>}
-                            />
-                            <DetalleCampoMovil
-                              etiqueta="Cuándo"
-                              valor={<span className="tabular-nums">{formatearFechaLarga(seleccionado.fecha_hora)}</span>}
-                            />
-                            <DetalleCampoMovil
-                              etiqueta="Módulo / Acción"
-                              valor={
-                                <span className="break-words">
-                                  {seleccionado.modulo} / {etiquetaAccion(seleccionado.accion)}
-                                </span>
-                              }
-                            />
-                            <DetalleCampoMovil
-                              etiqueta="Recurso"
-                              valor={<span className="break-words">{formatearRecurso(seleccionado)}</span>}
-                            />
-                            <DetalleCampoMovil
-                              etiqueta="Resultado"
-                              valor={
-                                <span
-                                  className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold uppercase ${claseBadgeResultadoAuditoria(seleccionado.resultado)}`}
-                                >
-                                  {seleccionado.resultado}
-                                </span>
-                              }
-                            />
+                        <button
+                          type="button"
+                          onClick={() => setMostrarDatosTecnicos((prev) => !prev)}
+                          className="w-full shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-500 dark:bg-transparent dark:text-[#e7eef9] dark:hover:bg-white/5"
+                        >
+                          {mostrarDatosTecnicos ? 'Ocultar datos técnicos' : 'Datos técnicos avanzados'}
+                        </button>
+                        {mostrarDatosTecnicos ? (
+                          <div className="auditoria-datos-tecnicos relative z-[1] w-full min-w-0 shrink-0 space-y-2">
+                            <ContenidoDatosTecnicosEvento evento={seleccionado} mostrarTituloMovil />
                           </div>
                         ) : null}
+                        <CuadroDetalleEventoMovil evento={seleccionado} />
                       </div>
                       <div className="auditoria-detalle-resumen-pc hidden space-y-2.5 leading-relaxed xl:block">
                         <p>
@@ -1344,97 +1429,8 @@ export function AuditoriaPage({ onLogout }: Props) {
                       </div>
                     </div>
                     {mostrarDatosTecnicos ? (
-                      <div className="auditoria-datos-tecnicos relative z-[1] w-full min-w-0 shrink-0 space-y-2 xl:border-l xl:border-slate-200 xl:pl-5 dark:xl:border-slate-600">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 lg:hidden">
-                          Datos técnicos
-                        </p>
-                        <div
-                          ref={panelDatosTecnicosRef}
-                          className="w-full rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900/40 max-xl:max-h-[min(50vh,24rem)] max-xl:overflow-y-auto max-xl:shadow-sm xl:max-h-none xl:overflow-visible"
-                        >
-                          <div className="space-y-2 text-xs text-slate-700 dark:text-slate-300">
-                            <p className="break-words">
-                              <strong>ID:</strong> {seleccionado.id}
-                            </p>
-                            <p className="break-words">
-                              <strong>IP:</strong> {seleccionado.ip ?? '-'}
-                            </p>
-                            <p className="break-words leading-snug">
-                              <strong>User-Agent:</strong>{' '}
-                              <span className="font-mono text-[11px]">{seleccionado.user_agent ?? '-'}</span>
-                            </p>
-                            <p className="break-words">
-                              <strong>Roles:</strong> {(seleccionado.actor_roles ?? []).join(', ') || '-'}
-                            </p>
-                            {tieneContenidoTecnico(seleccionado.detalle) ? (
-                              <div>
-                                <p className="mb-1 text-xs uppercase text-slate-400">Detalle JSON</p>
-                                <pre className="max-h-48 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words rounded-lg border border-slate-700 bg-slate-900 p-3 text-xs text-slate-200 xl:max-h-none xl:overflow-y-visible">
-                                  {JSON.stringify(seleccionado.detalle, null, 2)}
-                                </pre>
-                              </div>
-                            ) : null}
-                            {tieneContenidoTecnico(seleccionado.antes) ? (
-                              <div>
-                                <p className="mb-1 text-xs uppercase text-slate-400">Antes</p>
-                                <pre className="max-h-40 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words rounded-lg border border-slate-700 bg-slate-900 p-3 text-xs text-slate-200 xl:max-h-none xl:overflow-y-visible">
-                                  {JSON.stringify(seleccionado.antes, null, 2)}
-                                </pre>
-                              </div>
-                            ) : null}
-                            {tieneContenidoTecnico(seleccionado.despues) ? (
-                              <div>
-                                <p className="mb-1 text-xs uppercase text-slate-400">Después</p>
-                                <pre className="max-h-40 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words rounded-lg border border-slate-700 bg-slate-900 p-3 text-xs text-slate-200 xl:max-h-none xl:overflow-y-visible">
-                                  {JSON.stringify(seleccionado.despues, null, 2)}
-                                </pre>
-                              </div>
-                            ) : null}
-                            {!tieneContenidoTecnico(seleccionado.detalle) &&
-                            !tieneContenidoTecnico(seleccionado.antes) &&
-                            !tieneContenidoTecnico(seleccionado.despues) ? (
-                              <div className="rounded-lg border border-slate-700 bg-slate-900/40 p-3 text-xs text-slate-400">
-                                Este evento no incluye campos técnicos adicionales para mostrar.
-                              </div>
-                            ) : null}
-                          </div>
-                        </div>
-                        <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white/80 dark:border-slate-700/60 dark:bg-slate-900/25 lg:hidden">
-                          <DetalleCampoMovil
-                            etiqueta="Qué se hizo"
-                            valor={<span className="break-words">{construirResumenCambio(seleccionado)}</span>}
-                          />
-                          <DetalleCampoMovil
-                            etiqueta="Quién lo hizo"
-                            valor={<span className="break-words">{obtenerActor(seleccionado)}</span>}
-                          />
-                          <DetalleCampoMovil
-                            etiqueta="Cuándo"
-                            valor={<span className="tabular-nums">{formatearFechaLarga(seleccionado.fecha_hora)}</span>}
-                          />
-                          <DetalleCampoMovil
-                            etiqueta="Módulo / Acción"
-                            valor={
-                              <span className="break-words">
-                                {seleccionado.modulo} / {etiquetaAccion(seleccionado.accion)}
-                              </span>
-                            }
-                          />
-                          <DetalleCampoMovil
-                            etiqueta="Recurso"
-                            valor={<span className="break-words">{formatearRecurso(seleccionado)}</span>}
-                          />
-                          <DetalleCampoMovil
-                            etiqueta="Resultado"
-                            valor={
-                              <span
-                                className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold uppercase ${claseBadgeResultadoAuditoria(seleccionado.resultado)}`}
-                              >
-                                {seleccionado.resultado}
-                              </span>
-                            }
-                          />
-                        </div>
+                      <div className="auditoria-datos-tecnicos relative z-[1] hidden w-full min-w-0 shrink-0 space-y-2 xl:block xl:border-l xl:border-slate-200 xl:pl-5 dark:xl:border-slate-600">
+                        <ContenidoDatosTecnicosEvento evento={seleccionado} panelRef={panelDatosTecnicosRef} />
                       </div>
                     ) : null}
                   </div>

@@ -62,7 +62,12 @@ interface MenuPlacement {
   bottom?: number;
 }
 
-function computeMenuPlacement(trigger: DOMRect, optionLabels: string[] = [], wrapOptions = true): MenuPlacement {
+function computeMenuPlacement(
+  trigger: DOMRect,
+  optionLabels: string[] = [],
+  wrapOptions = true,
+  compactMenu = false
+): MenuPlacement {
   const spaceBelow = window.innerHeight - trigger.bottom - VIEWPORT_MARGIN_PX;
   const spaceAbove = trigger.top - VIEWPORT_MARGIN_PX;
   const openUp = spaceBelow < 120 && spaceAbove > spaceBelow;
@@ -72,9 +77,11 @@ function computeMenuPlacement(trigger: DOMRect, optionLabels: string[] = [], wra
     Math.max(available - MENU_GAP_PX, 96)
   );
   const viewportMax = window.innerWidth - VIEWPORT_MARGIN_PX * 2;
-  const width = wrapOptions
-    ? Math.min(Math.max(trigger.width, 160), viewportMax)
-    : Math.min(Math.max(trigger.width, minWidthForLabels(optionLabels)), viewportMax);
+  const width = compactMenu
+    ? Math.min(Math.max(trigger.width, 88), viewportMax)
+    : wrapOptions
+      ? Math.min(Math.max(trigger.width, 160), viewportMax)
+      : Math.min(Math.max(trigger.width, minWidthForLabels(optionLabels)), viewportMax);
   const left = Math.min(
     Math.max(VIEWPORT_MARGIN_PX, trigger.left),
     window.innerWidth - width - VIEWPORT_MARGIN_PX
@@ -126,6 +133,8 @@ export interface AppSelectProps {
   /** Texto del control cuando no hay opciones (si no se define, se usa el placeholder). */
   emptyOptionsText?: string;
   size?: 'md' | 'sm' | 'xs';
+  /** Menú del ancho del trigger (año, cantidad, etc.) sin ensancharse a toda la fila en móvil. */
+  compactMenu?: boolean;
 }
 
 function labelForValue(
@@ -159,6 +168,7 @@ export function AppSelect({
   clearOption,
   emptyOptionsText,
   size = 'md',
+  compactMenu = false,
 }: AppSelectProps) {
   const [open, setOpen] = useState(false);
   const [menuPlacement, setMenuPlacement] = useState<MenuPlacement | null>(null);
@@ -249,8 +259,8 @@ export function AppSelect({
     const root = rootRef.current;
     if (!root) return;
     const labels = visibleListOptions.map((o) => o.label);
-    setMenuPlacement(computeMenuPlacement(root.getBoundingClientRect(), labels));
-  }, [visibleListOptions]);
+    setMenuPlacement(computeMenuPlacement(root.getBoundingClientRect(), labels, true, compactMenu));
+  }, [visibleListOptions, compactMenu]);
 
   useLayoutEffect(() => {
     if (!open) {
@@ -309,13 +319,18 @@ export function AppSelect({
               id={listId}
               role="listbox"
               aria-label={ariaLabel ?? title ?? 'Opciones'}
-              className={cn(appSelectListClass, listMaxHeight, listClassName)}
+              className={cn(
+                appSelectListClass,
+                listMaxHeight,
+                compactMenu && 'py-0.5 shadow-md',
+                listClassName
+              )}
               style={{
                 position: 'fixed',
                 left: menuPlacement.left,
                 width: menuPlacement.width,
-                minWidth: menuPlacement.width,
-                maxWidth: 'min(100vw - 2rem, 28rem)',
+                minWidth: compactMenu ? undefined : menuPlacement.width,
+                maxWidth: compactMenu ? menuPlacement.width : 'min(100vw - 2rem, 28rem)',
                 maxHeight: menuPlacement.maxHeight,
                 top: menuPlacement.top,
                 bottom: menuPlacement.bottom,
@@ -333,7 +348,10 @@ export function AppSelect({
                       <button
                         type="button"
                         disabled={opt.disabled}
-                        className={appSelectOptionClass(isSelected)}
+                        className={cn(
+                          appSelectOptionClass(isSelected),
+                          compactMenu && 'px-2.5 py-1.5 text-center text-sm font-semibold tabular-nums'
+                        )}
                         onMouseDown={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
