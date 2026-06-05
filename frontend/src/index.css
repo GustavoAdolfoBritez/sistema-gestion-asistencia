@@ -938,6 +938,7 @@
       grid-template-columns: minmax(0, 1fr) 14px;
       align-items: stretch;
       max-height: 18.75rem;
+      overflow: hidden;
     }
 
     .reportes-lista-scroll-outer:not(.reportes-lista-scroll-outer--con-barra) {
@@ -964,14 +965,15 @@
       overscroll-behavior: contain;
       -webkit-overflow-scrolling: touch;
       touch-action: pan-y;
-      scrollbar-width: none;
+      scrollbar-width: none !important;
+      -ms-overflow-style: none !important;
       pointer-events: auto;
     }
 
     .reportes-panel-lista-scroll--con-lista::-webkit-scrollbar {
-      width: 0;
-      height: 0;
-      display: none;
+      width: 0 !important;
+      height: 0 !important;
+      display: none !important;
     }
 
     .reportes-panel-lista-scroll .reportes-panel-lista-items {
@@ -1058,6 +1060,204 @@
 
     .reportes-lista-scrollbar-rail {
       display: none !important;
+    }
+  }
+
+  /**
+   * Reportes · responsive (<xl): caja fija + scroll interno en actas y habilitados.
+   */
+  @media (max-width: 1279px) {
+    .reportes-cierre-panel-scroll-body .reportes-panel-lista-scroll--con-lista {
+      max-height: 18.75rem;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+      pointer-events: auto;
+    }
+
+    .reportes-cierre-panel--actas .reportes-cierre-panel-scroll-body {
+      overflow: hidden;
+    }
+
+    .reportes-panel-lista-scroll--barra-custom.reportes-panel-lista-scroll--con-lista {
+      padding: 0.25rem 0.125rem 0.25rem 0.25rem;
+      scrollbar-width: none !important;
+      -ms-overflow-style: none !important;
+    }
+
+    .reportes-panel-lista-scroll--barra-custom.reportes-panel-lista-scroll--con-lista::-webkit-scrollbar {
+      width: 0 !important;
+      height: 0 !important;
+      display: none !important;
+    }
+
+    .reportes-lista-scroll-outer--con-barra:has(.reportes-panel-lista-scroll--barra-custom) {
+      overflow: hidden;
+    }
+
+    .reportes-lista-scroll-outer:has(.reportes-panel-lista-scroll--barra-custom) .reportes-panel-lista-items {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) and (max-width: 1279px) {
+    .reportes-cierre-panel-scroll-body .reportes-panel-lista-scroll--con-lista:not(.reportes-panel-lista-scroll--barra-custom) {
+      scrollbar-width: thin;
+      -ms-overflow-style: auto;
+    }
+
+    .reportes-lista-scroll-outer:has(.reportes-panel-lista-scroll--barra-custom) {
+      display: block;
+      min-height: 0;
+    }
+
+    .reportes-lista-scroll-outer--con-barra:has(.reportes-panel-lista-scroll--barra-custom) {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 14px;
+      align-items: stretch;
+      max-height: 18.75rem;
+      overflow: hidden;
+    }
+
+    .reportes-lista-scroll-outer:not(.reportes-lista-scroll-outer--con-barra):has(.reportes-panel-lista-scroll--barra-custom) {
+      touch-action: auto;
+      overscroll-behavior: auto;
+    }
+
+    .reportes-panel-lista-scroll--barra-custom.reportes-panel-lista-scroll--sin-overflow {
+      max-height: none !important;
+      height: auto !important;
+      overflow: visible !important;
+      overscroll-behavior: auto !important;
+      touch-action: auto !important;
+      -webkit-overflow-scrolling: auto;
+    }
+
+    .reportes-lista-scroll-outer:has(.reportes-panel-lista-scroll--barra-custom) .reportes-lista-scrollbar-rail {
+      display: flex !important;
+      flex-direction: column;
+      width: 14px;
+      min-height: 0;
+      max-height: 18.75rem;
+      overflow: hidden;
+      border-radius: 0 6px 6px 0;
+      border: 1px solid #e2e8f0;
+      border-left: none;
+      background: #f1f5f9;
+    }
+
+    .dark .reportes-lista-scroll-outer:has(.reportes-panel-lista-scroll--barra-custom) .reportes-lista-scrollbar-rail {
+      border-color: #2a4a7f;
+      background: #0d1b2e;
+    }
+
+    .reportes-lista-scroll-outer:has(.reportes-panel-lista-scroll--barra-custom) .reportes-lista-scrollbar-arrow {
+      display: flex;
+      flex-shrink: 0;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 12px;
+      padding: 0;
+      color: #64748b;
+      background: #f1f5f9;
+      border: none;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .reportes-lista-scroll-outer:has(.reportes-panel-lista-scroll--barra-custom) .reportes-lista-scrollbar-arrow--down {
+      border-bottom: none;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .dark .reportes-lista-scroll-outer:has(.reportes-panel-lista-scroll--barra-custom) .reportes-lista-scrollbar-arrow {
+      color: #94a3b8;
+      background: #0d1b2e;
+      border-color: #2a4a7f;
+    }
+
+    .reportes-lista-scroll-outer:has(.reportes-panel-lista-scroll--barra-custom) .reportes-lista-scrollbar-track {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 0;
+      margin: 1px 2px;
+      background: #f1f5f9;
+    }
+
+    .dark .reportes-lista-scroll-outer:has(.reportes-panel-lista-scroll--barra-custom) .reportes-lista-scrollbar-track {
+      background: #0d1b2e;
+    }
+
+    .reportes-lista-scroll-outer:has(.reportes-panel-lista-scroll--barra-custom) .reportes-lista-scrollbar-thumb {
+      position: absolute;
+      left: 0;
+      right: 0;
+      border-radius: 4px;
+      background-color: #cbd5e1;
+      border: 1px solid #f1f5f9;
+      pointer-events: none;
+    }
+
+    .dark .reportes-lista-scroll-outer:has(.reportes-panel-lista-scroll--barra-custom) .reportes-lista-scrollbar-thumb {
+      background-color: #2a4272;
+      border-color: #0d1b2e;
+    }
+  }
+
+  /**
+   * Reportes · cierre en PC (xl+): cuatro cuadros en grilla 2×2 alineados por fila.
+   * Actas ↔ Flujo y Habilitados ↔ Checklist comparten altura; el scroll interno rellena el panel.
+   */
+  @media (min-width: 1280px) {
+    .reportes-cierre-cuadros-grid {
+      align-items: stretch;
+    }
+
+    .reportes-cierre-panel-scroll-body {
+      display: flex;
+      flex: 1 1 auto;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .reportes-cierre-panel-scroll-body .reportes-lista-scroll-outer {
+      display: flex;
+      flex: 1 1 auto;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .reportes-cierre-panel-scroll-body .reportes-panel-lista-scroll--con-lista {
+      flex: 1 1 auto;
+      height: 0;
+      max-height: none !important;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      -ms-overflow-style: auto;
+      padding: 0;
+    }
+
+    .reportes-cierre-panel-scroll-body .reportes-panel-lista-scroll--barra-custom.reportes-panel-lista-scroll--con-lista::-webkit-scrollbar {
+      width: 8px;
+      height: 0;
+      display: block;
+    }
+
+    .reportes-cierre-panel-scroll-body .reportes-lista-scroll-outer:has(.reportes-panel-lista-scroll--barra-custom) {
+      overflow: visible;
+    }
+
+    .reportes-cierre-panel-scroll-body .reportes-panel-lista-scroll--sin-overflow {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
   }
 

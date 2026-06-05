@@ -6,7 +6,7 @@ import { generarActaHabilitadosPdf } from './reportes.habilitados.pdf';
 import { generarInformeAlumnoPdf } from './reportes.alumno.pdf';
 import { generarConsolidadoRiesgoPdf } from './reportes.pdf.consolidado';
 import { generarPdfAusentismoFacultadCarrera } from './reportes.pdf.ausentismo';
-import { SQL_ALUMNO_APELLIDOS_COMA_NOMBRES } from '../../utils/alumno-nombre-sql';
+import { SQL_ALUMNO_APELLIDOS_COMA_NOMBRES, SQL_ORDEN_MATRICULA_PLANILLA } from '../../utils/alumno-nombre-sql';
 import { generarNombrePdfElegante } from './reportes.utils';
 import {
     obtenerActaGeneradaPorId,
@@ -731,11 +731,12 @@ export async function listarConsolidadoRiesgoInhabilitados(
     const limit = Math.min(Math.max(filtro.limit ?? 500, 1), 5000);
     valores.push(limit);
     const where = `WHERE ${condiciones.join(' AND ')}`;
+    const orderByPlanilla = `ca.nombre ASC, m.nombre ASC, c.id ASC, ${SQL_ORDEN_MATRICULA_PLANILLA}`;
     const orderBy = filtro.orderBy === 'asistencia_asc'
-        ? `COALESCE(mat.porcentaje_asistencia, 0) ASC, COALESCE(mat.faltas_acumuladas, 0) DESC, alumno ASC`
+        ? `COALESCE(mat.porcentaje_asistencia, 0) ASC, COALESCE(mat.faltas_acumuladas, 0) DESC, ${orderByPlanilla}`
         : filtro.orderBy === 'alumno_asc'
-            ? `alumno ASC`
-            : `COALESCE(mat.faltas_acumuladas, 0) DESC, COALESCE(mat.porcentaje_asistencia, 0) ASC, alumno ASC`;
+            ? orderByPlanilla
+            : `COALESCE(mat.faltas_acumuladas, 0) DESC, COALESCE(mat.porcentaje_asistencia, 0) ASC, ${orderByPlanilla}`;
 
     const { rows } = await pool.query<ConsolidadoRiesgoItem>(
         `SELECT
@@ -1471,7 +1472,7 @@ const { rows } = await pool.query<{
             v.materia,
             v.anio,
             v.mes,
-            v.alumno,
+            ${SQL_ALUMNO_APELLIDOS_COMA_NOMBRES} AS alumno,
             v.numero_documento,
             v.porcentaje_final,
             v.habilitado,
@@ -1480,6 +1481,8 @@ const { rows } = await pool.query<{
             f.nombre AS facultad,
             m.semestre
          FROM vw_habilitados_examen v
+         JOIN matriculas mat ON mat.id = v.matricula_id
+         JOIN alumnos al ON al.id = mat.alumno_id
          JOIN cursos c ON c.id = v.curso_id
          JOIN docentes d ON d.id = c.docente_id
          JOIN usuarios u ON u.id = d.usuario_id
@@ -1491,7 +1494,7 @@ const { rows } = await pool.query<{
          WHERE v.curso_id = $1
            AND v.anio = $2
            AND v.mes = $3
-         ORDER BY v.habilitado DESC, v.alumno ASC`,
+         ORDER BY ${SQL_ORDEN_MATRICULA_PLANILLA}`,
          [cursoId, anioPeriodo, mesPeriodo]
      );
 
@@ -1585,7 +1588,7 @@ async function buildPdfLegalBuffer(cursoId: number, periodo?: string): Promise<P
          LEFT JOIN sesiones_clase sc ON sc.curso_id = c.id AND sc.fecha >= $2 AND sc.fecha < $3
          LEFT JOIN asistencias a ON a.sesion_id = sc.id AND a.matricula_id = mat.id
          WHERE c.id = $1
-         ORDER BY mat.orden_lista NULLS LAST, alumno ASC, sc.fecha ASC NULLS LAST`,
+         ORDER BY ${SQL_ORDEN_MATRICULA_PLANILLA}, sc.fecha ASC NULLS LAST`,
         [cursoId, inicio, fin]
     );
 
@@ -1606,8 +1609,10 @@ async function buildPdfLegalBuffer(cursoId: number, periodo?: string): Promise<P
     }
 
     const alumnosMap = new Map<number, { nombre: string; documento: string; asistencias: Map<string, string> }>();
+    const matriculaOrdenPlanilla: number[] = [];
     for (const row of rows) {
         if (!alumnosMap.has(row.matricula_id)) {
+            matriculaOrdenPlanilla.push(row.matricula_id);
             alumnosMap.set(row.matricula_id, {
                 nombre: row.alumno,
                 documento: row.documento,
@@ -1621,16 +1626,19 @@ async function buildPdfLegalBuffer(cursoId: number, periodo?: string): Promise<P
     }
 
     const first = rows[0];
-    const alumnos = Array.from(alumnosMap.values()).map((item, index) => ({
-        orden: index + 1,
-        nombre: item.nombre
-            .replace(/\s*\(\d+\)\s*$/, '')
-            .replace(/\s+/g, ' ')
-            .replace(/\s*,\s*/g, ', ')
-            .trim(),
-        documento: item.documento,
-        asistencias: sesiones.map((fecha) => item.asistencias.get(fecha) ?? '-'),
-    }));
+    const alumnos = matriculaOrdenPlanilla.map((matriculaId, index) => {
+        const item = alumnosMap.get(matriculaId)!;
+        return {
+            orden: index + 1,
+            nombre: item.nombre
+                .replace(/\s*\(\d+\)\s*$/, '')
+                .replace(/\s+/g, ' ')
+                .replace(/\s*,\s*/g, ', ')
+                .trim(),
+            documento: item.documento,
+            asistencias: sesiones.map((fecha) => item.asistencias.get(fecha) ?? '-'),
+        };
+    });
 
     // Derivar semestre del mes (1-6 = 1er Semestre, 7-12 = 2do Semestre)
     const semestre = first.mes <= 6 ? '1er Semestre' : '2do Semestre';

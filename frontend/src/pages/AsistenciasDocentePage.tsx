@@ -1425,8 +1425,8 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
             {/* Barra + KPI: scroll propio en móvil para no competir con la planilla */}
             <div className="relative flex min-w-0 shrink-0 flex-col gap-4">
             <div className="min-w-0 space-y-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-[#132a52]">
-              <div className="layout-toolbar flex flex-col gap-4 md:flex-row md:items-start md:justify-between min-w-0">
-                <div className="min-w-0 flex-1">
+              <div className="layout-toolbar flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0 w-full flex-1 lg:min-w-[12rem]">
                   <p className="text-xs uppercase text-slate-400">Planilla de asistencia</p>
                   <h2 className="text-lg font-semibold leading-snug break-words">{planillaSeleccionada?.materia ?? 'Selecciona un curso'}</h2>
                   {planillaSeleccionada ? (
@@ -1437,7 +1437,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                     </p>
                   ) : null}
                 </div>
-                <div className="layout-toolbar relative z-10 flex w-full min-w-0 flex-col gap-2 md:flex-row md:flex-wrap md:items-center md:justify-end lg:w-auto">
+                <div className="layout-toolbar relative z-10 flex w-full min-w-0 shrink-0 flex-col gap-2 lg:w-auto lg:flex-row lg:flex-wrap lg:items-center lg:justify-end">
                   {/* Selector de curso */}
                   <AppSelect
                     className="w-full min-w-0 lg:min-w-[12rem] lg:w-auto"
@@ -1474,7 +1474,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                   <div className="btn-mobile-stack flex w-full flex-col gap-2 lg:w-auto lg:flex-row lg:items-center">
                     <button
                       type="button"
-                      className="btn-modern btn-modern-ghost btn-modern-sm btn-mobile-cta lg:w-auto"
+                      className="btn-modern btn-modern-ghost btn-modern-sm btn-mobile-cta flex w-full items-center justify-center lg:w-auto"
                       onClick={() => void cargarPlanillaMes()}
                       disabled={loading || !cursoId}
                     >
@@ -1483,7 +1483,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                     </button>
                     <button
                       type="button"
-                      className="btn-modern btn-modern-ghost btn-modern-sm btn-mobile-cta lg:w-auto"
+                      className="btn-modern btn-modern-ghost btn-modern-sm btn-mobile-cta flex w-full items-center justify-center lg:w-auto"
                       onClick={() => void descargarPlanillaLegal()}
                       disabled={generandoPdfLegal || !cursoId}
                       title="Generar y abrir planilla legal PDF del mes seleccionado"
@@ -1506,8 +1506,8 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
               ) : null}
 
               {/* Nueva sesión */}
-              <div className="layout-toolbar flex min-w-0 flex-col gap-2 border-t border-slate-200 pt-1 dark:border-slate-800/60 md:flex-row md:flex-wrap md:items-center">
-                <span className="shrink-0 text-xs text-slate-600 dark:text-slate-500">Nueva sesión:</span>
+              <div className="layout-toolbar flex min-w-0 flex-col gap-2 border-t border-slate-200 pt-3 dark:border-slate-800/60 lg:flex-row lg:flex-wrap lg:items-center">
+                <span className="w-full shrink-0 text-xs font-medium text-slate-600 dark:text-slate-500 lg:w-auto">Nueva sesión:</span>
                 <input
                   type="date"
                   aria-label="Fecha de nueva sesión"
@@ -1572,7 +1572,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                 </div>
                 <button
                   type="button"
-                  className="btn-modern btn-modern-primary btn-modern-sm btn-mobile-cta lg:w-auto"
+                  className="btn-modern btn-modern-primary btn-modern-sm btn-mobile-cta flex w-full items-center justify-center lg:w-auto"
                   disabled={creandoSesion || !cursoId || !nuevaSesionFecha || !!sesionListaAbierta}
                   title={
                     sesionListaAbierta
@@ -1621,7 +1621,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                 {sesionListaAbierta ? (
                   <button
                     type="button"
-                    className="btn-modern btn-modern-sm btn-mobile-cta flex items-center justify-center gap-1.5 border-0 bg-rose-600 font-semibold text-white shadow-md hover:bg-rose-500 lg:w-auto"
+                    className="btn-modern btn-modern-sm btn-mobile-cta flex w-full items-center justify-center gap-1.5 border-0 bg-rose-600 font-semibold text-white shadow-md hover:bg-rose-500 lg:w-auto"
                     disabled={cerrandoSesionId === sesionListaAbierta.id}
                     onClick={() => setCerrarListaModalOpen(true)}
                   >

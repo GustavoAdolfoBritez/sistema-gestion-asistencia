@@ -13,9 +13,15 @@ type ReportesPanelListaScrollProps = {
   children: ReactNode;
   /** true = mensaje vacío: sin caja fija ni barra; el dedo scrollea la página. */
   vacio?: boolean;
+  /** Barra lateral custom hasta xl (móvil + tablet horizontal); en xl+ el panel usa scroll del layout PC. */
+  barraCustomHastaXl?: boolean;
 };
 
-export function ReportesPanelListaScroll({ children, vacio = false }: ReportesPanelListaScrollProps) {
+export function ReportesPanelListaScroll({
+  children,
+  vacio = false,
+  barraCustomHastaXl = false,
+}: ReportesPanelListaScrollProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [metrics, setMetrics] = useState<ScrollMetrics>({ top: 0, height: 40, conBarra: false });
 
@@ -79,9 +85,11 @@ export function ReportesPanelListaScroll({ children, vacio = false }: ReportesPa
     >
       <div
         ref={scrollRef}
-        className={`reportes-panel-lista-scroll min-h-0 lg:scroll-region-at-lg lg:max-h-[300px] ${
+        className={`reportes-panel-lista-scroll min-h-0${
+          barraCustomHastaXl ? ' reportes-panel-lista-scroll--barra-custom' : ''
+        } ${
           vacio
-            ? 'reportes-panel-lista-scroll--sin-overflow max-lg:pointer-events-none'
+            ? `reportes-panel-lista-scroll--sin-overflow ${barraCustomHastaXl ? 'max-xl:pointer-events-none' : 'max-lg:pointer-events-none'}`
             : 'reportes-panel-lista-scroll--con-lista'
         }`}
         onScroll={syncThumb}
