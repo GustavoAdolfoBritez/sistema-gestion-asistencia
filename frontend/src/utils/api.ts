@@ -1,4 +1,5 @@
 import { toast } from 'sonner';
+import type { SessionUser } from './rbac';
 
 /** API en Heroku; usada en build de producción si no hay VITE_API_URL (p. ej. en Vercel). */
 const PRODUCTION_API_BASE_URL = 'https://gestion-asistencias-ung-623e820b6ba1.herokuapp.com/api';
@@ -104,8 +105,183 @@ function resolveApiAbsoluteUrl(path: string): string {
   return combined;
 }
 
+const TOKEN_KEYS = ['accessToken', 'token', 'authToken'] as const;
+const USER_STORAGE_KEY = 'currentUser';
+const REFRESH_TOKEN_KEY = 'refreshToken';
+
+interface RefreshTokenResponse {
+  token: string;
+  refreshToken: string;
+  usuario?: SessionUser;
+}
+
+/**
+ * Candado global: una sola renovación en vuelo.
+ * Peticiones concurrentes con 401 comparten esta promesa (RTR sin invalidación cruzada).
+ */
+let tokenRefreshPromise: Promise<string | null> | null = null;
+
 function obtenerTokenSesion(): string | null {
   return TOKEN_KEYS.map((key) => localStorage.getItem(key)).find(Boolean) ?? null;
+}
+
+function isAuthRefreshPath(path: string): boolean {
+  const normalized = path.replace(/^\/+/, '').replace(/\/+$/, '');
+  return normalized === 'auth/refresh';
+}
+
+function persistRefreshedSession(data: RefreshTokenResponse): void {
+  localStorage.setItem('accessToken', data.token);
+  localStorage.setItem('token', data.token);
+  localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
+  if (data.usuario) {
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(data.usuario));
+  }
+}
+
+/** POST /auth/refresh con rotación estricta (RTR). */
+async function executeTokenRefresh(): Promise<string | null> {
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)?.trim();
+  if (!refreshToken) {
+    clearLocalSession();
+    return null;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    if (!response.ok) {
+      clearLocalSession();
+      return null;
+    }
+
+    const data = (await response.json()) as RefreshTokenResponse;
+    if (!data.token?.trim() || !data.refreshToken?.trim()) {
+      clearLocalSession();
+      return null;
+    }
+
+    persistRefreshedSession(data);
+    return data.token;
+  } catch {
+    clearLocalSession();
+    return null;
+  }
+}
+
+/**
+ * Obtiene un access token renovado reutilizando la promesa en curso si ya hay un refresh activo.
+ */
+async function obtainRefreshedAccessToken(): Promise<string | null> {
+  if (tokenRefreshPromise) {
+    return tokenRefreshPromise;
+  }
+
+  tokenRefreshPromise = executeTokenRefresh().finally(() => {
+    tokenRefreshPromise = null;
+  });
+
+  return tokenRefreshPromise;
+}
+
+function isFormDataBody(body: BodyInit | null | undefined): body is FormData {
+  return typeof FormData !== 'undefined' && body instanceof FormData;
+}
+
+/**
+ * Clona FormData antes de un reintento tras 401.
+ * Evita reusar un stream de cuerpo ya consumido o bloqueado en el primer intento.
+ */
+function cloneRequestBodyForRetry(body: BodyInit | null | undefined): BodyInit | null | undefined {
+  if (body == null) return body;
+  if (isFormDataBody(body)) {
+    const cloned = new FormData();
+    body.forEach((value, key) => {
+      cloned.append(key, value);
+    });
+    return cloned;
+  }
+  return body;
+}
+
+function resolveApiUrl(path: string): string {
+  return path.startsWith('/') ? `${API_BASE_URL}${path}` : `${API_BASE_URL}/${path}`;
+}
+
+function buildRequestHeaders(options: RequestInit, accessToken?: string | null): Headers {
+  const headers = new Headers(options.headers ?? {});
+
+  if (options.body && !isFormDataBody(options.body) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  if (accessToken && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${accessToken}`);
+  }
+
+  return headers;
+}
+
+/**
+ * fetch autenticado con reintento transparente tras refresh (mutex RTR).
+ * Base compartida de apiFetch y descargas PDF/binarias.
+ */
+async function fetchWithAuthRetry(path: string, options: RequestInit = {}): Promise<Response> {
+  const url = resolveApiUrl(path);
+  const token = obtenerTokenSesion();
+  const headers = buildRequestHeaders(options, token);
+
+  let response = await fetch(url, { ...options, headers });
+
+  if (response.status === 401) {
+    if (isAuthRefreshPath(path)) {
+      const mensaje = await parseUnauthorizedMessage(response);
+      failSessionExpired(mensaje);
+    }
+
+    const storedRefresh = localStorage.getItem(REFRESH_TOKEN_KEY)?.trim();
+    if (!storedRefresh) {
+      const mensaje = await parseUnauthorizedMessage(response);
+      failSessionExpired(mensaje);
+    }
+
+    const newToken = await obtainRefreshedAccessToken();
+    if (!newToken) {
+      failSessionExpired();
+    }
+
+    const retryOptions: RequestInit = {
+      ...options,
+      body: cloneRequestBodyForRetry(options.body) ?? options.body,
+    };
+    const retryHeaders = buildRequestHeaders(retryOptions, newToken);
+    response = await fetch(url, { ...retryOptions, headers: retryHeaders });
+
+    if (response.status === 401) {
+      const mensaje = await parseUnauthorizedMessage(response);
+      failSessionExpired(mensaje);
+    }
+  }
+
+  return response;
+}
+
+async function parseUnauthorizedMessage(response: Response): Promise<string> {
+  const payload = await response.json().catch(() => ({}));
+  return typeof payload?.mensaje === 'string' && payload.mensaje.trim()
+    ? payload.mensaje
+    : 'Tu sesión expiró. Iniciá sesión de nuevo.';
+}
+
+function failSessionExpired(mensaje?: string): never {
+  const message = mensaje?.trim() || 'Tu sesión expiró. Iniciá sesión de nuevo.';
+  notifySessionExpired();
+  showSessionExpiredToast(message);
+  throw new SessionExpiredError(message);
 }
 
 /** URL autenticada para abrir PDF en pestaña nueva (el navegador usa Content-Disposition). */
@@ -119,19 +295,38 @@ export function buildAuthenticatedPdfUrl(path: string): string {
   return parsed.toString();
 }
 
-/** Abre un PDF de la API en otra pestaña (visor del navegador: imprimir o guardar). */
+/**
+ * Abre un PDF en pestaña nueva preservando el gesto del usuario (evita bloqueo en móvil).
+ * La ventana se abre de forma sincrónica; el PDF se carga tras fetchWithAuthRetry.
+ */
 export function openPdfEnPestana(path: string): void {
-  try {
-    const url = buildAuthenticatedPdfUrl(path);
-    window.open(url, '_blank', 'noopener,noreferrer');
-  } catch (error) {
-    if (isSessionExpiredError(error)) {
-      notifySessionExpired();
-      showSessionExpiredToast('Tu sesión expiró. Iniciá sesión de nuevo.');
-      return;
-    }
-    throw error;
+  const nuevaVentana = window.open('about:blank', '_blank');
+  if (!nuevaVentana) {
+    toast.error('Por favor, habilitá los permisos de ventanas emergentes.');
+    return;
   }
+
+  nuevaVentana.document.write(
+    '<p style="font-family:sans-serif;text-align:center;margin-top:20%;color:#666;">Generando acta de asistencia...</p>'
+  );
+
+  fetchWithAuthRetry(path, { method: 'GET' })
+    .then(async (response) => {
+      if (!response.ok) {
+        await manejarErrorPdfResponse(response);
+      }
+      return response.blob();
+    })
+    .then((blob) => {
+      const urlBlob = URL.createObjectURL(blob);
+      nuevaVentana.location.href = urlBlob;
+      window.setTimeout(() => URL.revokeObjectURL(urlBlob), 60_000);
+    })
+    .catch((error: unknown) => {
+      nuevaVentana.close();
+      if (isSessionExpiredError(error)) return;
+      toast.error('Error al generar el archivo PDF.');
+    });
 }
 
 function abrirBlobEnPestana(blob: Blob): void {
@@ -164,15 +359,7 @@ export async function downloadPdfFromApi(
   path: string,
   options: RequestInit = {}
 ): Promise<{ blob: Blob; fileName: string }> {
-  const url = path.startsWith('/') ? `${API_BASE_URL}${path}` : `${API_BASE_URL}/${path}`;
-  const headers = new Headers(options.headers ?? {});
-
-  const token = obtenerTokenSesion();
-  if (token && !headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
-
-  const response = await fetch(url, { ...options, headers });
+  const response = await fetchWithAuthRetry(path, options);
 
   if (!response.ok) {
     return manejarErrorPdfResponse(response);
@@ -188,15 +375,7 @@ export async function generarYAbrirPdf(
   options: RequestInit = {},
   abrir = true
 ): Promise<void> {
-  const url = path.startsWith('/') ? `${API_BASE_URL}${path}` : `${API_BASE_URL}/${path}`;
-  const headers = new Headers(options.headers ?? {});
-
-  const token = obtenerTokenSesion();
-  if (token && !headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
-
-  const response = await fetch(url, { ...options, headers });
+  const response = await fetchWithAuthRetry(path, options);
 
   if (!response.ok) {
     return manejarErrorPdfResponse(response);
@@ -237,8 +416,6 @@ export async function abrirDocumento(url: string | null | undefined): Promise<vo
   }
   window.open(getDocumentoUrl(trimmed), '_blank', 'noopener,noreferrer');
 }
-const TOKEN_KEYS = ['accessToken', 'token', 'authToken'];
-const USER_STORAGE_KEY = 'currentUser';
 
 /** Disparado en 401 (token ausente, inválido o expirado); `App` escucha y cierra sesión. */
 export const UNAUTHORIZED_EVENT = 'app:unauthorized';
@@ -273,6 +450,7 @@ export function notifySessionExpired(): void {
 /** Tras login exitoso, permite volver a detectar una nueva expiración. */
 export function resetSessionExpiredState(): void {
   unauthorizedEventPending = false;
+  tokenRefreshPromise = null;
 }
 
 /** Un solo toast aunque varias peticiones fallen con 401 a la vez. */
@@ -289,10 +467,11 @@ export function toastApiError(error: unknown, fallback: string): void {
 
 /** Limpia tokens y perfil en el navegador (cierre local, CU-03). */
 export function clearLocalSession(): void {
+  tokenRefreshPromise = null;
   for (const key of TOKEN_KEYS) {
     localStorage.removeItem(key);
   }
-  localStorage.removeItem('refreshToken');
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(USER_STORAGE_KEY);
 }
 
@@ -301,7 +480,7 @@ export function clearLocalSession(): void {
  * No usa apiFetch para evitar toast de sesión expirada durante el cierre.
  */
 export async function logoutOnServer(): Promise<void> {
-  const refreshToken = localStorage.getItem('refreshToken')?.trim();
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)?.trim();
   if (!refreshToken) return;
 
   const accessToken = TOKEN_KEYS.map((key) => localStorage.getItem(key)).find(Boolean);
@@ -322,30 +501,7 @@ export async function logoutOnServer(): Promise<void> {
 }
 
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const url = path.startsWith('/') ? `${API_BASE_URL}${path}` : `${API_BASE_URL}/${path}`;
-  const headers = new Headers(options.headers ?? {});
-
-  if (options.body && !headers.has('Content-Type')) {
-    headers.set('Content-Type', 'application/json');
-  }
-
-  const token = TOKEN_KEYS.map((key) => localStorage.getItem(key)).find(Boolean);
-  if (token && !headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
-
-  const response = await fetch(url, { ...options, headers });
-
-  if (response.status === 401) {
-    const payload = await response.json().catch(() => ({}));
-    const mensaje =
-      typeof payload?.mensaje === 'string' && payload.mensaje.trim()
-        ? payload.mensaje
-        : 'Tu sesión expiró. Iniciá sesión de nuevo.';
-    notifySessionExpired();
-    showSessionExpiredToast(mensaje);
-    throw new SessionExpiredError(mensaje);
-  }
+  const response = await fetchWithAuthRetry(path, options);
 
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
