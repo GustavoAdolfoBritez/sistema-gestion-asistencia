@@ -121,6 +121,8 @@ interface PlanillaAsignada {
     curso_id: number;
     modulo_id: number;
     materia: string;
+    /** Semestre del plan de estudios (`materias.semestre`, 1–10). */
+    semestre: number;
     carrera: string;
     facultad: string;
     fecha_inicio: string;
@@ -139,6 +141,30 @@ interface PlanillaAsignada {
 interface PlanillaAsignadaResumen extends PlanillaAsignada {
     activa_hoy: boolean;
     periodo_label: string;
+}
+
+/** Metadatos del curso devueltos junto a la planilla (cabecera autosuficiente). */
+export interface MetadatosCursoPlanilla {
+    curso_id: number;
+    modulo_id: number;
+    materia: string;
+    semestre: number;
+    carrera: string;
+    facultad: string;
+    fecha_inicio: string;
+    fecha_fin: string;
+    estado_modulo: string;
+    aula: string | null;
+    horario_inicio: string | null;
+    horario_fin: string | null;
+    notas: string | null;
+    total_matriculas: number;
+    docente: string;
+}
+
+export interface PlanillaConMetadatos {
+    curso: MetadatosCursoPlanilla;
+    datos: Awaited<ReturnType<typeof obtenerPlanilla>>;
 }
 
 function fechaISO(valor: unknown): string {
@@ -268,6 +294,38 @@ async function obtenerSesionPorCursoFecha(cursoId: number, fecha: string) {
     return rows[0] ?? null;
 }
 
+async function obtenerMetadatosCursoPlanilla(cursoId: number): Promise<MetadatosCursoPlanilla | null> {
+    const { rows } = await pool.query<MetadatosCursoPlanilla>(
+        `SELECT
+            c.id AS curso_id,
+            c.modulo_id,
+            m.nombre AS materia,
+            m.semestre AS semestre,
+            ca.nombre AS carrera,
+            f.nombre AS facultad,
+            ma.fecha_inicio::text AS fecha_inicio,
+            ma.fecha_fin::text AS fecha_fin,
+            ma.estado AS estado_modulo,
+            c.aula,
+            c.horario_inicio::text AS horario_inicio,
+            c.horario_fin::text AS horario_fin,
+            c.notas,
+            (SELECT COUNT(*)::int FROM matriculas mt WHERE mt.curso_id = c.id) AS total_matriculas,
+            CONCAT(u.nombres, ' ', u.apellidos) AS docente
+         FROM cursos c
+         JOIN modulos_academicos ma ON ma.id = c.modulo_id
+         JOIN materias m ON m.id = ma.materia_id
+         JOIN planes_estudio pe ON pe.id = m.plan_id
+         JOIN carreras ca ON ca.id = pe.carrera_id
+         JOIN facultades f ON f.id = ca.facultad_id
+         JOIN docentes d ON d.id = c.docente_id
+         JOIN usuarios u ON u.id = d.usuario_id
+         WHERE c.id = $1`,
+        [cursoId]
+    );
+    return rows[0] ?? null;
+}
+
 export async function obtenerPlanilla(filtro: PlanillaFiltro) {
     const valores: Array<number | string> = [filtro.cursoId];
     let where = 'c.id = $1';
@@ -317,9 +375,16 @@ export async function obtenerPlanilla(filtro: PlanillaFiltro) {
 export async function obtenerPlanillaConPermisos(
     filtro: PlanillaFiltro,
     contexto: GestionContexto
-) {
+): Promise<PlanillaConMetadatos> {
     await asegurarPermisoCurso(filtro.cursoId, contexto);
-    return obtenerPlanilla(filtro);
+    const [curso, datos] = await Promise.all([
+        obtenerMetadatosCursoPlanilla(filtro.cursoId),
+        obtenerPlanilla(filtro),
+    ]);
+    if (!curso) {
+        throw new Error('Curso no encontrado');
+    }
+    return { curso, datos };
 }
 
 export async function listarPlanillasAsignadas(
@@ -346,6 +411,7 @@ export async function listarPlanillasAsignadas(
             c.id AS curso_id,
             c.modulo_id,
             m.nombre AS materia,
+            m.semestre AS semestre,
             ca.nombre AS carrera,
             f.nombre AS facultad,
             ma.fecha_inicio::text,
@@ -744,6 +810,7 @@ export async function listarJustificaciones(
             sc.fecha,
             c.id AS curso_id,
             m.nombre AS materia,
+            m.semestre AS semestre,
             mat.id AS matricula_id,
             ${SQL_ALUMNO_APELLIDOS_COMA_NOMBRES} AS alumno,
             al.numero_orden,

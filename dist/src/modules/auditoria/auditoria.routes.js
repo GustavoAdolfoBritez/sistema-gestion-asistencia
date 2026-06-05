@@ -9,7 +9,13 @@ const router = (0, express_1.Router)();
 router.use('/auditoria', ...auth_middleware_1.autenticarConPoliticaAlcance, (0, auth_middleware_1.autorizarRoles)(...rbac_1.ROLES_ADMIN_O_ACADEMICOS));
 router.get('/auditoria/eventos', async (req, res, next) => {
     try {
-        const { desde, hasta, actorUsuarioId, modulo, accion, resultado, severidad, recursoTipo, q, limit, offset } = req.query;
+        const { desde, hasta, actorUsuarioId, modulo, accion, resultado, severidad, recursoTipo, q, limit, offset, page } = req.query;
+        const limitNum = limit ? Number(limit) : undefined;
+        const pageNum = page ? Number(page) : undefined;
+        let offsetNum = offset ? Number(offset) : undefined;
+        if (pageNum && limitNum && Number.isFinite(pageNum) && Number.isFinite(limitNum)) {
+            offsetNum = Math.max(0, (Math.max(1, Math.trunc(pageNum)) - 1) * Math.trunc(limitNum));
+        }
         const data = await (0, auditoria_service_1.listarEventosAuditoria)({
             desde: desde ? String(desde) : undefined,
             hasta: hasta ? String(hasta) : undefined,
@@ -20,8 +26,8 @@ router.get('/auditoria/eventos', async (req, res, next) => {
             severidad: severidad ? String(severidad) : undefined,
             recursoTipo: recursoTipo ? String(recursoTipo) : undefined,
             q: q ? String(q) : undefined,
-            limit: limit ? Number(limit) : undefined,
-            offset: offset ? Number(offset) : undefined
+            limit: limitNum,
+            offset: offsetNum
         });
         res.json(data);
     }

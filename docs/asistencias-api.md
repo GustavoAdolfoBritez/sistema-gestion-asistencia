@@ -18,7 +18,8 @@ Esta guía resume los endpoints disponibles bajo el prefijo `/api` relacionados 
 - Parámetros:
   - `cursoId` (requerido)
   - `fecha` (opcional)
-- Devuelve listado plano de sesiones vs alumnos con estados actuales.
+- Devuelve metadatos del curso en `curso` (materia, semestre, carrera, fechas del módulo, etc.) y el listado de filas por alumno en `datos`.
+- Ejemplo: `{ "curso": { ... }, "total": 28, "datos": [ ... ] }`
 
 ## 2. Resumen por curso
 

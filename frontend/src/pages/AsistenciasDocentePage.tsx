@@ -9,7 +9,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../components/ui/dialog';
-import { abrirDocumento, apiFetch, generarYAbrirPdf } from '../utils/api';
+import {
+  ASISTENCIAS_CURSO_ID_STORAGE_KEY,
+  abrirDocumento,
+  apiFetch,
+  clearAsistenciasCursoIdPersistido,
+  generarYAbrirPdf,
+} from '../utils/api';
 import {
   contarFaltasDesdeSesiones,
   descripcionEstadoAsistencia,
@@ -75,6 +81,8 @@ type PlanillaAsignada = {
   curso_id: number;
   modulo_id: number;
   materia: string;
+  /** Semestre curricular del plan (`materias.semestre`). */
+  semestre: number;
   carrera: string;
   facultad: string;
   fecha_inicio: string;
@@ -93,6 +101,64 @@ type PlanillaAsignada = {
 interface ApiList<T> {
   total: number;
   datos: T[];
+}
+
+type MetadatosCursoPlanilla = Omit<PlanillaAsignada, 'activa_hoy' | 'periodo_label'>;
+
+/** Respuesta nueva del backend; `curso` es opcional para tolerar despliegues desfasados. */
+interface ApiPlanillaResponse {
+  curso?: MetadatosCursoPlanilla | null;
+  total?: number;
+  datos?: Record<string, any>[];
+}
+
+function leerCursoIdPersistido(): string {
+  try {
+    return sessionStorage.getItem(ASISTENCIAS_CURSO_ID_STORAGE_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function esMetadatosCursoPlanillaValidos(valor: unknown): valor is MetadatosCursoPlanilla {
+  if (!valor || typeof valor !== 'object') return false;
+  const curso = valor as Record<string, unknown>;
+  return (
+    Number.isFinite(Number(curso.curso_id)) &&
+    typeof curso.materia === 'string' &&
+    typeof curso.fecha_inicio === 'string' &&
+    typeof curso.fecha_fin === 'string'
+  );
+}
+
+/** Acepta respuesta nueva `{ curso, datos }` o legado `{ total, datos }` sin romper la UI. */
+function extraerFilasPlanilla(resp: ApiPlanillaResponse | null | undefined): Record<string, any>[] {
+  return Array.isArray(resp?.datos) ? resp.datos : [];
+}
+
+function extraerMetadatosCursoPlanilla(
+  resp: ApiPlanillaResponse | null | undefined
+): MetadatosCursoPlanilla | null {
+  return esMetadatosCursoPlanillaValidos(resp?.curso) ? resp.curso : null;
+}
+
+function elegirCursoIdPreferido(items: PlanillaAsignada[]): string {
+  const preferida = items.find((item) => item.activa_hoy) ?? items[0];
+  return preferida ? String(preferida.curso_id) : '';
+}
+
+function enriquecerMetadatosCurso(curso: MetadatosCursoPlanilla, fechaReferencia?: string): PlanillaAsignada {
+  const hoy = fechaReferencia ?? new Date().toISOString().slice(0, 10);
+  const inicio = normalizeDate(curso.fecha_inicio);
+  const fin = normalizeDate(curso.fecha_fin);
+  return {
+    ...curso,
+    activa_hoy: inicio <= hoy && hoy <= fin,
+    periodo_label: new Date(`${inicio}T00:00:00`).toLocaleDateString('es-AR', {
+      month: 'long',
+      year: 'numeric',
+    }),
+  };
 }
 
 type JustificacionEstado = 'pendiente' | 'aprobada' | 'rechazada';
@@ -156,6 +222,12 @@ function clampFechaIso(val: string, minD: string, maxD: string) {
   if (val < minD) return minD;
   if (val > maxD) return maxD;
   return val;
+}
+
+function etiquetaSemestreCurricularPlanilla(semestre: number | null | undefined): string {
+  const n = Number(semestre);
+  if (!Number.isFinite(n) || n < 1) return '—';
+  return `${Math.trunc(n)}° Semestre`;
 }
 
 function formatDateLabel(value?: string | null, long = false) {
@@ -467,7 +539,8 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
   const [planillasAsignadas, setPlanillasAsignadas] = useState<PlanillaAsignada[]>([]);
   const [planillasLoading, setPlanillasLoading] = useState(false);
   const [planillasError, setPlanillasError] = useState<string | null>(null);
-  const [cursoId, setCursoId] = useState('');
+  const [cursoId, setCursoId] = useState(leerCursoIdPersistido);
+  const [metadatosCursoPlanilla, setMetadatosCursoPlanilla] = useState<MetadatosCursoPlanilla | null>(null);
 
   // Selector de mes (YYYY-MM)
   const [mesAnio, setMesAnio] = useState(() => {
@@ -509,10 +582,14 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
   );
   const listaAbiertaSyncKeyRef = useRef<string | null>(null);
 
-  const planillaSeleccionada = useMemo(
-    () => planillasAsignadas.find((item) => String(item.curso_id) === cursoId) ?? null,
-    [cursoId, planillasAsignadas]
-  );
+  const planillaSeleccionada = useMemo(() => {
+    const fromList = planillasAsignadas.find((item) => String(item.curso_id) === cursoId) ?? null;
+    if (metadatosCursoPlanilla && String(metadatosCursoPlanilla.curso_id) === cursoId) {
+      const fromPlanilla = enriquecerMetadatosCurso(metadatosCursoPlanilla);
+      return fromList ? { ...fromList, ...fromPlanilla } : fromPlanilla;
+    }
+    return fromList;
+  }, [cursoId, planillasAsignadas, metadatosCursoPlanilla]);
 
   const metricasModulo = useMemo(() => {
     if (!planillaSeleccionada) return null;
@@ -776,8 +853,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
       setPlanillasAsignadas(items);
       setCursoId((prev) => {
         if (prev && items.some((item) => String(item.curso_id) === prev)) return prev;
-        const preferida = items.find((item) => item.activa_hoy) ?? items[0];
-        return preferida ? String(preferida.curso_id) : '';
+        return elegirCursoIdPreferido(items);
       });
       if (!items.length) { setSesiones([]); setPlanillaMatrix(new Map()); setPendingChanges(new Map()); }
     } catch (error) {
@@ -798,9 +874,11 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
     try {
       const [sesionesResp, planillaResp, alumnosResp] = await Promise.all([
         apiFetch<ApiList<Sesion>>(`/asistencias/sesiones?cursoId=${cursoNum}`),
-        apiFetch<ApiList<Record<string, any>>>(`/asistencias/planilla?cursoId=${cursoNum}`),
+        apiFetch<ApiPlanillaResponse>(`/asistencias/planilla?cursoId=${cursoNum}`),
         apiFetch<ApiList<Record<string, any>>>(`/asistencias/alumnos-curso?cursoId=${cursoNum}`),
       ]);
+      const metadatosCurso = extraerMetadatosCursoPlanilla(planillaResp);
+      setMetadatosCursoPlanilla(metadatosCurso);
       const todasSesiones = sesionesResp?.datos ?? [];
       setSesiones(todasSesiones);
       // Modalidades
@@ -821,7 +899,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
         });
       }
       // Superponer datos de sesiones sobre el matrix (nuevo formato agregado)
-      for (const alumno of (planillaResp?.datos ?? [])) {
+      for (const alumno of extraerFilasPlanilla(planillaResp)) {
         const mid = Number(alumno.matricula_id);
         const entry = matrix.get(mid);
         if (!entry) continue;
@@ -851,10 +929,19 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
       const mensaje = error instanceof Error ? error.message : 'No se pudo cargar la planilla';
       setSessionError(mensaje);
       toast.error(mensaje);
+      setMetadatosCursoPlanilla(null);
+      setSesiones([]);
+      setPlanillaMatrix(new Map());
+      setPendingChanges(new Map());
     } finally {
       setLoading(false);
     }
   }, [cursoId]);
+
+  const handleCursoIdChange = useCallback((value: string) => {
+    setSessionError(null);
+    setCursoId(value);
+  }, []);
 
   const handleRegistrar = useCallback(
     (matriculaId: number, sesionId: number, estado: 'presente' | 'ausente') => {
@@ -1141,15 +1228,37 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
   }, [cargarPlanillasAsignadas]);
 
   useEffect(() => {
+    try {
+      if (cursoId) sessionStorage.setItem(ASISTENCIAS_CURSO_ID_STORAGE_KEY, cursoId);
+      else sessionStorage.removeItem(ASISTENCIAS_CURSO_ID_STORAGE_KEY);
+    } catch {
+      /* sessionStorage no disponible */
+    }
+  }, [cursoId]);
+
+  useEffect(() => {
     if (!mostrarModuloJustificaciones && subView === 'justificaciones') {
       setSubView('planilla');
     }
   }, [mostrarModuloJustificaciones, subView]);
 
   useEffect(() => {
-    if (subView !== 'planilla' || !cursoId || planillasLoading) return;
+    if (subView !== 'planilla' || !cursoId) return;
     void cargarPlanillaMes();
-  }, [cursoId, subView, planillasLoading, cargarPlanillaMes]);
+  }, [cursoId, subView, cargarPlanillaMes]);
+
+  /** Recuperación ante cursoId persistido huérfano (curso eliminado, desasignado o IDs migrados). */
+  useEffect(() => {
+    if (planillasLoading || !cursoId || !planillasAsignadas.length) return;
+    if (planillasAsignadas.some((item) => String(item.curso_id) === cursoId)) return;
+    clearAsistenciasCursoIdPersistido();
+    setSessionError(null);
+    setMetadatosCursoPlanilla(null);
+    setSesiones([]);
+    setPlanillaMatrix(new Map());
+    setPendingChanges(new Map());
+    setCursoId(elegirCursoIdPreferido(planillasAsignadas));
+  }, [cursoId, planillasAsignadas, planillasLoading]);
 
   useEffect(() => {
     listaAbiertaSyncKeyRef.current = null;
@@ -1312,7 +1421,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                     <p className="text-xs text-slate-400 leading-relaxed break-words">
                       {planillaSeleccionada.carrera} · {planillaSeleccionada.total_matriculas} alumnos
                       {' · '}
-                      {(() => { const mes = new Date(`${planillaSeleccionada.fecha_inicio}T00:00:00`).getMonth() + 1; return mes <= 6 ? '1er Semestre' : '2do Semestre'; })()}
+                      {etiquetaSemestreCurricularPlanilla(planillaSeleccionada.semestre)}
                     </p>
                   ) : null}
                 </div>
@@ -1322,8 +1431,8 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                     className="w-full min-w-0 lg:min-w-[12rem] lg:w-auto"
                     aria-label="Seleccionar curso"
                     value={cursoId}
-                    onChange={setCursoId}
-                    disabled={planillasLoading || !planillasAsignadas.length}
+                    onChange={handleCursoIdChange}
+                    disabled={planillasLoading && !planillasAsignadas.length}
                     loading={planillasLoading}
                     placeholder="Selecciona un curso"
                     allowEmpty
@@ -1612,12 +1721,6 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                   {planillasError}
                 </div>
               ) : null}
-              {sessionError ? (
-                <div className="flex items-center gap-2 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-100">
-                  <span className="material-symbols-outlined text-[16px]">error</span>
-                  {sessionError}
-                </div>
-              ) : null}
             </div>
 
             {/* KPI + leyenda — móvil compacto */}
@@ -1739,6 +1842,23 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                 <div className="flex items-center justify-center py-16 text-slate-500 gap-2">
                   <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
                   Cargando planilla...
+                </div>
+              ) : sessionError ? (
+                <div className="flex flex-col items-center justify-center gap-3 px-4 py-16 text-center">
+                  <span className="material-symbols-outlined text-[40px] text-rose-400">error</span>
+                  <p className="max-w-md text-sm font-medium text-rose-800 dark:text-rose-200">{sessionError}</p>
+                  <p className="max-w-md text-xs text-slate-500 dark:text-slate-400">
+                    El selector de curso sigue disponible arriba. Elegí otra materia o usá «Actualizar» para reintentar.
+                  </p>
+                  <button
+                    type="button"
+                    className="btn-modern btn-modern-ghost btn-modern-sm"
+                    onClick={() => void cargarPlanillaMes()}
+                    disabled={!cursoId || loading}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">refresh</span>
+                    Reintentar carga
+                  </button>
                 </div>
               ) : !cursoId ? (
                 <div className="flex flex-col items-center justify-center py-16 text-slate-500 gap-2">
@@ -2125,10 +2245,10 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                       aria-label="Seleccionar curso para justificación"
                       value={cursoId}
                       onChange={(v) => {
-                        setCursoId(v);
+                        handleCursoIdChange(v);
                         void cargarAusencias(v);
                       }}
-                      disabled={planillasLoading || !planillasAsignadas.length}
+                      disabled={planillasLoading && !planillasAsignadas.length}
                       placeholder="Selecciona una planilla"
                       options={planillasAsignadas.map((item) => ({
                         value: String(item.curso_id),

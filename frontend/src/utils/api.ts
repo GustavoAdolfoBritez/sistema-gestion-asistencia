@@ -107,6 +107,22 @@ function resolveApiAbsoluteUrl(path: string): string {
 
 const TOKEN_KEYS = ['accessToken', 'token', 'authToken'] as const;
 const USER_STORAGE_KEY = 'currentUser';
+
+/** Curso activo en asistencias docente; persiste en sessionStorage y se borra al cerrar sesión. */
+export const ASISTENCIAS_CURSO_ID_STORAGE_KEY = 'asistencias-docente-curso-id';
+
+/**
+ * Borra el curso persistido de asistencias docente.
+ * @returns false si el navegador bloqueó sessionStorage (p. ej. Safari modo privado estricto).
+ */
+export function clearAsistenciasCursoIdPersistido(): boolean {
+  try {
+    sessionStorage.removeItem(ASISTENCIAS_CURSO_ID_STORAGE_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
 const REFRESH_TOKEN_KEY = 'refreshToken';
 
 interface RefreshTokenResponse {
@@ -201,7 +217,11 @@ function cloneRequestBodyForRetry(body: BodyInit | null | undefined): BodyInit |
   if (isFormDataBody(body)) {
     const cloned = new FormData();
     body.forEach((value, key) => {
-      cloned.append(key, value);
+      if (typeof File !== 'undefined' && value instanceof File) {
+        cloned.append(key, value, value.name);
+      } else {
+        cloned.append(key, value);
+      }
     });
     return cloned;
   }
@@ -473,6 +493,7 @@ export function clearLocalSession(): void {
   }
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(USER_STORAGE_KEY);
+  clearAsistenciasCursoIdPersistido();
 }
 
 /**
