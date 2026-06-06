@@ -1690,12 +1690,6 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                 </h1>
               </div>
             </div>
-            {loading ? (
-              <div className="flex items-center gap-2 text-sm text-slate-400 max-lg:hidden">
-                <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                Cargando...
-              </div>
-            ) : null}
           </header>
 
           <section className="justif-movil-scroll-section app-scroll-content flex min-h-0 min-w-0 flex-1 flex-col gap-4 p-4 sm:p-6 max-lg:bg-background-light dark:max-lg:bg-[#0d1830] xl:overflow-hidden">
