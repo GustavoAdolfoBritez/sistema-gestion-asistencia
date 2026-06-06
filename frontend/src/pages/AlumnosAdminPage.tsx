@@ -178,7 +178,7 @@ function JustificacionAlumnoFilaMovil({
               <span className="material-symbols-outlined text-[13px] leading-none" aria-hidden>
                 check_circle
               </span>
-              {grupo.ids.length > 1 ? `Aprobar (${grupo.ids.length})` : 'Aprobar'}
+              Aprobar
             </button>
             <button
               type="button"
@@ -1714,7 +1714,7 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                                               <span className="material-symbols-outlined text-[13px] leading-none" aria-hidden>
                                                 check_circle
                                               </span>
-                                              {g.ids.length > 1 ? `Aprob. (${g.ids.length})` : 'Aprobar'}
+                                              Aprobar
                                             </button>
                                             <button
                                               type="button"

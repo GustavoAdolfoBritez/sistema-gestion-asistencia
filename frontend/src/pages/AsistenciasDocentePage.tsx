@@ -1683,10 +1683,12 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
               <span className="material-symbols-outlined shrink-0 text-[#6b8bc3]">fact_check</span>
               <div className="min-w-0">
                 <p className="text-xs uppercase text-slate-400">Asistencias</p>
-                <h1 className="text-xl font-semibold leading-snug">
-                  {subView === 'planilla' || !mostrarModuloJustificaciones
-                    ? 'Planilla de Asistencia'
-                    : 'Gestión de Justificaciones'}
+                <h1 className="text-xl font-semibold leading-snug max-lg:whitespace-nowrap">
+                  {subView === 'planilla' || !mostrarModuloJustificaciones ? (
+                    'Planilla de Asistencia'
+                  ) : (
+                    'Justificaciones'
+                  )}
                 </h1>
               </div>
             </div>
