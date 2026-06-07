@@ -856,9 +856,18 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
     const onChange = () => setViewportEsMovil(mq.matches);
     onChange();
     mq.addEventListener('change', onChange);
-    // Disparar un resize extra para asegurar que layouts dependientes de medidas (como la planilla) se calculen
-    window.dispatchEvent(new Event('resize'));
-    return () => mq.removeEventListener('change', onChange);
+
+    // Intentar disparar resize múltiples veces para asegurar que los componentes
+    // que dependen de medidas del viewport (como la planilla o zonas de scroll)
+    // se recalculen después de que el DOM y el CSS se hayan estabilizado.
+    const timers = [0, 100, 500].map(ms => setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, ms));
+
+    return () => {
+      mq.removeEventListener('change', onChange);
+      timers.forEach(clearTimeout);
+    };
   }, []);
 
   const [subView, setSubView] = useState<'planilla' | 'justificaciones'>('planilla');
