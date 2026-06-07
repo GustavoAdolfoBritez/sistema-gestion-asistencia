@@ -828,7 +828,11 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
   const puedeResolverJustificaciones = puedeAprobarJustificaciones(roles);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   useEffect(() => {
-    if (!sidebarOpen) return;
+    if (!sidebarOpen) {
+      document.documentElement.classList.remove('mobile-sidebar-open');
+      return;
+    }
+    document.documentElement.classList.add('mobile-sidebar-open');
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setSidebarOpen(false);
     };
@@ -852,6 +856,8 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
     const onChange = () => setViewportEsMovil(mq.matches);
     onChange();
     mq.addEventListener('change', onChange);
+    // Disparar un resize extra para asegurar que layouts dependientes de medidas (como la planilla) se calculen
+    window.dispatchEvent(new Event('resize'));
     return () => mq.removeEventListener('change', onChange);
   }, []);
 
@@ -1708,7 +1714,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
 
           <section className="justif-movil-scroll-section app-scroll-content flex min-h-0 min-w-0 flex-1 flex-col gap-4 p-4 sm:p-6 max-lg:bg-background-light dark:max-lg:bg-[#0d1830] xl:overflow-hidden">
             <nav
-              className={`grid w-full min-w-0 gap-2 pb-0.5 max-md:gap-1.5 md:flex md:max-w-full md:flex-nowrap md:items-center md:overflow-x-auto md:overflow-visible ${
+              className={`grid w-full min-w-0 flex-shrink-0 gap-2 pb-0.5 max-md:gap-1.5 md:flex md:max-w-full md:flex-nowrap md:items-center md:overflow-x-auto md:overflow-visible ${
                 mostrarModuloJustificaciones ? 'grid-cols-2' : 'grid-cols-1'
               }`}
               aria-label="Secciones de asistencias"
