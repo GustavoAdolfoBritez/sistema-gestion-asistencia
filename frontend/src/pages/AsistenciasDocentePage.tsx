@@ -1844,13 +1844,28 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                 <input
                   type="date"
                   aria-label="Fecha de nueva sesión"
-                  title="Solo fechas dentro del dictado del módulo"
-                  className="w-full min-w-0 rounded-lg border border-slate-300 bg-white px-2 py-1 text-sm text-slate-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 dark:border-slate-700 dark:bg-[#132a52] dark:text-[#e7eef9] lg:w-auto"
+                  title="Solo fechas dentro del dictado del módulo (Domingos deshabilitados)"
+                  className="w-full min-w-0 rounded-lg border border-slate-300 bg-white px-2 py-1 text-sm text-slate-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 dark:border-slate-700 dark:bg-[#132a52] dark:text-[#e7eef9] lg:w-auto [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                   value={nuevaSesionFecha}
                   min={planillaSeleccionada ? normalizeDate(planillaSeleccionada.fecha_inicio) : undefined}
                   max={planillaSeleccionada ? normalizeDate(planillaSeleccionada.fecha_fin) : undefined}
                   onChange={(e) => {
                     const v = e.target.value;
+                    if (!v) {
+                      setNuevaSesionFecha('');
+                      return;
+                    }
+
+                    // Bloqueo estricto de domingos (Day 0)
+                    const [y, m, d] = v.split('-').map(Number);
+                    const fechaEval = new Date(Date.UTC(y, m - 1, d));
+                    if (fechaEval.getUTCDay() === 0) {
+                      toast.error('Día no permitido', {
+                        description: 'Las sesiones de clase no se pueden dictar los domingos.',
+                      });
+                      return;
+                    }
+
                     if (!planillaSeleccionada) {
                       setNuevaSesionFecha(v);
                       return;
