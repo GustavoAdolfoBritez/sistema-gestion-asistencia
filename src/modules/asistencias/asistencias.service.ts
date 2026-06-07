@@ -845,7 +845,7 @@ export async function listarJustificaciones(
         JOIN matriculas mat ON mat.id = a.matricula_id
         JOIN alumnos al ON al.id = mat.alumno_id
         ${where}
-        ORDER BY sc.fecha DESC, j.id DESC` ,
+        ORDER BY sc.fecha DESC, ${SQL_ORDEN_MATRICULA_PLANILLA}, j.id DESC` ,
         valores
     );
 
@@ -1199,7 +1199,8 @@ export async function listarAusenciasCurso(cursoId: number, contexto: GestionCon
             sc.fecha::text AS fecha,
             mat.id      AS matricula_id,
             ${SQL_ALUMNO_APELLIDOS_COMA_NOMBRES} AS alumno,
-            al.numero_documento
+            al.numero_documento,
+            mat.orden_lista
          FROM asistencias a
          JOIN sesiones_clase sc ON sc.id = a.sesion_id
          JOIN matriculas mat ON mat.id = a.matricula_id AND mat.curso_id = sc.curso_id
@@ -1207,7 +1208,7 @@ export async function listarAusenciasCurso(cursoId: number, contexto: GestionCon
          WHERE sc.curso_id = $1
            AND a.estado = 'ausente'
            AND COALESCE(a.justificada, FALSE) = FALSE
-         ORDER BY sc.fecha DESC, ${SQL_ORDEN_MATRICULA_PLANILLA}`,
+         ORDER BY ${SQL_ORDEN_MATRICULA_PLANILLA}, sc.fecha DESC`,
         [cursoId]
     );
 

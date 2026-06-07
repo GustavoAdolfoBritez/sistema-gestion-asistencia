@@ -177,6 +177,7 @@ interface AusenciaRow {
   numero_documento: string;
   estado: string;
   justificada: boolean;
+  orden_lista?: number | null;
 }
 
 interface JustificacionRow {
@@ -1142,14 +1143,25 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
 
   // alumnosConAusencias: un entry por alumno con todas sus ausencias sin justificar
   const alumnosConAusencias = useMemo(() => {
-    const map = new Map<number, { matriculaId: number; alumno: string; documento: string; dias: AusenciaRow[] }>();
+    const map = new Map<number, { matriculaId: number; alumno: string; documento: string; ordenLista?: number | null; dias: AusenciaRow[] }>();
     for (const a of ausencias) {
       if (!map.has(a.matricula_id)) {
-        map.set(a.matricula_id, { matriculaId: a.matricula_id, alumno: a.alumno, documento: a.numero_documento, dias: [] });
+        map.set(a.matricula_id, {
+          matriculaId: a.matricula_id,
+          alumno: a.alumno,
+          documento: a.numero_documento,
+          ordenLista: a.orden_lista,
+          dias: [],
+        });
       }
       map.get(a.matricula_id)!.dias.push(a);
     }
-    return Array.from(map.values());
+    return Array.from(map.values()).sort((a, b) => {
+      const oa = a.ordenLista ?? Number.MAX_SAFE_INTEGER;
+      const ob = b.ordenLista ?? Number.MAX_SAFE_INTEGER;
+      if (oa !== ob) return oa - ob;
+      return a.alumno.localeCompare(b.alumno, 'es');
+    });
   }, [ausencias]);
 
   const alumnosFiltrados = useMemo(() => {
