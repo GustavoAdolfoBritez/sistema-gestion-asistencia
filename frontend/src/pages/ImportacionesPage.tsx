@@ -5,6 +5,8 @@ import { AppSidebar } from '../components/AppSidebar';
 import { AppSelect } from '../components/ui/app-select';
 import { BotonVolverListadoMovil, VolverListadoMovilBar } from '../components/ui/boton-volver-listado-movil';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
+import { PullToRefreshIndicator } from '../components/ui/pull-to-refresh-indicator';
+import { usePullToRefresh } from '../hooks/usePullToRefresh';
 import {
   ImportConfirmOverlay,
   type ImportConfirmPhase,
@@ -383,6 +385,7 @@ function metadatosPlanillaDesdeFila(row: Record<string, unknown>): Record<string
 
 export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const importacionesScrollRef = useRef<HTMLDivElement | null>(null);
   const [batches, setBatches] = useState<ImportBatch[]>([]);
   const [selectedBatchId, setSelectedBatchId] = useState<number | null>(null);
   const [batchDetail, setBatchDetail] = useState<ImportBatchDetail | null>(null);
@@ -951,6 +954,12 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
     }
   }, [discardDialogLoteId, loadBatches, selectedBatchId]);
 
+  const pullToRefresh = usePullToRefresh({
+    containerRef: importacionesScrollRef,
+    onRefresh: () => loadBatches(),
+    disabled: !!selectedBatchId,
+  });
+
   return (
     <div className="system-bg app-shell-viewport text-[#e7eef9] min-h-screen h-screen overflow-hidden">
       <div className="app-layout-row">
@@ -983,7 +992,15 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
             data-has-selection={selectedBatchId ? 'true' : 'false'}
           >
             <section className="master-detail-list min-w-0 flex min-h-0 flex-1 flex-col overflow-hidden">
-              <div className="scroll-region app-scroll-content scrollbar-hide min-w-0 flex-1 space-y-8 p-4 sm:p-6 max-lg:space-y-5 max-lg:p-3">
+              <div
+                ref={importacionesScrollRef}
+                className="importaciones-scroll-panel scroll-region app-scroll-content scrollbar-hide min-w-0 flex-1 space-y-8 p-4 sm:p-6 max-lg:space-y-5 max-lg:p-3"
+              >
+              <PullToRefreshIndicator
+                pullDistance={pullToRefresh.pullDistance}
+                isRefreshing={pullToRefresh.isRefreshing}
+                pullProgress={pullToRefresh.pullProgress}
+              />
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3 max-lg:grid-cols-2 max-lg:gap-2">
                 <div className="rounded-xl border border-slate-800 bg-[#132a52] p-5 max-lg:p-3.5">
                   <div className="mb-2 flex items-center justify-between">
@@ -1143,7 +1160,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                     <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-xs text-[#f0f4f8] font-bold">5</span>
                     Historial de importaciones
                   </h2>
-                  <div className="flex flex-col min-h-0 min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#132a52]">
+                  <div className="importaciones-historial-card flex flex-col min-h-0 min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#132a52]">
                     <div className="flex shrink-0 flex-col gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
                       <p className="min-w-0 text-sm font-medium text-slate-900 dark:text-[#f0f4f8]">Registros recientes</p>
                       <button
@@ -1301,7 +1318,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                       </table>
                     </div>
                     {batches.length > 0 && !batchesLoading ? (
-                      <div className="flex shrink-0 flex-col gap-3 border-t border-slate-200 px-4 py-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="importaciones-historial-paginacion app-mobile-bottom-bar app-mobile-pagination-footer flex shrink-0 flex-col gap-3 border-t border-slate-200 px-4 py-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
                         <p className="text-xs text-slate-500 dark:text-slate-400">
                           Mostrando {historialPaginacion.cantidadVisible} de {historialPaginacion.total} registros
                         </p>

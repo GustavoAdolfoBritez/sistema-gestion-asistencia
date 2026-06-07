@@ -3,6 +3,8 @@ import { toast } from 'sonner';
 import { AppSidebar } from '../components/AppSidebar';
 import { BotonVolverListadoMovil, VolverListadoMovilBar } from '../components/ui/boton-volver-listado-movil';
 import { AppSelect } from '../components/ui/app-select';
+import { PullToRefreshIndicator } from '../components/ui/pull-to-refresh-indicator';
+import { usePullToRefresh } from '../hooks/usePullToRefresh';
 import { generarYAbrirPdf, apiFetch } from '../utils/api';
 import { etiquetasRoles } from '../utils/role-labels';
 
@@ -859,6 +861,12 @@ export function AuditoriaPage({ onLogout }: Props) {
     void cargarEventos();
   }, [cargarEventos]);
 
+  const pullToRefresh = usePullToRefresh({
+    containerRef: auditoriaPageSectionRef,
+    onRefresh: () => cargarEventos(),
+    disabled: !!seleccionado || exportandoPdf,
+  });
+
   const scrollAlPiePaginaMovil = useCallback(() => {
     const section = auditoriaPageSectionRef.current;
     const footer = auditoriaMovilFooterRef.current;
@@ -945,6 +953,11 @@ export function AuditoriaPage({ onLogout }: Props) {
             }`}
             data-has-selection={seleccionado ? 'true' : 'false'}
           >
+            <PullToRefreshIndicator
+              pullDistance={pullToRefresh.pullDistance}
+              isRefreshing={pullToRefresh.isRefreshing}
+              pullProgress={pullToRefresh.pullProgress}
+            />
             <div
               className={`auditoria-filtros min-w-0 shrink-0 flex flex-col gap-3 rounded-xl border border-slate-800 bg-[#132a52] p-4 max-lg:relative max-lg:z-[2] ${
                 seleccionado ? 'max-xl:hidden' : ''
@@ -1151,7 +1164,7 @@ export function AuditoriaPage({ onLogout }: Props) {
                     {!seleccionado && total > 0 ? (
                       <div
                         ref={auditoriaMovilFooterRef}
-                        className="auditoria-tabla-footer-movil flex shrink-0 flex-col gap-2 border-t border-slate-200 px-3 py-2.5 dark:border-slate-800"
+                        className="auditoria-tabla-footer-movil app-mobile-bottom-bar app-mobile-pagination-footer flex shrink-0 flex-col gap-2 border-t border-slate-200 px-3 py-2.5 dark:border-slate-800"
                       >
                         <p className="text-center text-xs tabular-nums text-slate-500 dark:text-slate-400">
                           {paginacion.inicio > 0

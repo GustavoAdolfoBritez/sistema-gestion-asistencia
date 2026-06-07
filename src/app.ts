@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
 import routes from './routes';
-import { env } from './config/env';
+import { env, esOrigenViteLanDev } from './config/env';
 import { logger } from './utils/logger';
 import { adjuntarRequestContext } from './middlewares/request-context.middleware';
 
@@ -23,6 +23,10 @@ const corsOptions: cors.CorsOptions =
                       return;
                   }
                   if (env.corsOrigins.includes(origin)) {
+                      callback(null, true);
+                      return;
+                  }
+                  if (!env.isProduction && esOrigenViteLanDev(origin)) {
                       callback(null, true);
                       return;
                   }

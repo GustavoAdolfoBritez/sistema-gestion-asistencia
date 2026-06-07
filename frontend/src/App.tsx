@@ -4,6 +4,7 @@ import './index.css';
 import { canAccessView, getHomeViewForUser } from './utils/rbac';
 import type { AppView, SessionUser } from './utils/rbac';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { useVisualViewportBottomInset } from './hooks/useVisualViewportBottomInset';
 import { readStoredUser } from './utils/session-user';
 import { appPath } from './navigation/app-paths';
 import { RequireAuth } from './navigation/RequireAuth';
@@ -105,6 +106,8 @@ function LegalRoute({ page }: { page: 'terminos' | 'privacidad' | 'soporte' }) {
 export default function App() {
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(() => readStoredUser());
   const navigate = useNavigate();
+
+  useVisualViewportBottomInset();
 
   const userIdRaw = currentUser?.id ?? currentUser?.usuario ?? currentUser?.email;
   const userId =

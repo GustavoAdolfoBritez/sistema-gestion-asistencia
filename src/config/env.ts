@@ -50,6 +50,26 @@ const DEV_CORS_ORIGINS = [
     'http://localhost:4173',
 ];
 
+const DEV_VITE_PORTS = new Set(['5173', '4173']);
+
+/** Vite en la LAN (celular en la misma Wi‑Fi), solo en desarrollo. */
+export function esOrigenViteLanDev(origin: string): boolean {
+    try {
+        const url = new URL(origin);
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') return false;
+        if (!DEV_VITE_PORTS.has(url.port)) return false;
+        const host = url.hostname;
+        if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]') return true;
+        return (
+            /^192\.168\.\d{1,3}\.\d{1,3}$/.test(host) ||
+            /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host) ||
+            /^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(host)
+        );
+    } catch {
+        return false;
+    }
+}
+
 function resolveCorsOrigins(
     configured: string[],
     nodeEnv: 'development' | 'production' | 'test'

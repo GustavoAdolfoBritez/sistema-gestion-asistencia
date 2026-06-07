@@ -23,6 +23,14 @@
     --input: 210 15% 88%;
     --ring: 201 94% 50%;
     --radius: 0.5rem;
+    /** Inset inferior dinámico (visualViewport + safe-area); ver useVisualViewportBottomInset. */
+    --vv-bottom-inset: 0px;
+    --app-mobile-nav-inset: min(
+      3.5rem,
+      max(env(safe-area-inset-bottom, 0px), var(--vv-bottom-inset, 0px))
+    );
+    --app-mobile-bottom-inset: var(--app-mobile-nav-inset);
+    --app-mobile-bottom-padding: 0.75rem;
   }
 
   .dark {
@@ -835,7 +843,12 @@
    */
   @media (max-width: 1279px) {
     :root {
-      --app-mobile-bottom-inset: max(env(safe-area-inset-bottom, 0px), 2.25rem);
+      --app-mobile-nav-inset: min(
+        3.5rem,
+        max(env(safe-area-inset-bottom, 0px), var(--vv-bottom-inset, 0px))
+      );
+      --app-mobile-bottom-inset: var(--app-mobile-nav-inset);
+      --app-mobile-bottom-padding: 0.75rem;
     }
 
     .justif-movil-scroll-section {
@@ -848,7 +861,7 @@
       overscroll-behavior-y: contain;
       -webkit-overflow-scrolling: touch;
       overflow-anchor: none;
-      padding-bottom: var(--app-mobile-bottom-inset);
+      padding-bottom: var(--app-mobile-bottom-padding);
     }
 
     .justif-layout-column {
@@ -938,20 +951,47 @@
 
   @media (max-width: 1023px) {
     /**
-     * Margen inferior bajo la barra de navegación del celular (≈36px + safe-area).
+     * Margen inferior bajo la barra del SO (visualViewport + safe-area, sin padding fijo global).
      * Aplica a áreas con scroll y a barras/CTA pegadas abajo.
      */
     :root {
-      --app-mobile-bottom-inset: max(env(safe-area-inset-bottom, 0px), 2.25rem);
+      --app-mobile-nav-inset: min(
+        3.5rem,
+        max(env(safe-area-inset-bottom, 0px), var(--vv-bottom-inset, 0px))
+      );
+      --app-mobile-bottom-inset: var(--app-mobile-nav-inset);
+      --app-mobile-bottom-padding: 0.75rem;
     }
 
     .app-mobile-bottom-inset,
     .app-mobile-cta-footer {
-      padding-bottom: var(--app-mobile-bottom-inset) !important;
+      padding-bottom: max(0.75rem, var(--app-mobile-nav-inset)) !important;
     }
 
     .app-mobile-bottom-bar {
-      padding-bottom: var(--app-mobile-bottom-inset) !important;
+      padding-bottom: max(1rem, var(--app-mobile-nav-inset)) !important;
+    }
+
+    /**
+     * Paginación: aire solo bajo los botones (~3.5rem máx.), sin inflar todo el scroll.
+     */
+    .app-mobile-pagination-footer {
+      padding-bottom: calc(
+        0.75rem + max(
+          2.75rem,
+          env(safe-area-inset-bottom, 0px),
+          min(3.5rem, var(--vv-bottom-inset, 0px))
+        )
+      ) !important;
+    }
+
+    .importaciones-historial-card {
+      overflow: visible !important;
+    }
+
+    .pull-to-refresh-indicator {
+      width: 100%;
+      transition: height 0.18s ease-out;
     }
   }
 
@@ -1375,7 +1415,8 @@
     .app-scroll-content {
       overscroll-behavior-y: contain;
       touch-action: pan-y;
-      padding-bottom: var(--app-mobile-bottom-inset) !important;
+      padding-bottom: 1rem !important;
+      scroll-padding-bottom: 1rem;
     }
   }
 
@@ -1395,12 +1436,12 @@
 
   @media (max-width: 1023px) {
     .scroll-region:not(.scroll-region-at-lg):not(.app-scroll-content) {
-      padding-bottom: var(--app-mobile-bottom-inset, max(env(safe-area-inset-bottom, 0px), 2.25rem));
+      padding-bottom: var(--app-mobile-bottom-padding);
     }
 
     /* Académico: un poco más de aire al final para que no se corten las tarjetas inferiores. */
     .academico-mobile-cards-inset {
-      padding-bottom: max(var(--app-mobile-bottom-inset, 2.25rem), 3.75rem) !important;
+      padding-bottom: max(var(--app-mobile-bottom-inset), 1rem) !important;
     }
 
     /**
@@ -1408,8 +1449,8 @@
      * y la barra del navegador tapa el último registro. Más aire + scroll-padding al final.
      */
     .import-detalle-scroll {
-      padding-bottom: max(5rem, env(safe-area-inset-bottom, 0px), var(--app-mobile-bottom-inset, 2.25rem)) !important;
-      scroll-padding-bottom: max(5rem, env(safe-area-inset-bottom, 0px), 3.5rem);
+      padding-bottom: max(1rem, var(--app-mobile-bottom-inset)) !important;
+      scroll-padding-bottom: max(1rem, var(--app-mobile-bottom-inset));
     }
 
     /**
@@ -1638,8 +1679,8 @@ html:not(.dark) .usuario-detail-panel .usuario-detail-panel-card {
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
     gap: 0.5rem;
-    scroll-padding-bottom: 1.25rem;
-    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+    scroll-padding-bottom: 1rem;
+    padding-bottom: 1rem;
   }
 
   .auditoria-page-section[data-has-selection='true'] {

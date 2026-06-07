@@ -6,7 +6,9 @@ import { ScopeSelector, ScopeSelectorSkeleton } from '../components/ScopeSelecto
 import { AppSelect } from '../components/ui/app-select';
 import { BotonVolverListadoMovil, VolverListadoMovilBar } from '../components/ui/boton-volver-listado-movil';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import { PullToRefreshIndicator } from '../components/ui/pull-to-refresh-indicator';
 import { useMisAlcances } from '../hooks/useMisAlcances';
+import { usePullToRefresh } from '../hooks/usePullToRefresh';
 import { useScopeForm } from '../hooks/useScopeForm';
 import { abrirDocumento, apiFetch, generarYAbrirPdf } from '../utils/api';
 import { readStoredUser } from '../utils/session-user';
@@ -345,6 +347,7 @@ export function AlumnosAdminPage({ onLogout }: Props) {
   const activeQueryRef = useRef('');
   const offsetRef = useRef(0);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const alumnosPageSectionRef = useRef<HTMLElement | null>(null);
   const [selectedAlumnoId, setSelectedAlumnoId] = useState<string | null>(null);
   const [ficha, setFicha] = useState<FichaAlumno | null>(null);
   const [fichaLoading, setFichaLoading] = useState(false);
@@ -787,6 +790,12 @@ export function AlumnosAdminPage({ onLogout }: Props) {
     return 'border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300';
   }
 
+  const pullToRefresh = usePullToRefresh({
+    containerRef: alumnosPageSectionRef,
+    onRefresh: () => buscar(termino),
+    disabled: !!selectedAlumnoId || !filtrosAlumnosListos,
+  });
+
   function etiquetaEstadoAcademico(estado: string): string {
     const e = estado?.toLowerCase();
     if (e === 'irregular' || e === 'libre') return 'Irregular';
@@ -821,9 +830,15 @@ export function AlumnosAdminPage({ onLogout }: Props) {
           </header>
 
           <section
+            ref={alumnosPageSectionRef}
             className="alumnos-page-section flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-5 max-lg:gap-2.5 max-lg:p-3 max-lg:pb-0"
             data-has-selection={selectedAlumnoId ? 'true' : 'false'}
           >
+            <PullToRefreshIndicator
+              pullDistance={pullToRefresh.pullDistance}
+              isRefreshing={pullToRefresh.isRefreshing}
+              pullProgress={pullToRefresh.pullProgress}
+            />
 
             <div className={`relative shrink-0 ${selectedAlumnoId ? 'max-lg:hidden' : ''}`}>
               <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-[20px] max-lg:left-2.5 max-lg:text-[18px]">
