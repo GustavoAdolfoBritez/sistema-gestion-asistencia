@@ -327,7 +327,7 @@ export function openPdfEnPestana(path: string): void {
   }
 
   nuevaVentana.document.write(
-    '<p style="font-family:sans-serif;text-align:center;margin-top:20%;color:#666;">Generando acta de asistencia...</p>'
+    '<p style="font-family:sans-serif;text-align:center;margin-top:20%;color:#666;">Generando PDF...</p>'
   );
 
   fetchWithAuthRetry(path, { method: 'GET' })
