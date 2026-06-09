@@ -32,6 +32,8 @@ import {
 } from '../utils/estado-asistencia';
 import { puedeAprobarJustificaciones } from '../utils/rbac';
 import { agruparJustificacionesPorCarga, claveGrupoJustificacionCarga } from '../utils/justificaciones-grupo';
+import { PullToRefreshIndicator } from '../components/ui/pull-to-refresh-indicator';
+import { usePullToRefresh } from '../hooks/usePullToRefresh';
 
 type Sesion = {
   id: number;
@@ -1668,8 +1670,14 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
     });
   }, [rangoMesModulo?.min, rangoMesModulo?.max]);
 
+  const pageScrollRef = useRef<HTMLDivElement>(null);
+  const pullToRefresh = usePullToRefresh({
+    containerRef: pageScrollRef,
+    onRefresh: () => cargarPlanillaMes(),
+  });
+
   return (
-    <div className="system-bg app-shell-viewport min-h-screen h-screen overflow-hidden text-slate-800 dark:text-[#e7eef9]">
+    <div className="system-bg app-shell-viewport overflow-hidden text-slate-800 dark:text-[#e7eef9]">
       <div className="app-layout-row">
         {sidebarOpen ? (
           <div
@@ -1696,7 +1704,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
               {longestNombrePlanilla}
             </span>
           ) : null}
-          <header className="z-10 flex min-h-16 flex-shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-md dark:border-slate-800 dark:bg-[#132a52]/90 sm:px-6">
+          <header className="flex min-h-16 flex-shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-md dark:border-slate-800 dark:bg-[#132a52]/90 sm:px-6">
             <div className="flex min-w-0 flex-1 items-center gap-3">
               <button
                 type="button"
@@ -1721,7 +1729,12 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
             </div>
           </header>
 
-          <section className="justif-movil-scroll-section app-scroll-content flex min-h-0 min-w-0 flex-1 flex-col gap-4 p-4 sm:p-6 max-lg:bg-background-light dark:max-lg:bg-[#0d1830] xl:overflow-hidden">
+          <section ref={pageScrollRef} className="justif-movil-scroll-section app-scroll-content flex min-h-0 min-w-0 flex-1 flex-col gap-4 p-4 sm:p-6 max-lg:bg-background-light dark:max-lg:bg-[#0d1830] xl:overflow-hidden">
+            <PullToRefreshIndicator
+              pullDistance={pullToRefresh.pullDistance}
+              isRefreshing={pullToRefresh.isRefreshing}
+              pullProgress={pullToRefresh.pullProgress}
+            />
             <nav
               className={`grid w-full min-w-0 flex-shrink-0 gap-2 pb-0.5 max-md:gap-1.5 md:flex md:max-w-full md:flex-nowrap md:items-center md:overflow-x-auto md:overflow-visible ${
                 mostrarModuloJustificaciones ? 'grid-cols-2' : 'grid-cols-1'

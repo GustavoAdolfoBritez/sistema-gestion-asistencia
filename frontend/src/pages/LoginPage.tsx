@@ -76,8 +76,8 @@ export function LoginPage({ onLoginSuccess, onOpenLegalPage }: LoginPageProps) {
   };
 
   return (
-    <div className="login-shell-bg min-h-screen w-full max-w-full overflow-x-hidden">
-      <div className="flex min-h-screen w-full min-w-0 flex-col items-center justify-center px-4 py-6 max-md:min-h-[100dvh] max-md:justify-center max-md:px-4 max-md:py-8 max-md:pb-[max(2rem,env(safe-area-inset-bottom))] max-md:pt-[max(2rem,env(safe-area-inset-top))] sm:px-6 sm:py-8 md:px-8">
+    <div className="login-shell-bg w-full max-w-full">
+      <div className="flex min-h-[100dvh] w-full min-w-0 flex-col items-center justify-center px-4 py-6 max-md:justify-center max-md:px-4 max-md:py-8 max-md:pb-[max(2rem,env(safe-area-inset-bottom))] max-md:pt-[max(2rem,env(safe-area-inset-top))] sm:px-6 sm:py-8 md:px-8">
         <main className="w-full min-w-0 max-w-xl overflow-hidden rounded-2xl bg-slate-100 shadow-2xl max-lg:max-w-md">
           <div className="px-4 pb-10 pt-8 max-lg:px-5 max-lg:pb-6 max-lg:pt-6 sm:px-8 sm:pb-12 sm:pt-12 lg:px-10">
             <div className="pb-6 text-center max-lg:pb-4 sm:pb-7">

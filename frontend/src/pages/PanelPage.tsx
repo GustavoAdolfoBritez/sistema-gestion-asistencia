@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { AppSidebar } from '../components/AppSidebar';
 import {
@@ -24,6 +24,8 @@ import {
 } from '../utils/panel-chart-data';
 import { resumenesUltimoMesPorCurso } from '../utils/panel-resumenes';
 import { readStoredUser } from '../utils/session-user';
+import { usePullToRefresh } from '../hooks/usePullToRefresh';
+import { PullToRefreshIndicator } from '../components/ui/pull-to-refresh-indicator';
 type UsersAction = 'list' | 'create';
 
 interface Props {
@@ -184,7 +186,7 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
     : 'rounded-lg border border-slate-300 bg-white text-black shadow-sm pl-3 pr-3';
 
   /** Selects de la barra 'Ver estadísticas de:' (nombres largos de carrera/facultad). */
-  const panelStatsFilterSelectClass = `${panelNativeSelectClass} min-w-[12rem] w-full max-w-md sm:w-auto sm:min-w-[14rem]`;
+  const panelStatsFilterSelectClass = `${panelNativeSelectClass} w-full min-w-0`;
 
   const [alertas, setAlertas] = useState<Alerta[]>([]);
   const [estadisticas, setEstadisticas] = useState<Estadistica[]>([]);
@@ -484,8 +486,18 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
     setShowJustificaciones(true);
   }, []);
 
+  const pageScrollRef = useRef<HTMLDivElement>(null);
+  const pullToRefresh = usePullToRefresh({
+    containerRef: pageScrollRef,
+    onRefresh: () => {
+      setFiltroFacultadId('');
+      setFiltroCarreraId('');
+      void cargarEstadisticas();
+    },
+  });
+
   return (
-    <div className="system-bg app-shell-viewport text-[#e7eef9] min-h-screen h-screen overflow-hidden">
+    <div className="system-bg app-shell-viewport text-[#e7eef9] overflow-hidden">
       <div className="app-layout-row">
         {sidebarOpen ? (
           <div className="app-sidebar-scrim" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
@@ -494,7 +506,7 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
         <AppSidebar sidebarOpen={sidebarOpen} onLogout={onLogout} onClose={() => setSidebarOpen(false)} />
 
         <main className="app-layout-main">
-          <header className="flex-shrink-0 min-h-16 bg-[#132a52]/90 backdrop-blur-md border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3 z-10">
+          <header className="flex-shrink-0 min-h-16 bg-[#132a52]/90 backdrop-blur-md border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3">
             <div className="flex min-w-0 items-center gap-3">
               <button
                 className="app-menu-toggle text-slate-400"
@@ -511,7 +523,12 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
             </div>
           </header>
 
-          <section className="scroll-region app-scroll-content flex-1 min-h-0 min-w-0 space-y-5 p-4 sm:p-6 max-lg:space-y-4 max-lg:p-3">
+          <section ref={pageScrollRef} className="scroll-region app-scroll-content flex-1 min-h-0 min-w-0 space-y-5 p-4 sm:p-6 max-lg:space-y-4 max-lg:p-3">
+            <PullToRefreshIndicator
+              pullDistance={pullToRefresh.pullDistance}
+              isRefreshing={pullToRefresh.isRefreshing}
+              pullProgress={pullToRefresh.pullProgress}
+            />
             <div>
               <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 max-lg:mb-1.5">
                 Resumen general

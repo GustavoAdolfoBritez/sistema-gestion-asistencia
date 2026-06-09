@@ -1386,27 +1386,8 @@
       @apply bg-background-light dark:bg-background-dark;
     }
 
-    /**
-     * App bar fija en móvil y tablet vertical: menú ☰ + título al scrollear.
-     */
     .app-layout-main > header {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 40;
       flex-shrink: 0;
-    }
-
-    .app-layout-main {
-      padding-top: 4rem;
-    }
-
-    html:has(.system-bg.h-screen.overflow-hidden),
-    body:has(.system-bg.h-screen.overflow-hidden) {
-      overflow: hidden;
-      height: 100%;
-      overscroll-behavior: none;
     }
 
     .app-shell-viewport {
@@ -1538,6 +1519,66 @@
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   LAYOUT CRÍTICO (sin @layer → prioridad de cascada superior
+   a las utilidades Tailwind que usan @layer utilities).
+   ═══════════════════════════════════════════════════════════════ */
+
+.app-shell-viewport {
+  height: 100svh;
+}
+
+.app-layout-row {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.app-layout-main {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0%;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.app-layout-main > header {
+  flex-shrink: 0;
+}
+
+@media (max-width: 1023px) {
+  .app-layout-main > header {
+    flex-shrink: 0;
+  }
+
+  .app-shell-viewport {
+    height: 100svh;
+    max-height: 100svh;
+  }
+
+  .app-scroll-content {
+    overscroll-behavior-y: contain;
+    touch-action: pan-y;
+    padding-bottom: 1rem !important;
+    scroll-padding-bottom: 1rem;
+  }
+
+  .dark .app-layout-main {
+    background-color: #0D1830;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-scroll-content,
+  .app-mobile-bottom-inset,
+  .app-mobile-bottom-bar {
+    padding-bottom: 0;
+  }
+}
+
 :root {
   font-family: 'Lexend', sans-serif;
   font-synthesis: none;
@@ -1545,23 +1586,29 @@
   -webkit-font-smoothing: antialiased;
 }
 
-html,
-body,
-#root {
-  min-height: 100%;
-  max-width: 100%;
-  overflow-x: hidden;
+html {
+  height: 100%;
+  overflow: hidden;
   background-color: #0d1f3c;
 }
 
 body {
-  @apply bg-background-light dark:bg-background-dark text-slate-900 dark:text-[#f0f4f8] font-display min-h-screen;
+  height: 100%;
+  max-width: 100%;
+  overflow-y: auto;
+  overscroll-behavior-y: auto;
   margin: 0;
+  @apply bg-background-light dark:bg-background-dark text-slate-900 dark:text-[#f0f4f8] font-display;
+}
+
+#root {
+  height: 100%;
+  overflow: hidden;
 }
 
 .system-bg {
   background-color: #0e2a47;
-  min-height: 100vh;
+  min-height: 100svh;
   max-width: 100%;
   min-width: 0;
 }
@@ -1662,7 +1709,6 @@ html:not(.dark) .usuario-detail-panel .usuario-detail-panel-card {
     flex-direction: column;
     min-height: 0;
     overflow: hidden;
-    padding-top: 4rem;
   }
 
   .app-layout-main:has(.auditoria-page-section) > .auditoria-page-section {
@@ -1691,10 +1737,6 @@ html:not(.dark) .usuario-detail-panel .usuario-detail-panel-card {
     flex: 1 1 0%;
     min-height: 0;
     overflow: hidden;
-  }
-
-  .app-layout-main:has(.auditoria-page-section[data-has-selection='true']) {
-    padding-top: 0;
   }
 
   .auditoria-page-section[data-has-selection='true'] .auditoria-filtros {
@@ -2188,13 +2230,6 @@ html:not(.dark) .usuario-detail-panel .usuario-detail-panel-card {
   }
 }
 
-/** Auditoría · móvil/tablet: sin padding superior del layout cuando el detalle ocupa pantalla (header oculto). */
-@media (max-width: 1279px) {
-  .app-layout-main:has(.auditoria-page-section[data-has-selection='true']) {
-    padding-top: 0;
-  }
-}
-
 /** Auditoría · móvil + tablet vertical + tablet horizontal: detalle a pantalla completa con scroll interno. */
 @media (max-width: 1279px) {
   .auditoria-page-section[data-has-selection='true'] .auditoria-workspace {
@@ -2428,6 +2463,9 @@ html:not(.dark) .text-\[\#e7eef9\] { color: #1e293b !important; }
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 html:not(.dark) .login-shell-bg {
   background-color: #0e2a47 !important;

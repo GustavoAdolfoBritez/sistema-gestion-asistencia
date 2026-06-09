@@ -89,7 +89,7 @@ export function ScopeSelector({
 }: ScopeSelectorProps) {
   const unica = options.length === 1 ? options[0] : null;
   const wrapClass = hideLabel
-    ? cn('min-w-0 shrink-0', className)
+    ? cn('min-w-0', className)
     : cn('min-w-0 w-full max-w-full space-y-2', className);
 
   if (unica) {

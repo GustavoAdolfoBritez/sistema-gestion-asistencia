@@ -805,7 +805,7 @@ export function AlumnosAdminPage({ onLogout }: Props) {
   }
 
   return (
-    <div className="system-bg app-shell-viewport text-slate-800 dark:text-[#e7eef9] min-h-screen h-screen overflow-hidden">
+    <div className="system-bg app-shell-viewport text-slate-800 dark:text-[#e7eef9] overflow-hidden">
       <div className="app-layout-row">
         {sidebarOpen ? (
           <div className="app-sidebar-scrim" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
@@ -814,7 +814,7 @@ export function AlumnosAdminPage({ onLogout }: Props) {
         <AppSidebar sidebarOpen={sidebarOpen} onLogout={onLogout} onClose={() => setSidebarOpen(false)} />
 
         <main className="app-layout-main">
-          <header className="flex-shrink-0 min-h-16 bg-white/95 backdrop-blur-md border-b border-slate-200 flex flex-wrap items-center px-4 sm:px-6 gap-3 py-3 z-10 dark:bg-[#132a52]/90 dark:border-slate-800">
+          <header className="flex-shrink-0 min-h-16 bg-white/95 backdrop-blur-md border-b border-slate-200 flex flex-wrap items-center px-4 sm:px-6 gap-3 py-3 dark:bg-[#132a52]/90 dark:border-slate-800">
             <button
               className="app-menu-toggle text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
               onClick={() => setSidebarOpen(true)}
@@ -1326,20 +1326,25 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                           >
                             Año
                           </label>
-                          <AppSelect
-                            aria-label="Año de trayectoria"
-                            className="w-auto max-w-[7rem]"
-                            size="sm"
-                            compactMenu
-                            value={anioPromedioSeleccionado != null ? String(anioPromedioSeleccionado) : ''}
-                            disabled={!anioPromedioOptions.length}
-                            onChange={(v) => setAnioPromedioSeleccionado(Number(v))}
-                            options={anioPromedioOptions.map((a) => ({
-                              value: String(a),
-                              label: String(a),
-                            }))}
-                            triggerClassName={inpYearSelect}
-                          />
+                          {anioPromedioOptions.length > 0 ? (
+                            <AppSelect
+                              aria-label="Año de trayectoria"
+                              className="w-auto max-w-[7rem]"
+                              size="sm"
+                              compactMenu
+                              value={anioPromedioSeleccionado != null ? String(anioPromedioSeleccionado) : ''}
+                              onChange={(v) => setAnioPromedioSeleccionado(Number(v))}
+                              options={anioPromedioOptions.map((a) => ({
+                                value: String(a),
+                                label: String(a),
+                              }))}
+                              triggerClassName={inpYearSelect}
+                            />
+                          ) : (
+                            <span className="whitespace-nowrap rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm font-medium text-slate-400 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-500">
+                              —
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

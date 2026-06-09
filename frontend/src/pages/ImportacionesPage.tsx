@@ -961,7 +961,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
   });
 
   return (
-    <div className="system-bg app-shell-viewport text-[#e7eef9] min-h-screen h-screen overflow-hidden">
+    <div className="system-bg app-shell-viewport text-[#e7eef9] overflow-hidden">
       <div className="app-layout-row">
         {sidebarOpen ? (
           <div
@@ -974,7 +974,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
         <AppSidebar sidebarOpen={sidebarOpen} onLogout={onLogout} onClose={() => setSidebarOpen(false)} />
 
         <main className="app-layout-main">
-          <header className="flex-shrink-0 min-h-16 bg-[#132a52]/90 backdrop-blur-md border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3 z-10">
+          <header className="flex-shrink-0 min-h-16 bg-[#132a52]/90 backdrop-blur-md border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3">
             <div className="flex min-w-0 flex-1 items-center gap-3">
               <button className="app-menu-toggle text-slate-400" onClick={() => setSidebarOpen((prev) => !prev)} aria-label="Abrir menú">
                 <span className="material-symbols-outlined">menu</span>

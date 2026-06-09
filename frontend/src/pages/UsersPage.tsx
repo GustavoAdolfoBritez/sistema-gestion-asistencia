@@ -800,7 +800,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
   };
 
   return (
-    <div className="system-bg app-shell-viewport min-h-screen h-screen overflow-hidden text-slate-800 dark:text-[#e7eef9]">
+    <div className="system-bg app-shell-viewport overflow-hidden text-slate-800 dark:text-[#e7eef9]">
       <div className="app-layout-row">
         {sidebarOpen ? (
           <div
@@ -813,7 +813,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
         <AppSidebar sidebarOpen={sidebarOpen} onLogout={onLogout} onClose={() => setSidebarOpen(false)} />
 
         <main className="app-layout-main">
-          <header className="z-10 flex min-h-16 flex-shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white/95 px-6 py-3 backdrop-blur-md dark:border-slate-800 dark:bg-[#132a52]/90 max-lg:gap-2 max-lg:px-4 max-lg:py-2.5">
+          <header className="flex min-h-16 flex-shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white/95 px-6 py-3 backdrop-blur-md dark:border-slate-800 dark:bg-[#132a52]/90 max-lg:gap-2 max-lg:px-4 max-lg:py-2.5">
             <div className="flex min-w-0 flex-1 items-center gap-3 max-lg:gap-2">
               <button
                 type="button"

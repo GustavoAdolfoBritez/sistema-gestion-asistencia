@@ -914,7 +914,7 @@ export function AuditoriaPage({ onLogout }: Props) {
 
 
   return (
-    <div className="system-bg app-shell-viewport text-[#e7eef9] min-h-screen h-screen overflow-hidden">
+    <div className="system-bg app-shell-viewport text-[#e7eef9] overflow-hidden">
       <div className="app-layout-row">
         {sidebarOpen ? (
           <div
@@ -928,7 +928,7 @@ export function AuditoriaPage({ onLogout }: Props) {
 
         <main className="app-layout-main">
           <header
-            className={`z-10 flex min-h-16 shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-800 bg-[#132a52]/90 px-4 py-3 backdrop-blur-md sm:px-6 ${
+            className={`flex min-h-16 shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-800 bg-[#132a52]/90 px-4 py-3 backdrop-blur-md sm:px-6 ${
               seleccionado ? 'max-xl:hidden' : ''
             }`}
           >
