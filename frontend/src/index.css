@@ -975,14 +975,14 @@
     }
 
     /**
-     * Paginación: aire solo bajo los botones (~3.5rem máx.), sin inflar todo el scroll.
+     * Paginación: solo el espacio justo para botones de navegación del SO, sin inflar.
      */
     .app-mobile-pagination-footer {
       padding-bottom: calc(
         0.75rem + max(
-          2.75rem,
+          0rem,
           env(safe-area-inset-bottom, 0px),
-          min(3.5rem, var(--vv-bottom-inset, 0px))
+          var(--vv-bottom-inset, 0px)
         )
       ) !important;
     }
