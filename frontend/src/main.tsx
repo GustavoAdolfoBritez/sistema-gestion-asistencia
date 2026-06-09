@@ -5,11 +5,32 @@ import { Toaster } from 'sonner';
 import './index.css';
 import App from './App.tsx';
 
-// Evita que el navegador almacene la página en bfcache.
-// Al tener un listener de 'unload' (aunque esté vacío), Chrome/Safari
-// no cachean la página y fuerzan un F5 real al volver,
-// igual que FIFA.com o cualquier app que no quiera una preview en blanco.
-window.addEventListener('unload', () => {});
+// Restauración desde bfcache: el navegador muestra una snapshot vieja.
+// Forzamos reload completo para que React se reinicie correctamente.
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) {
+    window.location.reload();
+  }
+});
+
+// Mobile Chrome: al volver del background, el motor de renderizado
+// puede quedar congelado. Forzamos reflow y, si sigue roto, reload.
+let lastHidden = 0;
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    lastHidden = Date.now();
+    return;
+  }
+  if (Date.now() - lastHidden < 2000) return;
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const root = document.getElementById('root');
+      if (!root || root.children.length > 0) return;
+      window.location.reload();
+    });
+  });
+});
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
