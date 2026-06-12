@@ -1601,7 +1601,7 @@ export async function actualizarAlumno(alumnoId: string, input: ActualizarAlumno
         valores
     ).catch((err: unknown) => {
         if (err instanceof Error && 'code' in err && (err as Error & { code: string }).code === '23505') {
-            throw new Error(`Ya existe un alumno con la cédula ${String(input.numero_documento).trim()}.`);
+            throw new Error('Ya existe un alumno con ese número de cédula.');
         }
         throw err;
     });
