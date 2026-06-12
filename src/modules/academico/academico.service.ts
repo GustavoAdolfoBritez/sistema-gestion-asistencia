@@ -1599,7 +1599,12 @@ export async function actualizarAlumno(alumnoId: string, input: ActualizarAlumno
     const { rows } = await pool.query(
         `UPDATE alumnos SET ${sets.join(', ')} WHERE id = $1 RETURNING id, numero_documento, nombres, apellidos, nombre_apellido`,
         valores
-    );
+    ).catch((err: unknown) => {
+        if (err instanceof Error && 'code' in err && (err as Error & { code: string }).code === '23505') {
+            throw new Error(`Ya existe un alumno con la cédula ${String(input.numero_documento).trim()}.`);
+        }
+        throw err;
+    });
 
     if (rows.length === 0) throw new Error('Alumno no encontrado.');
 
