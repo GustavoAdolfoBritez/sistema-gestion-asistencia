@@ -66,6 +66,15 @@ importacionesApi.post('/validar-carga-alumnos', async (req, res, next) => {
             return res.status(400).json({ mensaje: 'Máximo 5000 registros por validación' });
         }
 
+        const cohorteAnioRaw = body.cohorteAnio;
+        if (cohorteAnioRaw === '' || cohorteAnioRaw === undefined || cohorteAnioRaw === null) {
+            return res.status(400).json({ mensaje: 'El año de ingreso es un campo obligatorio.' });
+        }
+        const cohorteAnio = Number(cohorteAnioRaw);
+        if (!Number.isFinite(cohorteAnio) || cohorteAnio < 1990 || cohorteAnio > 2100) {
+            return res.status(400).json({ mensaje: 'El año de ingreso debe estar entre 1990 y 2100.' });
+        }
+
         await validarCargaAlumnosPrevia(
             {
                 tipoLote: 'alumnos',
@@ -75,10 +84,7 @@ importacionesApi.post('/validar-carga-alumnos', async (req, res, next) => {
                 destinoCarrera: body.destinoCarrera,
                 destinoFacultadId: body.destinoFacultadId ? Number(body.destinoFacultadId) : undefined,
                 destinoCarreraId: body.destinoCarreraId ? Number(body.destinoCarreraId) : undefined,
-                cohorteAnio:
-                    body.cohorteAnio === '' || body.cohorteAnio === undefined || body.cohorteAnio === null
-                        ? undefined
-                        : Number(body.cohorteAnio),
+                cohorteAnio,
                 registros
             },
             usuarioId
@@ -110,6 +116,14 @@ importacionesApi.post('/lotes', async (req, res, next) => {
             return res.status(400).json({ mensaje: 'El tipo de lote es obligatorio' });
         }
 
+        if (cohorteAnio === '' || cohorteAnio === undefined || cohorteAnio === null) {
+            return res.status(400).json({ mensaje: 'El año de ingreso es un campo obligatorio.' });
+        }
+        const cohorteAnioNum = Number(cohorteAnio);
+        if (!Number.isFinite(cohorteAnioNum) || cohorteAnioNum < 1990 || cohorteAnioNum > 2100) {
+            return res.status(400).json({ mensaje: 'El año de ingreso debe estar entre 1990 y 2100.' });
+        }
+
         const usuarioId = req.usuario?.usuarioId;
         if (!usuarioId) {
             return res.status(400).json({ mensaje: 'No se pudo determinar el usuario autenticado' });
@@ -126,10 +140,7 @@ importacionesApi.post('/lotes', async (req, res, next) => {
                 destinoFacultadId: destinoFacultadId ? Number(destinoFacultadId) : undefined,
                 destinoCarreraId: destinoCarreraId ? Number(destinoCarreraId) : undefined,
                 cursoDestinoId: cursoDestinoId ? Number(cursoDestinoId) : undefined,
-                cohorteAnio:
-                    cohorteAnio === '' || cohorteAnio === undefined || cohorteAnio === null
-                        ? undefined
-                        : Number(cohorteAnio)
+                cohorteAnio: cohorteAnioNum
             },
             usuarioId
         );

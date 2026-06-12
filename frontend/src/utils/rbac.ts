@@ -140,6 +140,12 @@ export function puedeAprobarJustificaciones(roles: unknown): boolean {
   );
 }
 
+/** Edición de datos de alumno: solo Administrador General y Secretaría Académica. */
+export function puedeEditarAlumno(roles: unknown): boolean {
+  const set = new Set(coerceRolesToStringArray(roles).map(normalizeRol));
+  return set.has('administrador general') || set.has('secretaria academica');
+}
+
 /**
  * Jefe de carrera sin rol de secretaría, administración global ni coordinación de facultad:
  * el buscador de alumnos ya se acota por alcance en servidor; no se muestran filtros de facultad/carrera.

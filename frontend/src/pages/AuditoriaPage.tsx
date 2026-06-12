@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
-import { toast } from 'sonner';
+import { toast } from '../utils/toast';
 import { AppSidebar } from '../components/AppSidebar';
 import { BotonVolverListadoMovil, VolverListadoMovilBar } from '../components/ui/boton-volver-listado-movil';
 import { AppSelect } from '../components/ui/app-select';

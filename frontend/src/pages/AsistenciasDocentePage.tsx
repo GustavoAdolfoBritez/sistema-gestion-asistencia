@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from '../utils/toast';
 import {
   ACADEMICO_TAB_ACTIVE,
   ACADEMICO_TAB_BASE,
