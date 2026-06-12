@@ -663,7 +663,7 @@ export function AlumnosAdminPage({ onLogout }: Props) {
       if (selectedAlumnoId) {
         cargarFicha(selectedAlumnoId);
       }
-      buscar({ reset: false });
+      buscar(termino);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'No se pudo actualizar el alumno.');
     } finally {
