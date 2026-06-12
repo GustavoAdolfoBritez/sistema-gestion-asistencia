@@ -5,9 +5,10 @@ import { canAccessView, getHomeViewForUser } from './utils/rbac';
 import type { AppView, SessionUser } from './utils/rbac';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { useVisualViewportBottomInset } from './hooks/useVisualViewportBottomInset';
-import { readStoredUser } from './utils/session-user';
+import { readStoredUser, safeGetStorageItem } from './utils/session-user';
 import { appPath } from './navigation/app-paths';
 import { RequireAuth } from './navigation/RequireAuth';
+import { ErrorBoundary } from './components/ui/error-boundary';
 import {
   clearAsistenciasCursoIdPersistido,
   clearLocalSession,
@@ -76,11 +77,21 @@ function LegacyHashRedirect() {
 }
 
 function RootRedirect() {
-  const token = localStorage.getItem('accessToken') ?? localStorage.getItem('token');
+  let token: string | null = null;
+  try {
+    token = safeGetStorageItem('accessToken') ?? safeGetStorageItem('token');
+  } catch {
+    token = null;
+  }
   if (!token) {
     return <Navigate to="/login" replace />;
   }
-  const user = readStoredUser();
+  let user: ReturnType<typeof readStoredUser> = null;
+  try {
+    user = readStoredUser();
+  } catch {
+    user = null;
+  }
   return <Navigate to={appPath(getHomeViewForUser(user))} replace />;
 }
 
@@ -157,67 +168,69 @@ export default function App() {
   );
 
   return (
-    <ThemeProvider userId={userId}>
-      <Suspense fallback={<LoadingScreen />}>
-        <LegacyHashRedirect />
-        <Routes>
-          <Route path="/login" element={<LoginRoute setUser={setCurrentUser} />} />
-          <Route path="/terminos" element={<LegalRoute page="terminos" />} />
-          <Route path="/privacidad" element={<LegalRoute page="privacidad" />} />
-          <Route path="/soporte" element={<LegalRoute page="soporte" />} />
+    <ErrorBoundary>
+      <ThemeProvider userId={userId}>
+        <Suspense fallback={<LoadingScreen />}>
+          <LegacyHashRedirect />
+          <Routes>
+            <Route path="/login" element={<LoginRoute setUser={setCurrentUser} />} />
+            <Route path="/terminos" element={<LegalRoute page="terminos" />} />
+            <Route path="/privacidad" element={<LegalRoute page="privacidad" />} />
+            <Route path="/soporte" element={<LegalRoute page="soporte" />} />
 
-          <Route element={<RequireAuth />}>
-            <Route
-              path="/app/panel"
-              element={<PanelPage onNavigate={handleNavigate} onLogout={handleLogout} />}
-            />
-            <Route
-              path="/app/importaciones"
-              element={<ImportacionesPage onLogout={handleLogout} />}
-            />
-            <Route
-              path="/app/usuarios"
-              element={<UsersPage onLogout={handleLogout} requestedAction="list" />}
-            />
-            <Route
-              path="/app/usuarios/nuevo"
-              element={<UsersPage onLogout={handleLogout} requestedAction="create" />}
-            />
-            <Route
-              path="/app/academico/promocion"
-              element={<PromocionSemestrePage onLogout={handleLogout} />}
-            />
-            <Route
-              path="/app/academico"
-              element={<AcademicoAdminPage onLogout={handleLogout} />}
-            />
-            <Route
-              path="/app/alumnos"
-              element={<AlumnosAdminPage onLogout={handleLogout} />}
-            />
-            <Route
-              path="/app/asistencias"
-              element={
-                <AsistenciasDocentePage
-                  onLogout={handleLogout}
-                  roles={readStoredUser()?.roles ?? []}
-                />
-              }
-            />
-            <Route
-              path="/app/reportes"
-              element={<ReportesPage onLogout={handleLogout} />}
-            />
-            <Route
-              path="/app/auditoria"
-              element={<AuditoriaPage onLogout={handleLogout} />}
-            />
-          </Route>
+            <Route element={<RequireAuth />}>
+              <Route
+                path="/app/panel"
+                element={<PanelPage onNavigate={handleNavigate} onLogout={handleLogout} />}
+              />
+              <Route
+                path="/app/importaciones"
+                element={<ImportacionesPage onLogout={handleLogout} />}
+              />
+              <Route
+                path="/app/usuarios"
+                element={<UsersPage onLogout={handleLogout} requestedAction="list" />}
+              />
+              <Route
+                path="/app/usuarios/nuevo"
+                element={<UsersPage onLogout={handleLogout} requestedAction="create" />}
+              />
+              <Route
+                path="/app/academico/promocion"
+                element={<PromocionSemestrePage onLogout={handleLogout} />}
+              />
+              <Route
+                path="/app/academico"
+                element={<AcademicoAdminPage onLogout={handleLogout} />}
+              />
+              <Route
+                path="/app/alumnos"
+                element={<AlumnosAdminPage onLogout={handleLogout} />}
+              />
+              <Route
+                path="/app/asistencias"
+                element={
+                  <AsistenciasDocentePage
+                    onLogout={handleLogout}
+                    roles={readStoredUser()?.roles ?? []}
+                  />
+                }
+              />
+              <Route
+                path="/app/reportes"
+                element={<ReportesPage onLogout={handleLogout} />}
+              />
+              <Route
+                path="/app/auditoria"
+                element={<AuditoriaPage onLogout={handleLogout} />}
+              />
+            </Route>
 
-          <Route path="/" element={<RootRedirect />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
-    </ThemeProvider>
+            <Route path="/" element={<RootRedirect />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }

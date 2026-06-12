@@ -8,8 +8,8 @@ import { SkeletonRow } from '../components/ui/skeleton';
 import { AppSelect } from '../components/ui/app-select';
 import { BotonVolverListadoMovil } from '../components/ui/boton-volver-listado-movil';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
-import { PullToRefreshIndicator } from '../components/ui/pull-to-refresh-indicator';
-import { usePullToRefresh } from '../hooks/usePullToRefresh';
+
+
 import { generarYAbrirPdf, apiFetch } from '../utils/api';
 import { formatDateOnly } from '../utils/datetime';
 import { appPath } from '../navigation/app-paths';
@@ -404,11 +404,6 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
   const selectedUser = users.find((user) => user.id === selectedUserId) ?? null;
   const panelDetalleAbierto = Boolean(selectedUser) || isCreateOpen;
 
-  const pullToRefresh = usePullToRefresh({
-    containerRef: usuariosListScrollRef,
-    onRefresh: () => loadUsers(),
-    disabled: panelDetalleAbierto || exportLoading,
-  });
 
   const hydrateDraftFromSelected = useCallback(() => {
     if (!selectedUser) {
@@ -952,11 +947,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                   ref={usuariosListScrollRef}
                   className="scroll-region app-scroll-content flex min-h-0 flex-1 flex-col"
                 >
-                  <PullToRefreshIndicator
-                    pullDistance={pullToRefresh.pullDistance}
-                    isRefreshing={pullToRefresh.isRefreshing}
-                    pullProgress={pullToRefresh.pullProgress}
-                  />
+
                   <ul className="space-y-2.5 p-0 max-lg:pt-1 lg:hidden">
                     {loading ? (
                       Array.from({ length: 4 }).map((_, i) => (

@@ -10,8 +10,8 @@ import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { apiFetch } from '../utils/api';
 import { esGestionUnicaCarreraAlumnosListado } from '../utils/rbac';
 import { readStoredUser } from '../utils/session-user';
-import { PullToRefreshIndicator } from '../components/ui/pull-to-refresh-indicator';
-import { usePullToRefresh } from '../hooks/usePullToRefresh';
+
+
 
 interface Props {
   onLogout?: () => void;
@@ -382,11 +382,6 @@ export function PromocionSemestrePage({ onLogout }: Props) {
     });
   };
 
-  const pageScrollRef = useRef<HTMLDivElement>(null);
-  const pullToRefresh = usePullToRefresh({
-    containerRef: pageScrollRef,
-    onRefresh: () => cargarLista(),
-  });
 
   return (
     <div className="system-bg app-shell-viewport text-slate-800 dark:text-[#e7eef9] overflow-hidden">
@@ -414,12 +409,7 @@ export function PromocionSemestrePage({ onLogout }: Props) {
             </div>
           </header>
 
-          <section ref={pageScrollRef} className="scroll-region app-scroll-content flex-1 min-h-0 min-w-0 overflow-auto p-4 sm:p-6 space-y-4">
-            <PullToRefreshIndicator
-              pullDistance={pullToRefresh.pullDistance}
-              isRefreshing={pullToRefresh.isRefreshing}
-              pullProgress={pullToRefresh.pullProgress}
-            />
+          <section className="scroll-region app-scroll-content flex-1 min-h-0 min-w-0 overflow-auto p-4 sm:p-6 space-y-4">
             <AcademicoSubnav />
             {!ocultarFacultad ? (
               <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4 text-black shadow-sm dark:border-slate-800 dark:bg-[#132a52] dark:text-[#e7eef9] dark:shadow-none">

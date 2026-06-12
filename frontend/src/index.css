@@ -283,7 +283,7 @@
       min-height: 0;
       overflow-x: hidden;
       overflow-y: auto;
-      overscroll-behavior-y: contain;
+      overscroll-behavior-y: auto;
       -webkit-overflow-scrolling: touch;
       touch-action: pan-y;
       scroll-padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
@@ -859,7 +859,7 @@
       min-width: 0;
       overflow-x: hidden;
       overflow-y: auto;
-      overscroll-behavior-y: contain;
+      overscroll-behavior-y: auto;
       -webkit-overflow-scrolling: touch;
       overflow-anchor: none;
       padding-bottom: var(--app-mobile-bottom-padding);
@@ -922,7 +922,7 @@
       min-height: 0;
       overflow-x: hidden;
       overflow-y: auto;
-      overscroll-behavior-y: contain;
+      overscroll-behavior-y: auto;
       -webkit-overflow-scrolling: touch;
     }
 
@@ -991,10 +991,6 @@
       overflow: visible !important;
     }
 
-    .pull-to-refresh-indicator {
-      width: 100%;
-      transition: height 0.18s ease-out;
-    }
   }
 
   /**
@@ -1002,7 +998,7 @@
    * El desplazamiento queda dentro del bloque; no propaga ancho al layout padre.
    */
   .scroll-region {
-    @apply min-h-0 min-w-0 max-w-full overflow-auto overscroll-contain;
+    @apply min-h-0 min-w-0 max-w-full overflow-auto overscroll-auto;
     -webkit-overflow-scrolling: touch;
   }
 
@@ -1396,7 +1392,7 @@
     }
 
     .app-scroll-content {
-      overscroll-behavior-y: contain;
+      overscroll-behavior-y: auto;
       touch-action: pan-y;
       padding-bottom: 1rem !important;
       scroll-padding-bottom: 1rem;
@@ -1560,7 +1556,7 @@
   }
 
   .app-scroll-content {
-    overscroll-behavior-y: contain;
+    overscroll-behavior-y: auto;
     touch-action: pan-y;
     padding-bottom: 1rem !important;
     scroll-padding-bottom: 1rem;
@@ -1588,7 +1584,8 @@
 
 html {
   height: 100%;
-  overflow: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: auto;
   background-color: #0d1f3c;
 }
 
@@ -1602,8 +1599,9 @@ body {
 }
 
 #root {
-  height: 100%;
-  overflow: hidden;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .system-bg {
@@ -1723,7 +1721,7 @@ html:not(.dark) .usuario-detail-panel .usuario-detail-panel-card {
     min-height: 0;
     overflow-x: hidden;
     overflow-y: auto;
-    overscroll-behavior-y: contain;
+    overscroll-behavior-y: auto;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
     gap: 0.5rem;
@@ -1883,7 +1881,7 @@ html:not(.dark) .usuario-detail-panel .usuario-detail-panel-card {
     flex: 1 1 0%;
     overflow-x: hidden;
     overflow-y: auto;
-    overscroll-behavior-y: contain;
+    overscroll-behavior-y: auto;
     -webkit-overflow-scrolling: touch;
   }
 

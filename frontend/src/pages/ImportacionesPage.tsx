@@ -5,8 +5,8 @@ import { AppSidebar } from '../components/AppSidebar';
 import { AppSelect } from '../components/ui/app-select';
 import { BotonVolverListadoMovil, VolverListadoMovilBar } from '../components/ui/boton-volver-listado-movil';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
-import { PullToRefreshIndicator } from '../components/ui/pull-to-refresh-indicator';
-import { usePullToRefresh } from '../hooks/usePullToRefresh';
+
+
 import {
   ImportConfirmOverlay,
   type ImportConfirmPhase,
@@ -965,11 +965,6 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
     }
   }, [discardDialogLoteId, loadBatches, selectedBatchId]);
 
-  const pullToRefresh = usePullToRefresh({
-    containerRef: importacionesScrollRef,
-    onRefresh: () => loadBatches(),
-    disabled: !!selectedBatchId,
-  });
 
   return (
     <div className="system-bg app-shell-viewport text-[#e7eef9] overflow-hidden">
@@ -1007,11 +1002,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                 ref={importacionesScrollRef}
                 className="importaciones-scroll-panel scroll-region app-scroll-content scrollbar-hide min-w-0 flex-1 space-y-8 p-4 sm:p-6 max-lg:space-y-5 max-lg:p-3"
               >
-              <PullToRefreshIndicator
-                pullDistance={pullToRefresh.pullDistance}
-                isRefreshing={pullToRefresh.isRefreshing}
-                pullProgress={pullToRefresh.pullProgress}
-              />
+
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3 max-lg:grid-cols-2 max-lg:gap-2">
                 <div className="rounded-xl border border-slate-800 bg-[#132a52] p-5 max-lg:p-3.5">
                   <div className="mb-2 flex items-center justify-between">
