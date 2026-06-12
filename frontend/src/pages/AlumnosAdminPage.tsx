@@ -1397,6 +1397,7 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                             className="w-auto max-w-[7rem]"
                             size="sm"
                             compactMenu
+                            placeholder="−"
                             value={anioPromedioSeleccionado != null ? String(anioPromedioSeleccionado) : ''}
                             disabled={!anioPromedioOptions.length}
                             onChange={(v) => setAnioPromedioSeleccionado(Number(v))}

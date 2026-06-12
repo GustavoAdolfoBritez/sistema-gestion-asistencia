@@ -389,6 +389,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
   const [moduloFiltroSemestre, setModuloFiltroSemestre] = useState('');
   const [cursoForm, setCursoForm] = useState({ moduloId: '', docenteId: '' });
   const [cursoFiltroSemestre, setCursoFiltroSemestre] = useState('');
+  const [cursoFiltroAnio, setCursoFiltroAnio] = useState('');
   const [docenteSearch, setDocenteSearch] = useState('');
   const [docenteSearchOpen, setDocenteSearchOpen] = useState(false);
   const [facultadSeleccionadaId, setFacultadSeleccionadaId] = useState('');
@@ -471,6 +472,20 @@ export function AcademicoAdminPage({ onLogout }: Props) {
       .filter((m) => materiaIds.has(m.materia_id))
       .sort(compareModuloRecientePrimero);
   }, [modulos, materias, planes, carreraSeleccionadaId, cursoFiltroSemestre]);
+
+  const aniosDisponiblesModulosCurso = useMemo(() => {
+    const set = new Set<number>();
+    for (const m of sortedModulosCurso) {
+      if (m.anio != null && Number.isFinite(m.anio)) set.add(m.anio);
+    }
+    return [...set].sort((a, b) => a - b);
+  }, [sortedModulosCurso]);
+
+  const modulosCursoFiltrados = useMemo(() => {
+    const anioFiltro = Number(cursoFiltroAnio);
+    if (!Number.isFinite(anioFiltro) || anioFiltro <= 0) return sortedModulosCurso;
+    return sortedModulosCurso.filter((m) => m.anio === anioFiltro);
+  }, [sortedModulosCurso, cursoFiltroAnio]);
 
   const docentesOrdenados = useMemo(
     () => [...docentes].sort((a, b) => `${a.apellidos} ${a.nombres}`.localeCompare(`${b.apellidos} ${b.nombres}`, 'es')),
@@ -764,6 +779,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
     setModuloForm((f) => ({ ...f, materiaId: '' }));
     setCursoForm({ moduloId: '', docenteId: '' });
     setCursoFiltroSemestre('');
+    setCursoFiltroAnio('');
     setDocenteSearch('');
     setDocenteSearchOpen(false);
     setModuloListaBusqueda('');
@@ -2046,8 +2062,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                       size="xs"
                       value={moduloListaAnio}
                       onChange={setModuloListaAnio}
-                      allowEmpty
-                      emptyLabel="Año"
+                      placeholder="Año"
                       compactMenu
                       disabled={aniosDisponiblesModulos.length === 0}
                       options={aniosDisponiblesModulos.map((anio) => ({
@@ -2123,6 +2138,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                       disabled={!contextoAcademicoListo || !carreraSeleccionadaId}
                       onChange={(v) => {
                         setCursoFiltroSemestre(v);
+                        setCursoFiltroAnio(String(new Date().getFullYear()));
                         setCursoForm((f) => ({ ...f, moduloId: '' }));
                       }}
                       placeholder={carreraSeleccionadaId ? 'Selecciona un semestre' : 'Elige una carrera primero'}
@@ -2133,28 +2149,51 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                       triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                     />
                   </label>
-                  <label className="flex min-w-0 flex-col gap-1 text-sm">
-                    <span className="text-slate-600 text-xs dark:text-slate-400">Módulo (materia + mes)</span>
-                    <AppSelect
-                      aria-label="Módulo del curso"
-                      value={cursoForm.moduloId}
-                      disabled={
-                        !contextoAcademicoListo ||
-                        !cursoFiltroSemestre ||
-                        (Boolean(cursoFiltroSemestre) && sortedModulosCurso.length === 0)
-                      }
-                      onChange={(v) => setCursoForm((f) => ({ ...f, moduloId: v }))}
-                      placeholder={cursoFiltroSemestre ? 'Selecciona un módulo' : 'Elige un semestre primero'}
-                      emptyOptionsText={
-                        cursoFiltroSemestre && sortedModulosCurso.length === 0 ? 'Sin opciones' : undefined
-                      }
-                      options={sortedModulosCurso.map((m) => ({
-                        value: String(m.id),
-                        label: `${m.materia ?? `Materia ${m.materia_id}`} · ${MESES[(m.mes ?? 1) - 1]} ${m.anio}`,
-                      }))}
-                      triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
-                    />
-                  </label>
+                  <div className="grid grid-cols-[1fr_auto] gap-3">
+                    <label className="flex min-w-0 flex-col gap-1 text-sm">
+                      <span className="text-slate-600 text-xs dark:text-slate-400">Módulo (materia + mes)</span>
+                      <AppSelect
+                        aria-label="Módulo del curso"
+                        value={cursoForm.moduloId}
+                        disabled={
+                          !contextoAcademicoListo ||
+                          !cursoFiltroSemestre ||
+                          (Boolean(cursoFiltroSemestre) && modulosCursoFiltrados.length === 0)
+                        }
+                        onChange={(v) => setCursoForm((f) => ({ ...f, moduloId: v }))}
+                        placeholder={cursoFiltroSemestre ? 'Selecciona un módulo' : 'Elige un semestre primero'}
+                        emptyOptionsText={
+                          cursoFiltroSemestre && modulosCursoFiltrados.length === 0 ? 'Sin opciones' : undefined
+                        }
+                        options={modulosCursoFiltrados.map((m) => ({
+                          value: String(m.id),
+                          label: `${m.materia ?? `Materia ${m.materia_id}`} · ${MESES[(m.mes ?? 1) - 1]} ${m.anio}`,
+                        }))}
+                        triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                      />
+                    </label>
+                    <label className="flex min-w-0 flex-col gap-1 text-sm">
+                      <span className="text-slate-600 text-xs dark:text-slate-400">Año</span>
+                      <AppSelect
+                        aria-label="Filtrar módulos del curso por año"
+                        className="w-20"
+                        size="xs"
+                        value={cursoFiltroAnio}
+                        onChange={(v) => {
+                          setCursoFiltroAnio(v);
+                          setCursoForm((f) => ({ ...f, moduloId: '' }));
+                        }}
+                        placeholder="−"
+                        compactMenu
+                        disabled={!cursoFiltroSemestre || aniosDisponiblesModulosCurso.length === 0}
+                        options={aniosDisponiblesModulosCurso.map((anio) => ({
+                          value: String(anio),
+                          label: String(anio),
+                        }))}
+                        triggerClassName="w-full px-2 py-1.5 rounded-md bg-white border border-slate-300 text-xs text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                      />
+                    </label>
+                  </div>
                   <div className="flex min-w-0 flex-col gap-1 text-sm relative">
                     <span className="text-slate-600 text-xs dark:text-slate-400">Docente</span>
                     <div className="relative">
@@ -2273,8 +2312,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                       size="xs"
                       value={cursoListaAnio}
                       onChange={setCursoListaAnio}
-                      allowEmpty
-                      emptyLabel="Año"
+                      placeholder="Año"
                       compactMenu
                       disabled={aniosDisponiblesCursos.length === 0}
                       options={aniosDisponiblesCursos.map((anio) => ({
