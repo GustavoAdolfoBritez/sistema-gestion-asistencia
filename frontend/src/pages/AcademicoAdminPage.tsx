@@ -2042,12 +2042,14 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                     </div>
                     <AppSelect
                       aria-label="Filtrar módulos por año"
-                      className="w-full min-w-0 shrink-0 lg:w-[7.25rem]"
+                      className="w-full min-w-0 shrink-0 lg:w-20"
                       size="xs"
                       value={moduloListaAnio}
                       onChange={setModuloListaAnio}
                       allowEmpty
-                      emptyLabel="Todos"
+                      emptyLabel="Año"
+                      compactMenu
+                      disabled={aniosDisponiblesModulos.length === 0}
                       options={aniosDisponiblesModulos.map((anio) => ({
                         value: String(anio),
                         label: String(anio),
@@ -2267,12 +2269,14 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                     </div>
                     <AppSelect
                       aria-label="Filtrar cursos por año"
-                      className="w-full min-w-0 shrink-0 lg:w-[7.25rem]"
+                      className="w-full min-w-0 shrink-0 lg:w-20"
                       size="xs"
                       value={cursoListaAnio}
                       onChange={setCursoListaAnio}
                       allowEmpty
-                      emptyLabel="Todos"
+                      emptyLabel="Año"
+                      compactMenu
+                      disabled={aniosDisponiblesCursos.length === 0}
                       options={aniosDisponiblesCursos.map((anio) => ({
                         value: String(anio),
                         label: String(anio),

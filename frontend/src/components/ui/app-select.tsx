@@ -78,7 +78,7 @@ function computeMenuPlacement(
   );
   const viewportMax = window.innerWidth - VIEWPORT_MARGIN_PX * 2;
   const width = compactMenu
-    ? Math.min(Math.max(trigger.width, 88), viewportMax)
+    ? Math.min(Math.max(trigger.width, 64), viewportMax)
     : wrapOptions
       ? Math.min(Math.max(trigger.width, 160), viewportMax)
       : Math.min(Math.max(trigger.width, minWidthForLabels(optionLabels)), viewportMax);
