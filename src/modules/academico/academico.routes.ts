@@ -23,13 +23,16 @@ import {
     listarAlumnosPorSemestreCurricular,
     promocionarSemestreCurricular,
     previewPromocionSemestreMasivaFacultad,
-    ejecutarPromocionSemestreMasivaFacultad
+    ejecutarPromocionSemestreMasivaFacultad,
+    actualizarAlumno
 } from './academico.service';
+import { verificarPasswordUsuarioAutenticado } from '../auth/auth.service';
 import {
     ROLES_ADMIN_O_ACADEMICOS,
     ROLES_ALUMNOS,
     ROLES_GESTION_ACADEMICA_OPERATIVA,
-    ROLES_LECTURA_DIRECCION
+    ROLES_LECTURA_DIRECCION,
+    ROLES_EDITAR_ALUMNOS
 } from '../../utils/rbac';
 import {
     ForbiddenScopeError,
@@ -564,6 +567,42 @@ router.get('/academico/alumnos/:alumnoId/ficha', async (req, res, next) => {
         if (error instanceof Error) {
             return res.status(400).json({ mensaje: error.message });
         }
+        next(error);
+    }
+});
+
+const mwEditarAlumnos = autorizarRoles(...ROLES_EDITAR_ALUMNOS);
+
+router.put('/academico/alumnos/:alumnoId', mwEditarAlumnos, async (req, res, next) => {
+    try {
+        const usuarioId = req.usuario?.usuarioId;
+        if (!usuarioId) return res.status(401).json({ mensaje: 'No autenticado' });
+
+        const alumnoId = String(req.params.alumnoId ?? '').trim();
+        if (!alumnoId) return res.status(400).json({ mensaje: 'alumnoId inválido' });
+
+        const { password, nombres, apellidos, numero_documento } = req.body ?? {};
+
+        await verificarPasswordUsuarioAutenticado(usuarioId, String(password ?? ''));
+
+        const { alumno, antes } = await actualizarAlumno(alumnoId, { nombres, apellidos, numero_documento });
+
+        await registrarEventoAuditoriaSegura({
+            modulo: 'alumnos',
+            accion: 'editar_alumno',
+            recursoTipo: 'alumno',
+            recursoId: alumnoId,
+            recursoResumen: `CI ${alumno.numero_documento} — ${[alumno.nombres, alumno.apellidos].filter(Boolean).join(' ')}`,
+            resultado: 'ok',
+            severidad: 'alta',
+            antes,
+            despues: alumno,
+            contexto: construirContextoAuditoria(req)
+        });
+
+        res.json(alumno);
+    } catch (error) {
+        if (error instanceof Error) return res.status(400).json({ mensaje: error.message });
         next(error);
     }
 });

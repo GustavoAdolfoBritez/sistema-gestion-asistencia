@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from '../utils/toast';
 import { AcademicoSubnav } from '../components/AcademicoSubnav';
 import { AppSidebar } from '../components/AppSidebar';
 import { ScopeSelector, ScopeSelectorSkeleton, useAutoAssignScopeId } from '../components/ScopeSelector';
@@ -11,8 +11,6 @@ import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { EditItemDialog } from '../components/ui/edit-item-dialog';
 import type { EditFormField } from '../components/ui/edit-item-dialog';
 import { apiFetch } from '../utils/api';
-import { PullToRefreshIndicator } from '../components/ui/pull-to-refresh-indicator';
-import { usePullToRefresh } from '../hooks/usePullToRefresh';
 
 type Modulo = {
   id: number;
@@ -293,13 +291,26 @@ function obtenerSemestrePlanCurso(curso: Curso, modulos: Modulo[], materias: Mat
 
 const MAX_SEMESTRE_PLAN = 10;
 
-/** Año del módulo: relativo al año calendario actual (un año atrás + planificación a futuro). */
-const ANIO_MODULO_ATRAS = 1;
-const ANIO_MODULO_ADELANTE = 10;
-
 function limitesAnioModulo() {
   const y = new Date().getFullYear();
-  return { min: y - ANIO_MODULO_ATRAS, max: y + ANIO_MODULO_ADELANTE };
+  return { min: y, max: 2036 };
+}
+
+function opcionesAnioModulo(): { value: string; label: string }[] {
+  const currentYear = new Date().getFullYear();
+  const options: { value: string; label: string }[] = [];
+  for (let y = currentYear; y <= 2036; y++) {
+    options.push({ value: String(y), label: String(y) });
+  }
+  return options;
+}
+
+function opcionesAnioVigencia(): { value: string; label: string }[] {
+  const options: { value: string; label: string }[] = [];
+  for (let y = 2016; y <= 2036; y++) {
+    options.push({ value: String(y), label: String(y) });
+  }
+  return options;
 }
 
 /** Primer y último día del mes calendario del módulo (mes 1–12). */
@@ -1204,13 +1215,19 @@ export function AcademicoAdminPage({ onLogout }: Props) {
       toast.error('Seleccioná un semestre antes de agregar una materia.');
       return;
     }
+    const nombre = materiaForm.nombre.trim();
+    const codigo = materiaForm.codigo.trim();
+    if (!nombre || !codigo) {
+      toast.error('Los campos "Nombre" y "Código" son obligatorios.');
+      return;
+    }
     try {
       const nueva = await apiFetch<Materia>('/academico/materias', {
         method: 'POST',
         body: JSON.stringify({
           planId: addMateriaForPlanId,
-          nombre: materiaForm.nombre,
-          codigo: materiaForm.codigo,
+          nombre,
+          codigo,
           semestre: sem,
         }),
       });
@@ -1229,7 +1246,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
       fields: [
         { key: 'nombre', label: 'Nombre', defaultValue: plan.nombre, required: true },
         { key: 'resolucion', label: 'Resolución (opcional)', defaultValue: plan.resolucion ?? '' },
-        { key: 'anioVigencia', label: 'Año de vigencia (opcional)', defaultValue: plan.anio_vigencia ? String(plan.anio_vigencia) : '', type: 'number' },
+        { key: 'anioVigencia', label: 'Año de vigencia (opcional)', defaultValue: plan.anio_vigencia ? String(plan.anio_vigencia) : '', options: opcionesAnioVigencia(), columns: 4 },
       ],
       onSave: async (values) => {
         const anioVigencia = values.anioVigencia.trim() ? Number(values.anioVigencia) : null;
@@ -1365,7 +1382,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
       title: 'Editar módulo',
       fields: [
         { key: 'materiaId', label: 'Materia', required: true, defaultValue: String(mod.materia_id), options: materiaOptions },
-        { key: 'anio', label: 'Año', type: 'number', required: true, defaultValue: String(mod.anio) },
+        { key: 'anio', label: 'Año', required: true, defaultValue: String(mod.anio), options: opcionesAnioModulo(), columns: 4 },
         { key: 'mes', label: 'Mes', required: true, defaultValue: String(mod.mes), options: mesOptions },
         { key: 'fechaInicio', label: 'Fecha inicio', type: 'date', required: true, defaultValue: toDateInputValue(mod.fecha_inicio) },
         { key: 'fechaFin', label: 'Fecha fin', type: 'date', required: true, defaultValue: toDateInputValue(mod.fecha_fin) },
@@ -1548,20 +1565,8 @@ export function AcademicoAdminPage({ onLogout }: Props) {
     });
   };
 
-  const rangoAnioModulo = limitesAnioModulo();
-
-  const pageScrollRef = useRef<HTMLDivElement>(null);
-  const pullToRefresh = usePullToRefresh({
-    containerRef: pageScrollRef,
-    onRefresh: () => {
-      setFacultadSeleccionadaId('');
-      setCarreraSeleccionadaId('');
-      void fetchData();
-    },
-  });
-
   return (
-    <div className="system-bg app-shell-viewport text-slate-800 dark:text-[#e7eef9] overflow-hidden">
+    <div className="system-bg app-shell-viewport text-slate-800 dark:text-[#e7eef9] min-h-screen h-screen overflow-hidden">
       <div className="app-layout-row">
         {sidebarOpen ? (
           <div className="app-sidebar-scrim" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
@@ -1570,31 +1575,28 @@ export function AcademicoAdminPage({ onLogout }: Props) {
         <AppSidebar sidebarOpen={sidebarOpen} onLogout={onLogout} onClose={() => setSidebarOpen(false)} />
 
         <main className="app-layout-main">
-          <header className="flex shrink-0 min-w-0 items-center justify-between gap-3 py-2.5 px-4 sm:px-6 bg-white/95 backdrop-blur-md border-b border-slate-200 dark:bg-[#132a52]/90 dark:border-slate-800">
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <button
-                className="app-menu-toggle text-slate-600 hover:text-black dark:text-slate-400 dark:hover:text-slate-200"
-                onClick={() => setSidebarOpen(true)}
-                aria-label="Abrir menú"
-              >
-                <span className="material-symbols-outlined">menu</span>
-              </button>
-              <span className="material-symbols-outlined text-[#6b8bc3]">auto_stories</span>
-              <div className="min-w-0">
-                <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Administración</p>
-                <h1 className="text-xl font-semibold text-black dark:text-[#e7eef9] leading-snug">Períodos y Cursos</h1>
+          <header className="flex shrink-0 min-w-0 flex-col gap-2 overflow-visible py-2.5 px-4 sm:px-6 bg-white/95 backdrop-blur-md border-b border-slate-200 z-10 dark:bg-[#132a52]/90 dark:border-slate-800">
+            <div className="flex flex-wrap items-center justify-between gap-3 min-h-10 min-w-0">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <button
+                  className="app-menu-toggle text-slate-600 hover:text-black dark:text-slate-400 dark:hover:text-slate-200"
+                  onClick={() => setSidebarOpen(true)}
+                  aria-label="Abrir menú"
+                >
+                  <span className="material-symbols-outlined">menu</span>
+                </button>
+                <span className="material-symbols-outlined text-[#6b8bc3]">auto_stories</span>
+                <div className="min-w-0">
+                  <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Administración</p>
+                  <h1 className="text-xl font-semibold text-black dark:text-[#e7eef9] leading-snug">Períodos y Cursos</h1>
+                </div>
               </div>
             </div>
+            <AcademicoSubnav />
           </header>
 
-          <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-            <div ref={pageScrollRef} className="scroll-region app-scroll-content academico-mobile-cards-inset flex-1 p-4 sm:p-6 space-y-4 min-w-0">
-            <PullToRefreshIndicator
-              pullDistance={pullToRefresh.pullDistance}
-              isRefreshing={pullToRefresh.isRefreshing}
-              pullProgress={pullToRefresh.pullProgress}
-            />
-            <AcademicoSubnav />
+          <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden max-lg:pt-10">
+            <div className="scroll-region app-scroll-content academico-mobile-cards-inset flex-1 p-4 sm:p-6 space-y-6 min-w-0">
             <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-4 text-black shadow-sm dark:border-slate-800 dark:bg-[#132a52] dark:text-[#e7eef9] dark:shadow-none min-w-0">
               <div>
                 <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Módulo base</p>
@@ -1754,7 +1756,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                               )}
                               <div className="divide-y divide-slate-200 rounded-lg border border-slate-200 overflow-hidden bg-white dark:divide-slate-800/90 dark:border-slate-800/80 dark:bg-[#0a1628]/50">
                                 {materiasDelSemestre.map((m, idx) => (
-                                  <div key={m.id} className="flex flex-col gap-2 py-2 max-lg:px-1 lg:flex-row lg:items-center lg:justify-between">
+                                  <div key={m.id} className="flex flex-col gap-2 py-2 max-md:px-1 md:flex-row md:items-center md:justify-between">
                                     <div className="flex min-w-0 items-center gap-3">
                                       <span className="w-5 shrink-0 text-right text-xs text-slate-500">{idx + 1}.</span>
                                       <div className="min-w-0">
@@ -1762,7 +1764,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                                         <p className="text-xs text-slate-600 dark:text-slate-400">{m.codigo}</p>
                                       </div>
                                     </div>
-                                    <div className="btn-mobile-row flex shrink-0 gap-1 lg:gap-1">
+                                    <div className="btn-mobile-row flex shrink-0 gap-1 lg:gap-1 mr-4">
                                       <button type="button" className="btn-modern btn-modern-xs btn-modern-edit" onClick={() => handleEditMateria(m)}>Editar</button>
                                       <button type="button" className="btn-modern btn-modern-xs btn-modern-danger" onClick={() => handleDeleteMateria(m)}>Eliminar</button>
                                     </div>
@@ -1837,12 +1839,13 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                             value={planForm.resolucion}
                             onChange={(e) => setPlanForm((f) => ({ ...f, resolucion: e.target.value }))}
                           />
-                          <input
-                            className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
-                            placeholder="Año vigencia"
-                            type="number"
+                          <AppSelect
                             value={planForm.anioVigencia}
-                            onChange={(e) => setPlanForm((f) => ({ ...f, anioVigencia: e.target.value }))}
+                            onChange={(v) => setPlanForm((f) => ({ ...f, anioVigencia: v }))}
+                            placeholder="Seleccionar año"
+                            options={opcionesAnioVigencia()}
+                            columns={4}
+                            triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                           />
                         </div>
                         <div className="btn-mobile-stack flex gap-2">
@@ -1934,19 +1937,14 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                   </label>
                   <label className="flex flex-col gap-1 text-sm">
                     <span className="text-slate-600 text-xs dark:text-slate-400">Año</span>
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      min={rangoAnioModulo.min}
-                      max={rangoAnioModulo.max}
-                      step={1}
-                      className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                    <AppSelect
                       value={moduloForm.anio}
-                      disabled={!contextoAcademicoListo}
-                      onChange={(e) => {
-                        const newAnio = e.target.value;
-                        setModuloForm((f) => ({ ...f, anio: newAnio, fechaInicio: '', fechaFin: '' }));
-                      }}
+                      disabled={!contextoAcademicoListo || !moduloForm.materiaId}
+                      onChange={(v) => setModuloForm((f) => ({ ...f, anio: v, fechaInicio: '', fechaFin: '' }))}
+                      placeholder="Seleccionar año"
+                      options={opcionesAnioModulo()}
+                      columns={4}
+                      triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-sm">
@@ -1954,7 +1952,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                     <AppSelect
                       aria-label="Mes del módulo"
                       value={moduloForm.mes}
-                      disabled={!contextoAcademicoListo}
+                      disabled={!contextoAcademicoListo || !moduloForm.materiaId}
                       onChange={(v) => {
                         setModuloForm((f) => ({ ...f, mes: v, fechaInicio: '', fechaFin: '' }));
                       }}

@@ -20,6 +20,8 @@ export const RBAC = {
 export const ROLES_ADMIN_O_ACADEMICOS = unique(RBAC.admin, RBAC.academic);
 /** Gestión de usuarios: administración global y secretaría académica (Jefe de Carrera no tiene acceso a usuarios). */
 export const ROLES_GESTION_USUARIOS = unique(RBAC.admin, ['Secretaría Académica'] as const);
+/** Edición de datos de alumno (nombre, apellido, CI): solo administración global y secretaría académica. */
+export const ROLES_EDITAR_ALUMNOS = unique(RBAC.admin, ['Secretaría Académica'] as const);
 /** Eliminar usuarios: administración global y secretaría académica. */
 export const ROLES_ELIMINAR_USUARIOS = unique(RBAC.admin, ['Secretaría Académica'] as const);
 /** Búsqueda 360 / ficha / informe PDF de alumnos: académicos + coordinación de facultad (con filtro por scopes). */

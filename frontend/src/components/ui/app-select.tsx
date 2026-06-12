@@ -135,6 +135,8 @@ export interface AppSelectProps {
   size?: 'md' | 'sm' | 'xs';
   /** Menú del ancho del trigger (año, cantidad, etc.) sin ensancharse a toda la fila en móvil. */
   compactMenu?: boolean;
+  /** Distribuye las opciones en N columnas (grid) en lugar de lista vertical. */
+  columns?: number;
 }
 
 function labelForValue(
@@ -169,6 +171,7 @@ export function AppSelect({
   emptyOptionsText,
   size = 'md',
   compactMenu = false,
+  columns,
 }: AppSelectProps) {
   const [open, setOpen] = useState(false);
   const [menuPlacement, setMenuPlacement] = useState<MenuPlacement | null>(null);
@@ -322,18 +325,20 @@ export function AppSelect({
               className={cn(
                 appSelectListClass,
                 listMaxHeight,
-                compactMenu && 'py-0.5 shadow-md',
+                !columns && compactMenu && 'py-0.5 shadow-md',
+                columns && 'p-1',
                 listClassName
               )}
               style={{
                 position: 'fixed',
                 left: menuPlacement.left,
-                width: menuPlacement.width,
-                minWidth: compactMenu ? undefined : menuPlacement.width,
-                maxWidth: compactMenu ? menuPlacement.width : 'min(100vw - 2rem, 28rem)',
+                width: columns ? Math.max(menuPlacement.width, columns * 64 + 16) : menuPlacement.width,
+                minWidth: compactMenu && !columns ? undefined : menuPlacement.width,
+                maxWidth: columns ? Math.max(menuPlacement.width, columns * 64 + 16) : (compactMenu ? menuPlacement.width : 'min(100vw - 2rem, 28rem)'),
                 maxHeight: menuPlacement.maxHeight,
                 top: menuPlacement.top,
                 bottom: menuPlacement.bottom,
+                ...(columns ? { display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: '1px' } : {}),
               }}
             >
               {visibleListOptions.length === 0 ? (
@@ -350,7 +355,7 @@ export function AppSelect({
                         disabled={opt.disabled}
                         className={cn(
                           appSelectOptionClass(isSelected),
-                          compactMenu && 'px-2.5 py-1.5 text-center text-sm font-semibold tabular-nums'
+                          (compactMenu || columns) && 'px-2.5 py-1.5 text-center text-sm'
                         )}
                         onMouseDown={(e) => {
                           e.preventDefault();

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from '../utils/toast';
 import * as XLSX from 'xlsx';
 import { AppSidebar } from '../components/AppSidebar';
 import { AppSelect } from '../components/ui/app-select';
@@ -190,6 +190,12 @@ function semestreDesdeDescripcion(descripcion?: string | null): number | null {
   const sem = descripcion?.match(/(\d{1,2})\s*°?\s*semestre|semestre\s*(\d{1,2})/i);
   if (!sem) return null;
   return Number(sem[1] ?? sem[2]);
+}
+
+function cohorteDesdeDescripcion(descripcion?: string | null): number | null {
+  const match = descripcion?.match(/año\s+de\s+ingreso\s+(\d{4})/i);
+  if (!match) return null;
+  return Number(match[1]);
 }
 
 function loteEsDescartable(estado?: string | null): boolean {
@@ -413,8 +419,16 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
   const [carreraSeleccionadaId, setCarreraSeleccionadaId] = useState('');
   const [semestreSeleccionado, setSemestreSeleccionado] = useState('');
   /** Año de cohorte de ingreso del lote (se replica en alumnos al confirmar). Vacío = sin cohorte. */
-  const [cohorteIngresoAnio, setCohorteIngresoAnio] = useState(() => String(new Date().getFullYear()));
+  const [cohorteIngresoAnio, setCohorteIngresoAnio] = useState('');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const anioIngresoOptions = useMemo(() => {
+    const years: { value: string; label: string }[] = [];
+    for (let y = 2016; y <= 2036; y++) {
+      years.push({ value: String(y), label: String(y) });
+    }
+    return years;
+  }, []);
 
   const resumen = useMemo(() => {
     const totalRegistros = batches.reduce((acc, item) => acc + (item.totalRegistros ?? 0), 0);
@@ -653,17 +667,16 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
       }
 
       const cohorteTrim = String(cohorteIngresoAnio).trim();
-      let cohorteAnioPayload: number | null | undefined;
       if (cohorteTrim === '') {
-        cohorteAnioPayload = null;
-      } else {
-        const y = Number.parseInt(cohorteTrim, 10);
-        if (!Number.isFinite(y) || y < 1990 || y > 2100) {
-          toast.error('El año de ingreso debe estar entre 1990 y 2100, o dejá el campo vacío.');
-          return;
-        }
-        cohorteAnioPayload = y;
+        toast.error('Selecciona el año de ingreso antes de cargar el archivo.');
+        return;
       }
+      const y = Number.parseInt(cohorteTrim, 10);
+      if (!Number.isFinite(y) || y < 1990 || y > 2100) {
+        toast.error('El año de ingreso debe estar entre 1990 y 2100.');
+        return;
+      }
+      const cohorteAnioPayload = y;
 
       setUploadError(null);
       setUploadPhase('parsing');
@@ -672,9 +685,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
       setUploadMessage('Leyendo archivo Excel…');
 
       let loteIdCreado: number | null = null;
-      const descCohorte =
-        cohorteAnioPayload != null ? ` · Año de ingreso ${cohorteAnioPayload}` : '';
-      const descripcionLote = `Carga de ${entity.titulo} · ${facultadSeleccionada} · ${carreraSeleccionada} · Semestre ${semestreSeleccionado}${descCohorte}`;
+      const descripcionLote = `Carga de ${entity.titulo} · ${facultadSeleccionada} · ${carreraSeleccionada} · Semestre ${semestreSeleccionado} · Año de ingreso ${cohorteAnioPayload}`;
 
       let smoothRafId = 0;
 
@@ -1118,15 +1129,14 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                     </label>
                     <label className="flex min-w-0 flex-col gap-2 text-sm">
                       <span className="text-[#9fb3d4] font-medium">Año de ingreso</span>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="Ej. 2025 (opcional)"
-                        className="w-full px-3 py-2 rounded-lg bg-[#132a52] border border-slate-700 focus:border-primary focus:outline-none text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                      <AppSelect
                         value={cohorteIngresoAnio}
                         disabled={!carreraSeleccionadaId}
-                        onChange={(e) => setCohorteIngresoAnio(e.target.value)}
-                        autoComplete="off"
+                        onChange={setCohorteIngresoAnio}
+                        placeholder="Seleccionar año"
+                        options={anioIngresoOptions}
+                        columns={4}
+                        triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm disabled:opacity-60 disabled:cursor-not-allowed dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                       />
                     </label>
                   </div>
@@ -1516,6 +1526,14 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                             </p>
                           </div>
                         ) : null}
+                        {cohorteDesdeDescripcion(batchDetail.descripcion) ? (
+                          <div>
+                            <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">Año de ingreso</p>
+                            <p className="mt-1 font-medium text-[#f0f4f8]">
+                              {cohorteDesdeDescripcion(batchDetail.descripcion)}
+                            </p>
+                          </div>
+                        ) : null}
                       </div>
                       <div className="import-detalle-destino-pc hidden space-y-1.5 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm leading-snug text-slate-600 xl:block">
                         <p>
@@ -1535,6 +1553,14 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                             <span>Semestre: </span>
                             <span className="import-detalle-destino-valor font-semibold text-slate-900 dark:xl:text-[#f0f4f8]">
                               {semestreDesdeDescripcion(batchDetail.descripcion)}° Semestre
+                            </span>
+                          </p>
+                        ) : null}
+                        {cohorteDesdeDescripcion(batchDetail.descripcion) ? (
+                          <p>
+                            <span>Año de ingreso: </span>
+                            <span className="import-detalle-destino-valor font-semibold text-slate-900 dark:xl:text-[#f0f4f8]">
+                              {cohorteDesdeDescripcion(batchDetail.descripcion)}
                             </span>
                           </p>
                         ) : null}

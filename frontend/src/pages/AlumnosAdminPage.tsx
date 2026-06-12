@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { toast } from 'sonner';
+import { toast } from '../utils/toast';
 import { AppSidebar } from '../components/AppSidebar';
 import { JustificacionFechasGrupo } from '../components/JustificacionFechasGrupo';
 import { ScopeSelector, ScopeSelectorSkeleton } from '../components/ScopeSelector';
@@ -12,7 +12,7 @@ import { usePullToRefresh } from '../hooks/usePullToRefresh';
 import { useScopeForm } from '../hooks/useScopeForm';
 import { abrirDocumento, apiFetch, generarYAbrirPdf } from '../utils/api';
 import { readStoredUser } from '../utils/session-user';
-import { esGestionUnicaCarreraAlumnosListado, puedeAprobarJustificaciones } from '../utils/rbac';
+import { esGestionUnicaCarreraAlumnosListado, puedeAprobarJustificaciones, puedeEditarAlumno } from '../utils/rbac';
 import {
   agruparJustificacionesPorCarga,
   claveGrupoJustificacionCarga,
@@ -357,6 +357,9 @@ export function AlumnosAdminPage({ onLogout }: Props) {
   const [resolviendoJustId, setResolviendoJustId] = useState<number | null>(null);
   const [comentariosJustModal, setComentariosJustModal] = useState<Record<number, string>>({});
   const [generandoInforme, setGenerandoInforme] = useState(false);
+  const [editAlumnoOpen, setEditAlumnoOpen] = useState(false);
+  const [editAlumnoSaving, setEditAlumnoSaving] = useState(false);
+  const [editAlumnoForm, setEditAlumnoForm] = useState({ nombres: '', apellidos: '', numero_documento: '', password: '' });
   /** Filtros del listado (no de la ficha): acotan la búsqueda en servidor. */
   const [listaFacultadId, setListaFacultadId] = useState('');
   const [listaCarreraId, setListaCarreraId] = useState('');
@@ -619,6 +622,57 @@ export function AlumnosAdminPage({ onLogout }: Props) {
       setGenerandoInforme(false);
     }
   }, [selectedAlumnoId]);
+
+  const handleOpenEditAlumno = useCallback(() => {
+    if (!ficha?.alumno) return;
+    setEditAlumnoForm({
+      nombres: ficha.alumno.nombres ?? '',
+      apellidos: ficha.alumno.apellidos ?? '',
+      numero_documento: ficha.alumno.numero_documento ?? '',
+      password: '',
+    });
+    setEditAlumnoOpen(true);
+  }, [ficha]);
+
+  const handleSaveEditAlumno = useCallback(async () => {
+    if (!selectedAlumnoId || !ficha?.alumno) return;
+    const { nombres, apellidos, numero_documento, password } = editAlumnoForm;
+    if (!password.trim()) {
+      toast.error('Ingresá tu contraseña para confirmar la edición.');
+      return;
+    }
+    if (!nombres.trim() || !apellidos.trim() || !numero_documento.trim()) {
+      toast.error('Todos los campos son obligatorios.');
+      return;
+    }
+    const origNombres = (ficha.alumno.nombres ?? '').trim();
+    const origApellidos = (ficha.alumno.apellidos ?? '').trim();
+    const origCI = (ficha.alumno.numero_documento ?? '').trim();
+    if (nombres.trim() === origNombres && apellidos.trim() === origApellidos && numero_documento.trim() === origCI) {
+      toast.error('No realizaste ningún cambio en los datos del alumno.');
+      return;
+    }
+    setEditAlumnoSaving(true);
+    try {
+      await apiFetch(`/academico/alumnos/${selectedAlumnoId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ nombres: nombres.trim(), apellidos: apellidos.trim(), numero_documento: numero_documento.trim(), password }),
+      });
+      toast.success('Alumno actualizado correctamente.');
+      setEditAlumnoOpen(false);
+      if (selectedAlumnoId) {
+        cargarFicha(selectedAlumnoId);
+      }
+      buscar({ reset: false });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'No se pudo actualizar el alumno.');
+    } finally {
+      setEditAlumnoSaving(false);
+    }
+  }, [selectedAlumnoId, editAlumnoForm, ficha, cargarFicha, buscar]);
+
+  const userRoles = readStoredUser()?.roles ?? [];
+  const mostrarBotonEditarAlumno = puedeEditarAlumno(userRoles);
 
   useEffect(() => {
     setAnioPromedioSeleccionado(null);
@@ -1195,15 +1249,27 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                       <div className="w-full lg:hidden">
                         <MetaAlumnoFichaMovil alumno={ficha.alumno} />
                       </div>
-                      <button
-                        type="button"
-                        className="btn-modern btn-modern-ghost btn-modern-sm btn-mobile-cta flex w-full shrink-0 items-center justify-center gap-1.5 max-xl:mx-0 xl:ml-auto xl:w-auto xl:justify-end"
-                        onClick={() => void descargarInformeAlumno()}
-                        disabled={generandoInforme}
-                      >
-                        <span className="material-symbols-outlined text-[16px]">picture_as_pdf</span>
-                        {generandoInforme ? 'Generando...' : 'Informe PDF'}
-                      </button>
+                      <div className="flex shrink-0 items-center gap-2 max-xl:w-full xl:ml-auto">
+                        {mostrarBotonEditarAlumno && (
+                          <button
+                            type="button"
+                            className="btn-modern btn-modern-edit btn-modern-sm btn-mobile-cta flex w-full items-center justify-center gap-1.5 xl:w-auto"
+                            onClick={() => handleOpenEditAlumno()}
+                          >
+                            <span className="material-symbols-outlined text-[16px]">edit</span>
+                            Editar
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="btn-modern btn-modern-ghost btn-modern-sm btn-mobile-cta flex w-full shrink-0 items-center justify-center gap-1.5 max-xl:mx-0 xl:w-auto xl:justify-end"
+                          onClick={() => void descargarInformeAlumno()}
+                          disabled={generandoInforme}
+                        >
+                          <span className="material-symbols-outlined text-[16px]">picture_as_pdf</span>
+                          {generandoInforme ? 'Generando...' : 'Informe PDF'}
+                        </button>
+                      </div>
                     </div>
 
                     <div className="grid shrink-0 grid-cols-2 gap-2 border-b border-slate-200 px-3 py-3 dark:border-slate-800 max-lg:gap-2 sm:gap-3 sm:px-5 sm:py-4 xl:grid-cols-4">
@@ -1787,6 +1853,72 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                       </div>
                     </DialogContent>
                   </Dialog>
+
+                  <Dialog open={editAlumnoOpen} onOpenChange={setEditAlumnoOpen}>
+                    <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
+                      <DialogHeader>
+                        <DialogTitle>Editar alumno</DialogTitle>
+                        <DialogDescription>
+                          Modificá los datos del alumno. Se requiere tu contraseña para confirmar.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <label className="flex flex-col gap-1.5 text-sm">
+                          <span className="font-medium text-slate-700 dark:text-slate-300">Nombres</span>
+                          <input
+                            className="px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                            value={editAlumnoForm.nombres}
+                            onChange={(e) => setEditAlumnoForm((f) => ({ ...f, nombres: e.target.value }))}
+                          />
+                        </label>
+                        <label className="flex flex-col gap-1.5 text-sm">
+                          <span className="font-medium text-slate-700 dark:text-slate-300">Apellidos</span>
+                          <input
+                            className="px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                            value={editAlumnoForm.apellidos}
+                            onChange={(e) => setEditAlumnoForm((f) => ({ ...f, apellidos: e.target.value }))}
+                          />
+                        </label>
+                        <label className="flex flex-col gap-1.5 text-sm">
+                          <span className="font-medium text-slate-700 dark:text-slate-300">Cédula de Identidad</span>
+                          <input
+                            className="px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                            value={editAlumnoForm.numero_documento}
+                            onChange={(e) => setEditAlumnoForm((f) => ({ ...f, numero_documento: e.target.value }))}
+                          />
+                        </label>
+                        <label className="flex flex-col gap-1.5 text-sm">
+                          <span className="font-medium text-slate-700 dark:text-slate-300">Tu contraseña</span>
+                          <input
+                            type="password"
+                            className="px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                            placeholder="Contraseña para confirmar"
+                            value={editAlumnoForm.password}
+                            onChange={(e) => setEditAlumnoForm((f) => ({ ...f, password: e.target.value }))}
+                          />
+                        </label>
+                        <div className="flex justify-end gap-3 pt-2">
+                          <button
+                            type="button"
+                            className="btn-modern btn-modern-ghost btn-modern-sm"
+                            onClick={() => setEditAlumnoOpen(false)}
+                            disabled={editAlumnoSaving}
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-modern btn-modern-primary btn-modern-sm"
+                            onClick={() => void handleSaveEditAlumno()}
+                            disabled={editAlumnoSaving}
+                          >
+                            {editAlumnoSaving ? 'Guardando...' : 'Guardar cambios'}
+                          </button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+
                   </>
                 )}
               </div>

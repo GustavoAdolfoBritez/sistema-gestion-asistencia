@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { toast } from 'sonner';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from '../utils/toast';
 import { AppSidebar } from '../components/AppSidebar';
 import { ReportesPanelListaScroll } from '../components/reportes/ReportesPanelListaScroll';
 import { ReportesCursoPicker } from '../components/reportes/ReportesCursoPicker';
@@ -12,8 +12,6 @@ import { abrirDocumento, apiFetch, generarYAbrirPdf, toastApiError } from '../ut
 import { formatDateTime24 } from '../utils/datetime';
 import { puedeEjecutarCierreMensual } from '../utils/rbac';
 import { readStoredUser } from '../utils/session-user';
-import { PullToRefreshIndicator } from '../components/ui/pull-to-refresh-indicator';
-import { usePullToRefresh } from '../hooks/usePullToRefresh';
 
 interface Props {
   onLogout?: () => void;
@@ -875,44 +873,15 @@ export function ReportesPage({ onLogout }: Props) {
     </div>
   );
 
-  const pageScrollRef = useRef<HTMLDivElement>(null);
-  const pullToRefresh = usePullToRefresh({
-    containerRef: pageScrollRef,
-    onRefresh: () => {
-      if (reporteTab === 'cierre' && cursoValido) {
-        void Promise.all([cargarChecklist(), cargarHabilitados(), cargarActas()]);
-        return;
-      }
-      if (reporteTab === 'consolidado' && semestreSeleccionado && anioFiltroCursos) {
-        void cargarConsolidado();
-        return;
-      }
-      if (reporteTab === 'ausentismo') {
-        void cargarAusentismoAgregado();
-        return;
-      }
-      setFacultadSeleccionadaId('');
-      setCarreraSeleccionadaId('');
-      setCursoSeleccionadoId('');
-      setSemestreSeleccionado('');
-      setAnioFiltroCursos('');
-      setChecklist(null);
-      setHabilitados([]);
-      setActas([]);
-      setConsolidado([]);
-      setAusentismoDatos([]);
-    },
-  });
-
   return (
-    <div className="system-bg app-shell-viewport text-[#e7eef9] overflow-hidden">
+    <div className="system-bg app-shell-viewport text-[#e7eef9] min-h-screen h-screen overflow-hidden">
       <div className="app-layout-row">
         {sidebarOpen ? <div className="app-sidebar-scrim" onClick={() => setSidebarOpen(false)} aria-hidden="true" /> : null}
 
         <AppSidebar sidebarOpen={sidebarOpen} onLogout={onLogout} onClose={() => setSidebarOpen(false)} />
 
         <main className="app-layout-main">
-          <header className="flex-shrink-0 min-h-16 bg-[#132a52]/90 backdrop-blur-md border-b border-slate-800 flex flex-wrap items-center gap-3 px-4 sm:px-6 py-3">
+          <header className="flex-shrink-0 min-h-16 bg-[#132a52]/90 backdrop-blur-md border-b border-slate-800 flex flex-wrap items-center gap-3 px-4 sm:px-6 py-3 z-10">
             <button className="app-menu-toggle text-slate-400" onClick={() => setSidebarOpen(true)} aria-label="Abrir menu">
               <span className="material-symbols-outlined">menu</span>
             </button>
@@ -923,13 +892,8 @@ export function ReportesPage({ onLogout }: Props) {
             </div>
           </header>
 
-          <section ref={pageScrollRef} className="scroll-region app-scroll-content flex-1 min-h-0 min-w-0 p-4 sm:p-6 space-y-5">
+          <section className="scroll-region app-scroll-content flex-1 min-h-0 min-w-0 p-4 sm:p-6 space-y-5">
 
-            <PullToRefreshIndicator
-              pullDistance={pullToRefresh.pullDistance}
-              isRefreshing={pullToRefresh.isRefreshing}
-              pullProgress={pullToRefresh.pullProgress}
-            />
             <div className="btn-mobile-tabs btn-mobile-tabs--inline-md flex flex-wrap items-center gap-2 rounded-2xl border border-[#2d466d]/70 bg-[#132a52] p-2 md:inline-flex">
               <button
                 type="button"

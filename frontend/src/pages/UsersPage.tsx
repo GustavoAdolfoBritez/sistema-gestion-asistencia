@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent, ReactNode, SyntheticEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import { toast } from '../utils/toast';
 import { AppSidebar } from '../components/AppSidebar';
 import { UserAvatar } from '../components/ui/user-avatar';
 import { SkeletonRow } from '../components/ui/skeleton';

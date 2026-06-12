@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from '../utils/toast';
 import { AcademicoSubnav } from '../components/AcademicoSubnav';
 import { AppSidebar } from '../components/AppSidebar';
 import { ScopeSelector, ScopeSelectorSkeleton, useAutoAssignScopeId } from '../components/ScopeSelector';

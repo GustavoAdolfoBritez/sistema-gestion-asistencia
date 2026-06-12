@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './dialog';
 import { AppSelect } from './app-select';
+import { toast } from '../../utils/toast';
 
 export interface EditFormField {
   key: string;
@@ -11,6 +12,8 @@ export interface EditFormField {
   placeholder?: string;
   /** Si está definido, se muestra un desplegable (`AppSelect`) en lugar de un input de texto. */
   options?: { value: string; label: string }[];
+  /** Columnas en modo grid cuando se usan options (ej. años con 4 columnas). */
+  columns?: number;
 }
 
 interface EditItemDialogProps {
@@ -63,6 +66,17 @@ export function EditItemDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    let changed = false;
+    for (const field of fields) {
+      if ((values[field.key] ?? '') !== (field.defaultValue ?? '')) {
+        changed = true;
+        break;
+      }
+    }
+    if (!changed) {
+      toast.error('No realizaste ningún cambio.');
+      return;
+    }
     await onSave(values);
   };
 
@@ -89,6 +103,7 @@ export function EditItemDialog({
             className="max-lg:w-full"
             options={field.options}
             value={values[field.key] ?? ''}
+            columns={field.columns}
             onChange={(v) => {
               setValues((prev) => {
                 const next = { ...prev, [field.key]: v };

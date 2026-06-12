@@ -1,4 +1,4 @@
-import { toast } from 'sonner';
+import { toast } from './toast';
 import type { SessionUser } from './rbac';
 
 /** API en Heroku; usada en build de producción si no hay VITE_API_URL (p. ej. en Vercel). */
