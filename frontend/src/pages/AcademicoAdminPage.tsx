@@ -1591,28 +1591,26 @@ export function AcademicoAdminPage({ onLogout }: Props) {
         <AppSidebar sidebarOpen={sidebarOpen} onLogout={onLogout} onClose={() => setSidebarOpen(false)} />
 
         <main className="app-layout-main">
-          <header className="flex shrink-0 min-w-0 flex-col gap-2 overflow-visible py-2.5 px-4 sm:px-6 bg-white/95 backdrop-blur-md border-b border-slate-200 z-10 dark:bg-[#132a52]/90 dark:border-slate-800">
-            <div className="flex flex-wrap items-center justify-between gap-3 min-h-10 min-w-0">
-              <div className="flex min-w-0 flex-1 items-center gap-3">
-                <button
-                  className="app-menu-toggle text-slate-600 hover:text-black dark:text-slate-400 dark:hover:text-slate-200"
-                  onClick={() => setSidebarOpen(true)}
-                  aria-label="Abrir menú"
-                >
-                  <span className="material-symbols-outlined">menu</span>
-                </button>
-                <span className="material-symbols-outlined text-[#6b8bc3]">auto_stories</span>
-                <div className="min-w-0">
-                  <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Administración</p>
-                  <h1 className="text-xl font-semibold text-black dark:text-[#e7eef9] leading-snug">Períodos y Cursos</h1>
-                </div>
+          <header className="flex shrink-0 min-w-0 items-center justify-between gap-3 py-2.5 px-4 sm:px-6 bg-white/95 backdrop-blur-md border-b border-slate-200 z-10 dark:bg-[#132a52]/90 dark:border-slate-800">
+            <div className="flex items-center gap-3 min-w-0">
+              <button
+                className="app-menu-toggle text-slate-600 hover:text-black dark:text-slate-400 dark:hover:text-slate-200"
+                onClick={() => setSidebarOpen(true)}
+                aria-label="Abrir menú"
+              >
+                <span className="material-symbols-outlined">menu</span>
+              </button>
+              <span className="material-symbols-outlined text-[#6b8bc3]">auto_stories</span>
+              <div className="min-w-0">
+                <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Administración</p>
+                <h1 className="text-xl font-semibold text-black dark:text-[#e7eef9] leading-snug">Períodos y Cursos</h1>
               </div>
             </div>
-            <AcademicoSubnav />
           </header>
 
-          <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden max-lg:pt-10">
+          <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             <div className="scroll-region app-scroll-content academico-mobile-cards-inset flex-1 p-4 sm:p-6 space-y-6 min-w-0">
+            <AcademicoSubnav />
             <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-4 text-black shadow-sm dark:border-slate-800 dark:bg-[#132a52] dark:text-[#e7eef9] dark:shadow-none min-w-0">
               <div>
                 <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Módulo base</p>
@@ -1656,8 +1654,8 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                         if (c?.facultad_id) setFacultadSeleccionadaId(String(c.facultad_id));
                       }
                     }}
-                  />
-                </div>
+                    />
+                  </div>
               )}
 
               {/* ── Planes de estudio – acordeón por carrera ── */}
@@ -2058,17 +2056,20 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                     </div>
                     <AppSelect
                       aria-label="Filtrar módulos por año"
-                      className="w-full min-w-0 shrink-0 lg:w-20"
+                      className="w-20 shrink-0"
                       size="xs"
                       value={moduloListaAnio}
                       onChange={setModuloListaAnio}
-                      placeholder="Año"
+                      placeholder="Todos"
                       compactMenu
                       disabled={aniosDisponiblesModulos.length === 0}
-                      options={aniosDisponiblesModulos.map((anio) => ({
-                        value: String(anio),
-                        label: String(anio),
-                      }))}
+                      options={[
+                        { value: '', label: 'Todos' },
+                        ...aniosDisponiblesModulos.map((anio) => ({
+                          value: String(anio),
+                          label: String(anio),
+                        })),
+                      ]}
                       triggerClassName="w-full px-2 py-1.5 rounded-md bg-white border border-slate-300 text-xs text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                     />
                   </div>

@@ -1249,11 +1249,11 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                       <div className="w-full lg:hidden">
                         <MetaAlumnoFichaMovil alumno={ficha.alumno} />
                       </div>
-                      <div className="flex shrink-0 items-center gap-2 max-xl:w-full xl:ml-auto">
+                      <div className="flex shrink-0 items-center gap-2 max-xl:ml-auto xl:ml-auto">
                         {mostrarBotonEditarAlumno && (
                           <button
                             type="button"
-                            className="btn-modern btn-modern-edit btn-modern-sm btn-mobile-cta flex w-full items-center justify-center gap-1.5 xl:w-auto"
+                              className="btn-modern btn-modern-edit btn-modern-sm flex items-center justify-center gap-1.5 max-md:min-h-0 max-md:px-3 max-md:py-1.5"
                             onClick={() => handleOpenEditAlumno()}
                           >
                             <span className="material-symbols-outlined text-[16px]">edit</span>
@@ -1262,7 +1262,7 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                         )}
                         <button
                           type="button"
-                          className="btn-modern btn-modern-ghost btn-modern-sm btn-mobile-cta flex w-full shrink-0 items-center justify-center gap-1.5 max-xl:mx-0 xl:w-auto xl:justify-end"
+                          className="btn-modern btn-modern-ghost btn-modern-sm flex shrink-0 items-center justify-center gap-1.5 max-md:min-h-0 max-md:px-3 max-md:py-2"
                           onClick={() => void descargarInformeAlumno()}
                           disabled={generandoInforme}
                         >
@@ -1392,20 +1392,21 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                           >
                             Año
                           </label>
-                          <AppSelect
-                            aria-label="Año de trayectoria"
-                            className="w-auto max-w-[7rem]"
-                            size="sm"
-                            compactMenu
-                            value={anioPromedioSeleccionado != null ? String(anioPromedioSeleccionado) : ''}
-                            disabled={!anioPromedioOptions.length}
-                            onChange={(v) => setAnioPromedioSeleccionado(Number(v))}
-                            options={anioPromedioOptions.map((a) => ({
-                              value: String(a),
-                              label: String(a),
-                            }))}
-                            triggerClassName={inpYearSelect}
-                          />
+                          {anioPromedioOptions.length === 0 ? (
+                            <span className="inline-flex items-center justify-center rounded-lg border px-2 py-0.5 text-sm font-semibold tabular-nums border-slate-300 bg-white text-slate-400 dark:border-slate-700 dark:bg-[#0b2147] dark:text-slate-500">—</span>
+                          ) : (
+                            <select
+                              id="anio-trayectoria"
+                              aria-label="Año de trayectoria"
+                              className={inpYearSelect}
+                              value={anioPromedioSeleccionado != null ? String(anioPromedioSeleccionado) : ''}
+                              onChange={(e) => setAnioPromedioSeleccionado(Number(e.target.value))}
+                            >
+                              {anioPromedioOptions.map((a) => (
+                                <option key={a} value={String(a)}>{a}</option>
+                              ))}
+                            </select>
+                          )}
                         </div>
                       </div>
                     </div>
