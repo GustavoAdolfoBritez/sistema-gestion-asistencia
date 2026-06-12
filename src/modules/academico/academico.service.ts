@@ -1554,66 +1554,6 @@ export interface AlumnoSemestreCurricularListItem {
     cohorte_anio: number | null;
 }
 
-export interface ActualizarAlumnoInput {
-    nombres?: string;
-    apellidos?: string;
-    numero_documento?: string;
-}
-
-export async function actualizarAlumno(alumnoId: string, input: ActualizarAlumnoInput) {
-    const sets: string[] = [];
-    const valores: (string | number)[] = [alumnoId];
-    const antes = await obtenerSnapshotAlumno(alumnoId);
-
-    if (input.numero_documento !== undefined) {
-        const ci = String(input.numero_documento).trim();
-        if (!ci) throw new Error('El número de documento no puede estar vacío.');
-        valores.push(ci);
-        sets.push(`numero_documento = $${valores.length}`);
-    }
-    if (input.nombres !== undefined) {
-        const nom = String(input.nombres).trim();
-        if (!nom) throw new Error('El nombre no puede estar vacío.');
-        valores.push(nom);
-        sets.push(`nombres = $${valores.length}`);
-    }
-    if (input.apellidos !== undefined) {
-        const ape = String(input.apellidos).trim();
-        if (!ape) throw new Error('El apellido no puede estar vacío.');
-        valores.push(ape);
-        sets.push(`apellidos = $${valores.length}`);
-    }
-
-    if (!sets.length) throw new Error('No se proporcionaron campos para actualizar.');
-
-    const nombreCompleto = [
-        input.nombres !== undefined ? String(input.nombres).trim() : (antes?.nombres ?? ''),
-        input.apellidos !== undefined ? String(input.apellidos).trim() : (antes?.apellidos ?? ''),
-    ].filter(Boolean).join(' ').trim() || null;
-
-    if (nombreCompleto) {
-        valores.push(nombreCompleto);
-        sets.push(`nombre_apellido = $${valores.length}`);
-    }
-
-    const { rows } = await pool.query(
-        `UPDATE alumnos SET ${sets.join(', ')} WHERE id = $1 RETURNING id, numero_documento, nombres, apellidos, nombre_apellido`,
-        valores
-    );
-
-    if (rows.length === 0) throw new Error('Alumno no encontrado.');
-
-    return { alumno: rows[0], antes };
-}
-
-async function obtenerSnapshotAlumno(alumnoId: string) {
-    const { rows } = await pool.query(
-        `SELECT id, numero_documento, nombres, apellidos, nombre_apellido FROM alumnos WHERE id = $1`,
-        [alumnoId]
-    );
-    return rows[0] ?? null;
-}
-
 export async function listarAlumnosPorSemestreCurricular(
     carreraId: number,
     semestre: number,

@@ -627,7 +627,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
       }
 
       if (!promises.length) {
-        toast('No se detectaron cambios');
+        toast.info('No se detectaron cambios');
         setSaving(false);
         return;
       }
