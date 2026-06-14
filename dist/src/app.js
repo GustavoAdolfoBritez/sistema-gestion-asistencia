@@ -27,6 +27,10 @@ const corsOptions = env_1.env.corsOrigins.length > 0
                 callback(null, true);
                 return;
             }
+            if (!env_1.env.isProduction && (0, env_1.esOrigenViteLanDev)(origin)) {
+                callback(null, true);
+                return;
+            }
             callback(new Error(`Origen no permitido por CORS: ${origin}`));
         },
         exposedHeaders: ['Content-Disposition', 'X-Acta-Id'],

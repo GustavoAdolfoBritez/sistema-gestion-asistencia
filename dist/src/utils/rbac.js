@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ROLES_CONSULTA_JUSTIFICACIONES = exports.ROLES_CONSULTA_ASISTENCIAS = exports.ROLES_APROBADORES_JUSTIFICACIONES = exports.ROLES_REGISTRO_JUSTIFICACIONES = exports.ROLES_OPERADORES_ASISTENCIAS = exports.ROLES_GESTION_ACADEMICA_OPERATIVA = exports.ROLES_CIERRE_MENSUAL_EJECUTAR = exports.ROLES_REPORTES_OPERATIVOS = exports.ROLES_LECTURA_DIRECCION = exports.ROLES_ALUMNOS = exports.ROLES_ELIMINAR_USUARIOS = exports.ROLES_GESTION_USUARIOS = exports.ROLES_ADMIN_O_ACADEMICOS = exports.RBAC = void 0;
+exports.ROLES_CONSULTA_JUSTIFICACIONES = exports.ROLES_CONSULTA_ASISTENCIAS = exports.ROLES_APROBADORES_JUSTIFICACIONES = exports.ROLES_REGISTRO_JUSTIFICACIONES = exports.ROLES_OPERADORES_ASISTENCIAS = exports.ROLES_GESTION_ACADEMICA_OPERATIVA = exports.ROLES_CIERRE_MENSUAL_EJECUTAR = exports.ROLES_REPORTES_OPERATIVOS = exports.ROLES_LECTURA_DIRECCION = exports.ROLES_ALUMNOS = exports.ROLES_ELIMINAR_USUARIOS = exports.ROLES_EDITAR_ALUMNOS = exports.ROLES_GESTION_USUARIOS = exports.ROLES_ADMIN_O_ACADEMICOS = exports.RBAC = void 0;
 const unique = (...grupos) => {
     const resultado = new Set();
     for (const grupo of grupos) {
@@ -21,6 +21,8 @@ exports.RBAC = {
 exports.ROLES_ADMIN_O_ACADEMICOS = unique(exports.RBAC.admin, exports.RBAC.academic);
 /** Gestión de usuarios: administración global y secretaría académica (Jefe de Carrera no tiene acceso a usuarios). */
 exports.ROLES_GESTION_USUARIOS = unique(exports.RBAC.admin, ['Secretaría Académica']);
+/** Edición de datos de alumno (nombre, apellido, CI): solo administración global y secretaría académica. */
+exports.ROLES_EDITAR_ALUMNOS = unique(exports.RBAC.admin, ['Secretaría Académica']);
 /** Eliminar usuarios: administración global y secretaría académica. */
 exports.ROLES_ELIMINAR_USUARIOS = unique(exports.RBAC.admin, ['Secretaría Académica']);
 /** Búsqueda 360 / ficha / informe PDF de alumnos: académicos + coordinación de facultad (con filtro por scopes). */

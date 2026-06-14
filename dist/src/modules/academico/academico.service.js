@@ -18,6 +18,7 @@ exports.crearCurso = crearCurso;
 exports.actualizarCurso = actualizarCurso;
 exports.eliminarCurso = eliminarCurso;
 exports.copiarMatriculasDesdeCurso = copiarMatriculasDesdeCurso;
+exports.actualizarAlumno = actualizarAlumno;
 exports.buscarAlumnos = buscarAlumnos;
 exports.obtenerFichaAlumno = obtenerFichaAlumno;
 exports.listarAlumnosPorSemestreCurricular = listarAlumnosPorSemestreCurricular;
@@ -921,6 +922,42 @@ function condicionTokenBusquedaAlumno(paramIndex) {
             OR COALESCE(al.nombre_apellido, '') ILIKE $${paramIndex}
             OR CONCAT_WS(' ', TRIM(COALESCE(al.apellidos, '')), TRIM(COALESCE(al.nombres, ''))) ILIKE $${paramIndex}
         )`;
+}
+async function actualizarAlumno(alumnoId, input) {
+    const alumnoIdSanitizado = String(alumnoId ?? '').trim();
+    if (!alumnoIdSanitizado)
+        throw new Error('ID de alumno inválido');
+    const cliente = await database_1.pool.connect();
+    try {
+        const { rows: antesRows } = await cliente.query(`SELECT id, numero_documento, nombres, apellidos, nombre_apellido,
+                    semestre_curricular, referencia_carrera_id, cohorte_anio
+             FROM alumnos WHERE id = $1`, [alumnoIdSanitizado]);
+        if (!antesRows[0])
+            throw new Error('Alumno no encontrado');
+        const antes = antesRows[0];
+        const nuevosNombres = input.nombres != null ? String(input.nombres).trim() : antes.nombres;
+        const nuevosApellidos = input.apellidos != null ? String(input.apellidos).trim() : antes.apellidos;
+        const nuevoDoc = input.numero_documento != null ? String(input.numero_documento).trim() : antes.numero_documento;
+        if (input.numero_documento != null && nuevoDoc !== antes.numero_documento) {
+            const { rows: dup } = await cliente.query(`SELECT id FROM alumnos WHERE numero_documento = $1 AND id <> $2 LIMIT 1`, [nuevoDoc, alumnoIdSanitizado]);
+            if (dup.length > 0) {
+                throw new Error('El número de documento ya está registrado en otro alumno.');
+            }
+        }
+        const nombreApellido = [nuevosApellidos, nuevosNombres].filter(Boolean).join(', ') || `Alumno ${nuevoDoc}`;
+        const { rows: actualizado } = await cliente.query(`UPDATE alumnos SET
+                nombres = $1,
+                apellidos = $2,
+                numero_documento = $3,
+                nombre_apellido = $4
+             WHERE id = $5
+             RETURNING id, numero_documento, nombres, apellidos, nombre_apellido,
+                       semestre_curricular, referencia_carrera_id, cohorte_anio`, [nuevosNombres || null, nuevosApellidos || null, nuevoDoc, nombreApellido, alumnoIdSanitizado]);
+        return { alumno: actualizado[0] ?? antes, antes };
+    }
+    finally {
+        cliente.release();
+    }
 }
 async function buscarAlumnos(filtro) {
     const termino = filtro.termino.trim();

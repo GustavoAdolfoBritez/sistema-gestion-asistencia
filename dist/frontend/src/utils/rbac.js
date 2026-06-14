@@ -7,6 +7,7 @@ exports.canAccessView = canAccessView;
 exports.getHomeViewForUser = getHomeViewForUser;
 exports.puedeEjecutarCierreMensual = puedeEjecutarCierreMensual;
 exports.puedeAprobarJustificaciones = puedeAprobarJustificaciones;
+exports.puedeEditarAlumno = puedeEditarAlumno;
 exports.esGestionUnicaCarreraAlumnosListado = esGestionUnicaCarreraAlumnosListado;
 /** Normaliza `roles` tal como puede llegar del login (array, string único u objeto tipo fila). */
 function coerceRolesToStringArray(roles) {
@@ -117,6 +118,11 @@ function puedeAprobarJustificaciones(roles) {
         set.has('coordinador de facultad') ||
         set.has('coordinador/a de facultad') ||
         set.has('coordinadora de facultad'));
+}
+/** Edición de datos de alumno: solo Administrador General y Secretaría Académica. */
+function puedeEditarAlumno(roles) {
+    const set = new Set(coerceRolesToStringArray(roles).map(normalizeRol));
+    return set.has('administrador general') || set.has('secretaria academica');
 }
 /**
  * Jefe de carrera sin rol de secretaría, administración global ni coordinación de facultad:

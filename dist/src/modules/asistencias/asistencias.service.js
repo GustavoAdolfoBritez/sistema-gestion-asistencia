@@ -25,9 +25,8 @@ const auth_middleware_1 = require("../../middlewares/auth.middleware");
 const rbac_1 = require("../../utils/rbac");
 const alumnos_scope_1 = require("../../utils/alumnos-scope");
 const alumno_nombre_sql_1 = require("../../utils/alumno-nombre-sql");
+Object.defineProperty(exports, "SQL_ORDEN_MATRICULA_PLANILLA", { enumerable: true, get: function () { return alumno_nombre_sql_1.SQL_ORDEN_MATRICULA_PLANILLA; } });
 const metricas_asistencia_1 = require("../../utils/metricas-asistencia");
-/** Orden de filas en planilla: importación primero; legacy sin orden → apellido. */
-exports.SQL_ORDEN_MATRICULA_PLANILLA = 'mat.orden_lista NULLS LAST, al.apellidos NULLS LAST, al.nombres NULLS LAST, al.nombre_apellido NULLS LAST, mat.id';
 const ROLES_APROBADORES_JUSTIFICACIONES_NORMALIZADOS = rbac_1.ROLES_APROBADORES_JUSTIFICACIONES.map((r) => (0, auth_middleware_1.normalizarRolComparacion)(r));
 function rolesIncluyenAprobadorJustificaciones(roles) {
     const usuario = roles.map((r) => (0, auth_middleware_1.normalizarRolComparacion)(String(r)));
@@ -212,7 +211,7 @@ async function obtenerPlanilla(filtro) {
         LEFT JOIN asistencias a ON a.sesion_id = sc.id AND a.matricula_id = mat.id
         WHERE ${where}
         GROUP BY mat.id, al.id, al.numero_documento, mat.estado_academico, mat.faltas_acumuladas, mat.porcentaje_asistencia, mat.orden_lista
-        ORDER BY ${exports.SQL_ORDEN_MATRICULA_PLANILLA};
+        ORDER BY ${alumno_nombre_sql_1.SQL_ORDEN_MATRICULA_PLANILLA};
     `;
     const { rows } = await database_1.pool.query(consulta, valores);
     return rows;
@@ -281,7 +280,23 @@ async function obtenerResumenCurso(cursoId) {
     return rows[0] ?? null;
 }
 async function obtenerHabilitados(cursoId) {
-    const { rows } = await database_1.pool.query(`SELECT * FROM vw_habilitados_examen WHERE curso_id = $1 ORDER BY alumno`, [cursoId]);
+    const { rows } = await database_1.pool.query(`SELECT
+            v.habilitacion_id,
+            v.curso_id,
+            v.materia,
+            v.anio,
+            v.mes,
+            v.matricula_id,
+            ${alumno_nombre_sql_1.SQL_ALUMNO_APELLIDOS_COMA_NOMBRES} AS alumno,
+            v.numero_documento,
+            v.porcentaje_final,
+            v.habilitado,
+            v.generado_en
+         FROM vw_habilitados_examen v
+         JOIN matriculas mat ON mat.id = v.matricula_id
+         JOIN alumnos al ON al.id = mat.alumno_id
+         WHERE v.curso_id = $1
+         ORDER BY ${alumno_nombre_sql_1.SQL_ORDEN_MATRICULA_PLANILLA}`, [cursoId]);
     return rows;
 }
 async function registrarAsistenciaDocente(input, contexto) {
@@ -570,7 +585,7 @@ async function listarJustificaciones(filtro, contexto) {
         JOIN matriculas mat ON mat.id = a.matricula_id
         JOIN alumnos al ON al.id = mat.alumno_id
         ${where}
-        ORDER BY sc.fecha DESC, j.id DESC`, valores);
+        ORDER BY sc.fecha DESC, ${alumno_nombre_sql_1.SQL_ORDEN_MATRICULA_PLANILLA}, j.id DESC`, valores);
     return rows;
 }
 async function resolverJustificacion(input, contexto) {
@@ -807,7 +822,8 @@ async function listarAusenciasCurso(cursoId, contexto) {
             sc.fecha::text AS fecha,
             mat.id      AS matricula_id,
             ${alumno_nombre_sql_1.SQL_ALUMNO_APELLIDOS_COMA_NOMBRES} AS alumno,
-            al.numero_documento
+            al.numero_documento,
+            mat.orden_lista
          FROM asistencias a
          JOIN sesiones_clase sc ON sc.id = a.sesion_id
          JOIN matriculas mat ON mat.id = a.matricula_id AND mat.curso_id = sc.curso_id
@@ -815,7 +831,7 @@ async function listarAusenciasCurso(cursoId, contexto) {
          WHERE sc.curso_id = $1
            AND a.estado = 'ausente'
            AND COALESCE(a.justificada, FALSE) = FALSE
-         ORDER BY sc.fecha DESC, ${exports.SQL_ORDEN_MATRICULA_PLANILLA}`, [cursoId]);
+         ORDER BY ${alumno_nombre_sql_1.SQL_ORDEN_MATRICULA_PLANILLA}, sc.fecha DESC`, [cursoId]);
     return rows;
 }
 async function listarAlumnosCurso(cursoId, contexto) {
@@ -831,6 +847,6 @@ async function listarAlumnosCurso(cursoId, contexto) {
          FROM matriculas mat
          JOIN alumnos al ON al.id = mat.alumno_id
          WHERE mat.curso_id = $1
-         ORDER BY ${exports.SQL_ORDEN_MATRICULA_PLANILLA}`, [cursoId]);
+         ORDER BY ${alumno_nombre_sql_1.SQL_ORDEN_MATRICULA_PLANILLA}`, [cursoId]);
     return rows;
 }

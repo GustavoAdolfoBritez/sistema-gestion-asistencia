@@ -13,6 +13,24 @@ exports.eliminarLotePendiente = eliminarLotePendiente;
 exports.confirmarLote = confirmarLote;
 exports.listarDestinosAcademicos = listarDestinosAcademicos;
 const database_1 = require("../../config/database");
+function mensajeErrorAlumno(error, fallback) {
+    if (error instanceof Error && 'code' in error) {
+        const code = error.code;
+        const msg = error.message;
+        if (code === '23505') {
+            const ciMatch = msg.match(/Key \(numero_documento\)=\(([^)]+)\)/);
+            if (ciMatch) {
+                return `Ya existe un alumno con la cédula ${ciMatch[1]}. El registro fue omitido.`;
+            }
+            return 'Registro duplicado: ya existe un alumno con ese documento o código único.';
+        }
+        if (code === '23503')
+            return 'El registro hace referencia a una carrera o facultad que no existe.';
+    }
+    if (error instanceof Error)
+        return error.message;
+    return fallback;
+}
 /** Sincroniza total_registros con el conteo real en registros_importacion (evita doble conteo al crear + cargar). */
 async function sincronizarTotalRegistrosLote(cliente, loteId) {
     await cliente.query(`UPDATE lotes_importacion
@@ -177,12 +195,7 @@ async function assertLoteImportacionNoDuplicado(input, usuarioId) {
         return;
     }
     const semNuevo = extraerSemestreDesdeDescripcionLoteImport(input.descripcion ?? null);
-    const cohorteSql = input.cohorteAnio != null &&
-        Number.isFinite(Number(input.cohorteAnio)) &&
-        Number(input.cohorteAnio) >= 1990 &&
-        Number(input.cohorteAnio) <= 2100
-        ? Math.trunc(Number(input.cohorteAnio))
-        : null;
+    const cohorteSql = Math.trunc(input.cohorteAnio);
     const { rows } = await database_1.pool.query(`SELECT id, estado, descripcion
          FROM lotes_importacion
          WHERE ejecutado_por = $1::uuid
@@ -229,12 +242,7 @@ async function crearLote(input, usuarioId) {
     await validarDestinoAcademico(input);
     await validarCursoDestinoMatriculas(input);
     await assertLoteImportacionNoDuplicado(input, usuarioId);
-    const cohorteSql = input.cohorteAnio != null &&
-        Number.isFinite(Number(input.cohorteAnio)) &&
-        Number(input.cohorteAnio) >= 1990 &&
-        Number(input.cohorteAnio) <= 2100
-        ? Math.trunc(Number(input.cohorteAnio))
-        : null;
+    const cohorteSql = Math.trunc(input.cohorteAnio);
     const { rows } = await database_1.pool.query(`INSERT INTO lotes_importacion (
             tipo_lote,
             descripcion,
@@ -918,7 +926,7 @@ async function insertarAlumnosFilaPorFila(cliente, filas, columnas, incluyeCohor
             }
             errores.push({
                 registroId: f.registroId,
-                mensaje: e instanceof Error ? e.message : 'Error insertando alumno'
+                mensaje: mensajeErrorAlumno(e, 'Error insertando alumno')
             });
         }
     }

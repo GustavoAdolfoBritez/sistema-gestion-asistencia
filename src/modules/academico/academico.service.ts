@@ -1312,6 +1312,59 @@ function condicionTokenBusquedaAlumno(paramIndex: number): string {
         )`;
 }
 
+export async function actualizarAlumno(
+    alumnoId: string,
+    input: { nombres?: string; apellidos?: string; numero_documento?: string }
+) {
+    const alumnoIdSanitizado = String(alumnoId ?? '').trim();
+    if (!alumnoIdSanitizado) throw new Error('ID de alumno inválido');
+
+    const cliente = await pool.connect();
+    try {
+        const { rows: antesRows } = await cliente.query(
+            `SELECT id, numero_documento, nombres, apellidos, nombre_apellido,
+                    semestre_curricular, referencia_carrera_id, cohorte_anio
+             FROM alumnos WHERE id = $1`,
+            [alumnoIdSanitizado]
+        );
+        if (!antesRows[0]) throw new Error('Alumno no encontrado');
+
+        const antes = antesRows[0];
+
+        const nuevosNombres = input.nombres != null ? String(input.nombres).trim() : antes.nombres;
+        const nuevosApellidos = input.apellidos != null ? String(input.apellidos).trim() : antes.apellidos;
+        const nuevoDoc = input.numero_documento != null ? String(input.numero_documento).trim() : antes.numero_documento;
+
+        if (input.numero_documento != null && nuevoDoc !== antes.numero_documento) {
+            const { rows: dup } = await cliente.query(
+                `SELECT id FROM alumnos WHERE numero_documento = $1 AND id <> $2 LIMIT 1`,
+                [nuevoDoc, alumnoIdSanitizado]
+            );
+            if (dup.length > 0) {
+                throw new Error('El número de documento ya está registrado en otro alumno.');
+            }
+        }
+
+        const nombreApellido = [nuevosApellidos, nuevosNombres].filter(Boolean).join(', ') || `Alumno ${nuevoDoc}`;
+
+        const { rows: actualizado } = await cliente.query(
+            `UPDATE alumnos SET
+                nombres = $1,
+                apellidos = $2,
+                numero_documento = $3,
+                nombre_apellido = $4
+             WHERE id = $5
+             RETURNING id, numero_documento, nombres, apellidos, nombre_apellido,
+                       semestre_curricular, referencia_carrera_id, cohorte_anio`,
+            [nuevosNombres || null, nuevosApellidos || null, nuevoDoc, nombreApellido, alumnoIdSanitizado]
+        );
+
+        return { alumno: actualizado[0] ?? antes, antes };
+    } finally {
+        cliente.release();
+    }
+}
+
 export async function buscarAlumnos(filtro: BusquedaAlumnoFiltro) {
     const termino = filtro.termino.trim();
     const limit = normalizeLimit(filtro.limit, 500, 30);

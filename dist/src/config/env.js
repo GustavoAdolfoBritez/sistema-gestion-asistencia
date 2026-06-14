@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.env = void 0;
+exports.esOrigenViteLanDev = esOrigenViteLanDev;
 const dotenv_1 = require("dotenv");
 const zod_1 = require("zod");
 (0, dotenv_1.config)();
@@ -48,6 +49,26 @@ const DEV_CORS_ORIGINS = [
     'http://127.0.0.1:5173',
     'http://localhost:4173',
 ];
+const DEV_VITE_PORTS = new Set(['5173', '4173']);
+/** Vite en la LAN (celular en la misma Wi‑Fi), solo en desarrollo. */
+function esOrigenViteLanDev(origin) {
+    try {
+        const url = new URL(origin);
+        if (url.protocol !== 'http:' && url.protocol !== 'https:')
+            return false;
+        if (!DEV_VITE_PORTS.has(url.port))
+            return false;
+        const host = url.hostname;
+        if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]')
+            return true;
+        return (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(host) ||
+            /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host) ||
+            /^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(host));
+    }
+    catch {
+        return false;
+    }
+}
 function resolveCorsOrigins(configured, nodeEnv) {
     if (nodeEnv === 'production')
         return configured;

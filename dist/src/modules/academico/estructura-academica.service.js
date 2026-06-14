@@ -18,9 +18,9 @@ exports.crearMateria = crearMateria;
 exports.actualizarMateria = actualizarMateria;
 exports.eliminarMateria = eliminarMateria;
 const database_1 = require("../../config/database");
-function normalizeLimit(limit, max = 300) {
+function normalizeLimit(limit, max = 1000) {
     if (!limit || Number.isNaN(limit))
-        return 100;
+        return 500;
     return Math.min(Math.max(limit, 1), max);
 }
 async function listarFacultades(options = {}) {

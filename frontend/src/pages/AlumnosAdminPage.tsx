@@ -358,6 +358,7 @@ export function AlumnosAdminPage({ onLogout }: Props) {
   const [generandoInforme, setGenerandoInforme] = useState(false);
   const [editAlumnoOpen, setEditAlumnoOpen] = useState(false);
   const [editAlumnoSaving, setEditAlumnoSaving] = useState(false);
+  const [editAlumnoShowPassword, setEditAlumnoShowPassword] = useState(false);
   const [editAlumnoForm, setEditAlumnoForm] = useState({ nombres: '', apellidos: '', numero_documento: '', password: '' });
   /** Filtros del listado (no de la ficha): acotan la búsqueda en servidor. */
   const [listaFacultadId, setListaFacultadId] = useState('');
@@ -664,7 +665,13 @@ export function AlumnosAdminPage({ onLogout }: Props) {
       }
       buscar(termino);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'No se pudo actualizar el alumno.');
+      const rawMsg = error instanceof Error ? error.message : '';
+      const ciDuplicado = /(?:unique|duplicad[oa]|ya exist[ee]|already exist|número de documento)/i;
+      if (ciDuplicado.test(rawMsg)) {
+        toast.error('El número de documento ingresado ya está registrado en otro alumno. Verificá los datos.');
+      } else {
+        toast.error(rawMsg || 'No se pudo actualizar el alumno.');
+      }
     } finally {
       setEditAlumnoSaving(false);
     }
@@ -1833,7 +1840,7 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                     </DialogContent>
                   </Dialog>
 
-                  <Dialog open={editAlumnoOpen} onOpenChange={setEditAlumnoOpen}>
+                  <Dialog open={editAlumnoOpen} onOpenChange={(open) => { setEditAlumnoOpen(open); if (!open) setEditAlumnoShowPassword(false); }}>
                     <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
                       <DialogHeader>
                         <DialogTitle>Editar alumno</DialogTitle>
@@ -1861,6 +1868,7 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                         <label className="flex flex-col gap-1.5 text-sm">
                           <span className="font-medium text-slate-700 dark:text-slate-300">Cédula de Identidad</span>
                           <input
+                            type="text"
                             className="px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                             value={editAlumnoForm.numero_documento}
                             onChange={(e) => setEditAlumnoForm((f) => ({ ...f, numero_documento: e.target.value }))}
@@ -1868,13 +1876,25 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                         </label>
                         <label className="flex flex-col gap-1.5 text-sm">
                           <span className="font-medium text-slate-700 dark:text-slate-300">Tu contraseña</span>
-                          <input
-                            type="password"
-                            className="px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
-                            placeholder="Contraseña para confirmar"
-                            value={editAlumnoForm.password}
-                            onChange={(e) => setEditAlumnoForm((f) => ({ ...f, password: e.target.value }))}
-                          />
+                          <div className="relative">
+                            <input
+                              type={editAlumnoShowPassword ? 'text' : 'password'}
+                              className="w-full px-3 py-2 pr-10 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                              placeholder="Contraseña para confirmar"
+                              value={editAlumnoForm.password}
+                              onChange={(e) => setEditAlumnoForm((f) => ({ ...f, password: e.target.value }))}
+                            />
+                            <button
+                              type="button"
+                              className="absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                              onClick={() => setEditAlumnoShowPassword((prev) => !prev)}
+                              aria-label={editAlumnoShowPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                            >
+                              <span className="material-symbols-outlined text-[20px]">
+                                {editAlumnoShowPassword ? 'visibility_off' : 'visibility'}
+                              </span>
+                            </button>
+                          </div>
                         </label>
                         <div className="flex justify-end gap-3 pt-2">
                           <button

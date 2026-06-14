@@ -414,6 +414,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
   const [expandedPlanId, setExpandedPlanId] = useState<number | null>(null);
   const [showAddPlanForm, setShowAddPlanForm] = useState(false);
   const [addMateriaForPlanId, setAddMateriaForPlanId] = useState<number | null>(null);
+  const [materiaSaving, setMateriaSaving] = useState(false);
   /** Semestre elegido por plan (`undefined` = aún no eligió; no se puede agregar materia). */
   const [semestrePorPlan, setSemestrePorPlan] = useState<Partial<Record<number, number>>>({});
   const [moduloListaBusqueda, setModuloListaBusqueda] = useState('');
@@ -1225,7 +1226,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
   };
 
   const handleCreateMateria = async () => {
-    if (!addMateriaForPlanId) return;
+    if (!addMateriaForPlanId || materiaSaving) return;
     const sem = semestrePorPlan[addMateriaForPlanId];
     if (sem === undefined) {
       toast.error('Seleccioná un semestre antes de agregar una materia.');
@@ -1237,6 +1238,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
       toast.error('Los campos "Nombre" y "Código" son obligatorios.');
       return;
     }
+    setMateriaSaving(true);
     try {
       const nueva = await apiFetch<Materia>('/academico/materias', {
         method: 'POST',
@@ -1253,6 +1255,8 @@ export function AcademicoAdminPage({ onLogout }: Props) {
       toast.success('Materia creada');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'No se pudo crear la materia');
+    } finally {
+      setMateriaSaving(false);
     }
   };
 
@@ -1807,8 +1811,8 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                                     />
                                   </div>
                                   <div className="btn-mobile-stack flex gap-2">
-                                    <button type="button" className="btn-modern btn-modern-primary btn-modern-sm btn-mobile-cta" onClick={() => void handleCreateMateria()}>Guardar materia</button>
-                                    <button type="button" className="btn-modern btn-modern-sm btn-modern-ghost btn-mobile-cta" onClick={() => { setAddMateriaForPlanId(null); setMateriaForm({ nombre: '', codigo: '' }); }}>Cancelar</button>
+                                    <button type="button" className="btn-modern btn-modern-primary btn-modern-sm btn-mobile-cta" disabled={materiaSaving} onClick={() => void handleCreateMateria()}>{materiaSaving ? 'Guardando…' : 'Guardar materia'}</button>
+                                    <button type="button" className="btn-modern btn-modern-sm btn-modern-ghost btn-mobile-cta" disabled={materiaSaving} onClick={() => { setAddMateriaForPlanId(null); setMateriaForm({ nombre: '', codigo: '' }); }}>Cancelar</button>
                                   </div>
                                 </div>
                               ) : (

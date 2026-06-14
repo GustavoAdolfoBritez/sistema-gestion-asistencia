@@ -132,6 +132,7 @@ export function ReportesPage({ onLogout }: Props) {
   const [reporteTab, setReporteTab] = useState<ReporteTab>('cierre');
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
   const [cierrePasswordConfirm, setCierrePasswordConfirm] = useState('');
+  const [cierreShowPassword, setCierreShowPassword] = useState(false);
   const [consolidado, setConsolidado] = useState<ConsolidadoRiesgoItem[]>([]);
   const [consolidadoLoading, setConsolidadoLoading] = useState(false);
   const [consolidadoPdfLoading, setConsolidadoPdfLoading] = useState(false);
@@ -1672,7 +1673,7 @@ export function ReportesPage({ onLogout }: Props) {
               open={confirmCloseOpen && reporteTab === 'cierre'}
               onOpenChange={(open) => {
                 setConfirmCloseOpen(open);
-                if (!open) setCierrePasswordConfirm('');
+                if (!open) { setCierrePasswordConfirm(''); setCierreShowPassword(false); }
               }}
             >
               <DialogContent className="max-w-md gap-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 text-slate-900 shadow-2xl ring-1 ring-slate-200/80 dark:border-slate-500/30 dark:bg-gradient-to-b dark:from-[#162d55] dark:to-[#0f2244] dark:text-[#e7eef9] dark:ring-sky-500/20">
@@ -1723,16 +1724,29 @@ export function ReportesPage({ onLogout }: Props) {
                     <label htmlFor="cierre-password-confirm" className="text-xs font-medium text-slate-700 dark:text-slate-300">
                       Contraseña de tu usuario
                     </label>
-                    <input
-                      id="cierre-password-confirm"
-                      type="password"
-                      autoComplete="current-password"
-                      className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition-[border-color,box-shadow] placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 dark:border-slate-600/80 dark:bg-[#071222] dark:text-white dark:shadow-inner dark:placeholder:text-slate-500 dark:focus:border-sky-400/60 dark:focus:ring-sky-500/25"
-                      placeholder="••••••••"
-                      value={cierrePasswordConfirm}
-                      onChange={(e) => setCierrePasswordConfirm(e.target.value)}
-                      disabled={closing}
-                    />
+                    <div className="relative">
+                      <input
+                        id="cierre-password-confirm"
+                        type={cierreShowPassword ? 'text' : 'password'}
+                        autoComplete="current-password"
+                        className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 pr-10 text-sm text-slate-900 shadow-sm outline-none transition-[border-color,box-shadow] placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 dark:border-slate-600/80 dark:bg-[#071222] dark:text-white dark:shadow-inner dark:placeholder:text-slate-500 dark:focus:border-sky-400/60 dark:focus:ring-sky-500/25"
+                        placeholder="••••••••"
+                        value={cierrePasswordConfirm}
+                        onChange={(e) => setCierrePasswordConfirm(e.target.value)}
+                        disabled={closing}
+                      />
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                        onClick={() => setCierreShowPassword((prev) => !prev)}
+                        disabled={closing}
+                        aria-label={cierreShowPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                      >
+                        <span className="material-symbols-outlined text-[20px]">
+                          {cierreShowPassword ? 'visibility_off' : 'visibility'}
+                        </span>
+                      </button>
+                    </div>
                     <p className="text-[11px] leading-snug text-slate-500">
                       Usá la misma contraseña con la que iniciás sesión en el sistema.
                     </p>

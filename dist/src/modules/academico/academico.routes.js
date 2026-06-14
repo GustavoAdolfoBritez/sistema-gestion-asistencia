@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const auth_middleware_1 = require("../../middlewares/auth.middleware");
 const academico_service_1 = require("./academico.service");
+const auth_service_1 = require("../auth/auth.service");
 const rbac_1 = require("../../utils/rbac");
 const alumnos_scope_1 = require("../../utils/alumnos-scope");
 const auditoria_service_1 = require("../auditoria/auditoria.service");
@@ -524,6 +525,38 @@ router.get('/academico/alumnos/:alumnoId/ficha', async (req, res, next) => {
         if (error instanceof Error) {
             return res.status(400).json({ mensaje: error.message });
         }
+        next(error);
+    }
+});
+const mwEditarAlumnos = (0, auth_middleware_1.autorizarRoles)(...rbac_1.ROLES_EDITAR_ALUMNOS);
+router.put('/academico/alumnos/:alumnoId', mwEditarAlumnos, async (req, res, next) => {
+    try {
+        const usuarioId = req.usuario?.usuarioId;
+        if (!usuarioId)
+            return res.status(401).json({ mensaje: 'No autenticado' });
+        const alumnoId = String(req.params.alumnoId ?? '').trim();
+        if (!alumnoId)
+            return res.status(400).json({ mensaje: 'alumnoId inválido' });
+        const { password, nombres, apellidos, numero_documento } = req.body ?? {};
+        await (0, auth_service_1.verificarPasswordUsuarioAutenticado)(usuarioId, String(password ?? ''));
+        const { alumno, antes } = await (0, academico_service_1.actualizarAlumno)(alumnoId, { nombres, apellidos, numero_documento });
+        await (0, auditoria_service_1.registrarEventoAuditoriaSegura)({
+            modulo: 'alumnos',
+            accion: 'editar_alumno',
+            recursoTipo: 'alumno',
+            recursoId: alumnoId,
+            recursoResumen: `CI ${alumno.numero_documento} — ${[alumno.nombres, alumno.apellidos].filter(Boolean).join(' ')}`,
+            resultado: 'ok',
+            severidad: 'alta',
+            antes,
+            despues: alumno,
+            contexto: (0, auditoria_service_1.construirContextoAuditoria)(req)
+        });
+        res.json(alumno);
+    }
+    catch (error) {
+        if (error instanceof Error)
+            return res.status(400).json({ mensaje: error.message });
         next(error);
     }
 });
