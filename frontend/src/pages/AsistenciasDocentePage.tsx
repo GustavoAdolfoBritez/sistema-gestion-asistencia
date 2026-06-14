@@ -1782,9 +1782,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                     onChange={handleCursoIdChange}
                     disabled={planillasLoading && !planillasAsignadas.length}
                     loading={planillasLoading}
-                    placeholder="Selecciona un curso"
-                    allowEmpty
-                    emptyLabel="Selecciona un curso"
+                    placeholder="Seleccionar curso"
                     options={planillasAsignadas.map((item) => ({
                       value: String(item.curso_id),
                       label: item.materia,
