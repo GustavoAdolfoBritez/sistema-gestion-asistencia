@@ -691,8 +691,12 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
       setDraft(null);
       await loadUsers();
     } catch (err) {
-      const mensaje = err instanceof Error ? err.message : 'No se pudo eliminar el usuario';
-      toast.error(mensaje);
+      const rawMsg = err instanceof Error ? err.message : '';
+      if (/foreign key|llave foránea|violates.*constraint|cursos_docente_id/i.test(rawMsg)) {
+        toast.error('No se puede eliminar este usuario porque tiene cursos asignados. Reasigná o cerrá sus cursos primero.');
+      } else {
+        toast.error(rawMsg || 'No se pudo eliminar el usuario');
+      }
     } finally {
       setDeletingUser(false);
     }

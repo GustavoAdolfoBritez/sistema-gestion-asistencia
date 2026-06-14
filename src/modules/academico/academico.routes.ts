@@ -134,9 +134,12 @@ router.post('/academico/modulos', async (req, res, next) => {
             contexto: contextoAuditoria
         });
         res.status(201).json(modulo);
-    } catch (error) {
+    } catch (error: any) {
         if (error instanceof ForbiddenScopeError) {
             return res.status(403).json({ mensaje: error.message });
+        }
+        if (error?.code === '23505') {
+            return res.status(409).json({ mensaje: 'Ya existe un módulo para esa materia en el mismo año y mes.' });
         }
         if (error instanceof Error) {
             return res.status(400).json({ mensaje: error.message });
@@ -179,9 +182,12 @@ router.put('/academico/modulos/:moduloId', async (req, res, next) => {
             contexto: contextoAuditoria
         });
         res.json(modulo);
-    } catch (error) {
+    } catch (error: any) {
         if (error instanceof ForbiddenScopeError) {
             return res.status(403).json({ mensaje: error.message });
+        }
+        if (error?.code === '23505') {
+            return res.status(409).json({ mensaje: 'Ya existe un módulo para esa materia en el mismo año y mes.' });
         }
         if (error instanceof Error) {
             return res.status(400).json({ mensaje: error.message });
@@ -298,9 +304,12 @@ router.post('/academico/cursos', async (req, res, next) => {
             contexto: contextoAuditoria
         });
         res.status(201).json(curso);
-    } catch (error) {
+    } catch (error: any) {
         if (error instanceof ForbiddenScopeError) {
             return res.status(403).json({ mensaje: error.message });
+        }
+        if (error?.code === '23503') {
+            return res.status(400).json({ mensaje: 'El módulo o docente seleccionado ya no existe. Verificá los datos e intentá de nuevo.' });
         }
         if (error instanceof Error) {
             return res.status(400).json({ mensaje: error.message });
@@ -344,9 +353,12 @@ router.put('/academico/cursos/:cursoId', async (req, res, next) => {
             contexto: contextoAuditoria
         });
         res.json(curso);
-    } catch (error) {
+    } catch (error: any) {
         if (error instanceof ForbiddenScopeError) {
             return res.status(403).json({ mensaje: error.message });
+        }
+        if (error?.code === '23503') {
+            return res.status(400).json({ mensaje: 'El módulo o docente seleccionado ya no existe. Verificá los datos e intentá de nuevo.' });
         }
         if (error instanceof Error) {
             return res.status(400).json({ mensaje: error.message });
@@ -437,9 +449,12 @@ router.post('/academico/cursos/:cursoId/matriculas', async (req, res, next) => {
             contexto: contextoAuditoria
         });
         res.status(201).json(matricula);
-    } catch (error) {
+    } catch (error: any) {
         if (error instanceof MatriculaSemestreIncompatibleError) {
             return res.status(409).json({ mensaje: error.message });
+        }
+        if (error?.code === '23503') {
+            return res.status(400).json({ mensaje: 'El alumno o curso seleccionado ya no existe. Verificá los datos e intentá de nuevo.' });
         }
         if (error instanceof Error) return res.status(400).json({ mensaje: error.message });
         next(error);
@@ -601,7 +616,10 @@ router.put('/academico/alumnos/:alumnoId', mwEditarAlumnos, async (req, res, nex
         });
 
         res.json(alumno);
-    } catch (error) {
+    } catch (error: any) {
+        if (error?.code === '23505') {
+            return res.status(409).json({ mensaje: 'El número de documento ya está registrado en otro alumno.' });
+        }
         if (error instanceof Error) return res.status(400).json({ mensaje: error.message });
         next(error);
     }
@@ -643,7 +661,10 @@ router.post('/academico/cursos/:cursoId/matriculas/desde-lote', async (req, res,
             contexto: contextoAuditoria
         });
         res.json(resultado);
-    } catch (error) {
+    } catch (error: any) {
+        if (error?.code === '23503') {
+            return res.status(400).json({ mensaje: 'Algunos alumnos del lote ya no existen. Revisá el lote e intentá de nuevo.' });
+        }
         if (error instanceof Error) return res.status(400).json({ mensaje: error.message });
         next(error);
     }

@@ -395,6 +395,10 @@ async function eliminarUsuario(usuarioId) {
     }
     catch (err) {
         await cliente.query('ROLLBACK');
+        if (err instanceof Error && /cursos_docente_id_fkey|violates foreign key/i.test(err.message)) {
+            throw new Error('No se puede eliminar este usuario porque tiene cursos asignados como docente. ' +
+                'Reasigná o cerrá sus cursos antes de eliminarlo.');
+        }
         throw err;
     }
     finally {

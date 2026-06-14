@@ -389,6 +389,9 @@ router.post('/academico/materias', mwGestionOperativa, async (req, res, next) =>
         res.status(201).json(creado);
     }
     catch (error) {
+        if (error?.code === '23503') {
+            return res.status(400).json({ mensaje: 'El plan de estudio seleccionado ya no existe. Verificá los datos e intentá de nuevo.' });
+        }
         if (error?.code === '23505') {
             return res.status(409).json({ mensaje: 'Código de materia duplicado dentro del plan' });
         }
@@ -424,6 +427,9 @@ router.patch('/academico/materias/:materiaId', mwGestionOperativa, async (req, r
         res.json(actualizado);
     }
     catch (error) {
+        if (error?.code === '23503') {
+            return res.status(400).json({ mensaje: 'El plan de estudio seleccionado ya no existe. Verificá los datos e intentá de nuevo.' });
+        }
         if (error?.code === '23505') {
             return res.status(409).json({ mensaje: 'Código de materia duplicado dentro del plan' });
         }
