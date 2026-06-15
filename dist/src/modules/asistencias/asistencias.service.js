@@ -16,6 +16,7 @@ exports.listarJustificaciones = listarJustificaciones;
 exports.resolverJustificacion = resolverJustificacion;
 exports.crearSesionDocente = crearSesionDocente;
 exports.actualizarModalidadSesion = actualizarModalidadSesion;
+exports.anularSesionDocente = anularSesionDocente;
 exports.cerrarSesionDocente = cerrarSesionDocente;
 exports.listarSesionesCurso = listarSesionesCurso;
 exports.listarAusenciasCurso = listarAusenciasCurso;
@@ -727,6 +728,46 @@ async function actualizarModalidadSesion(sesionId, modalidad, contexto) {
         throw new Error('Sesión no encontrada');
     }
     return rows[0];
+}
+async function anularSesionDocente(sesionId, contexto) {
+    const cursoId = await asegurarPermisoSesion(sesionId, contexto);
+    const { rows: sesionRows } = await database_1.pool.query(`SELECT sc.estado, ma.estado AS estado_modulo
+         FROM sesiones_clase sc
+         JOIN cursos c ON c.id = sc.curso_id
+         JOIN modulos_academicos ma ON ma.id = c.modulo_id
+         WHERE sc.id = $1`, [sesionId]);
+    const sesion = sesionRows[0];
+    if (!sesion) {
+        throw new Error('Sesión no encontrada');
+    }
+    if (String(sesion.estado_modulo).toLowerCase() === 'cerrado') {
+        throw new Error('No se puede anular una jornada de un módulo académico cerrado');
+    }
+    const estadoSesion = String(sesion.estado).toLowerCase();
+    if (estadoSesion === 'cerrada') {
+        throw new Error('No se puede anular una jornada ya cerrada');
+    }
+    if (estadoSesion === 'cancelada') {
+        throw new Error('La jornada ya está anulada');
+    }
+    const cliente = await database_1.pool.connect();
+    try {
+        await cliente.query('BEGIN');
+        await cliente.query(`DELETE FROM asistencias WHERE sesion_id = $1`, [sesionId]);
+        await cliente.query(`DELETE FROM sesiones_clase WHERE id = $1`, [sesionId]);
+        await cliente.query('COMMIT');
+        await (0, metricas_asistencia_1.recalcularMetricasCurso)(database_1.pool, cursoId);
+        const { rows: metricasRows } = await database_1.pool.query(`SELECT id AS matricula_id, porcentaje_asistencia, faltas_acumuladas, estado_academico
+             FROM matriculas WHERE curso_id = $1`, [cursoId]);
+        return { sesionId, cursoId, matriculas: metricasRows };
+    }
+    catch (error) {
+        await cliente.query('ROLLBACK');
+        throw error;
+    }
+    finally {
+        cliente.release();
+    }
 }
 async function cerrarSesionDocente(sesionId, contexto) {
     const cursoId = await asegurarPermisoSesion(sesionId, contexto);

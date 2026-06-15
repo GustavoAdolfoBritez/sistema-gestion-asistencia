@@ -1051,6 +1051,75 @@ export async function actualizarModalidadSesion(
     return rows[0];
 }
 
+export async function anularSesionDocente(sesionId: number, contexto: GestionContexto) {
+    const cursoId = await asegurarPermisoSesion(sesionId, contexto);
+
+    const { rows: sesionRows } = await pool.query<{
+        estado: string;
+        estado_modulo: string;
+    }>(
+        `SELECT sc.estado, ma.estado AS estado_modulo
+         FROM sesiones_clase sc
+         JOIN cursos c ON c.id = sc.curso_id
+         JOIN modulos_academicos ma ON ma.id = c.modulo_id
+         WHERE sc.id = $1`,
+        [sesionId]
+    );
+    const sesion = sesionRows[0];
+    if (!sesion) {
+        throw new Error('Sesión no encontrada');
+    }
+
+    if (String(sesion.estado_modulo).toLowerCase() === 'cerrado') {
+        throw new Error('No se puede anular una jornada de un módulo académico cerrado');
+    }
+
+    const estadoSesion = String(sesion.estado).toLowerCase();
+    if (estadoSesion === 'cerrada') {
+        throw new Error('No se puede anular una jornada ya cerrada');
+    }
+    if (estadoSesion === 'cancelada') {
+        throw new Error('La jornada ya está anulada');
+    }
+
+    const cliente = await pool.connect();
+    try {
+        await cliente.query('BEGIN');
+
+        await cliente.query(
+            `DELETE FROM asistencias WHERE sesion_id = $1`,
+            [sesionId]
+        );
+
+        await cliente.query(
+            `DELETE FROM sesiones_clase WHERE id = $1`,
+            [sesionId]
+        );
+
+        await cliente.query('COMMIT');
+
+        await recalcularMetricasCurso(pool, cursoId);
+
+        const { rows: metricasRows } = await pool.query<{
+            matricula_id: number;
+            porcentaje_asistencia: string;
+            faltas_acumuladas: number;
+            estado_academico: string;
+        }>(
+            `SELECT id AS matricula_id, porcentaje_asistencia, faltas_acumuladas, estado_academico
+             FROM matriculas WHERE curso_id = $1`,
+            [cursoId]
+        );
+
+        return { sesionId, cursoId, matriculas: metricasRows };
+    } catch (error) {
+        await cliente.query('ROLLBACK');
+        throw error;
+    } finally {
+        cliente.release();
+    }
+}
+
 export async function cerrarSesionDocente(
     sesionId: number,
     contexto: GestionContexto

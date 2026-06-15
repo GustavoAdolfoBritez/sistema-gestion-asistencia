@@ -171,6 +171,33 @@ router.post('/asistencias/sesiones/:sesionId/cierre', ...auth_middleware_1.auten
         next(error);
     }
 });
+router.post('/asistencias/sesiones/:sesionId/anular', ...auth_middleware_1.autenticarConPoliticaAlcance, (0, auth_middleware_1.autorizarRoles)(...rbac_1.ROLES_OPERADORES_ASISTENCIAS), async (req, res, next) => {
+    try {
+        const contextoAuditoria = (0, auditoria_service_1.construirContextoAuditoria)(req);
+        const sesionId = Number(req.params.sesionId);
+        if (!sesionId) {
+            return res.status(400).json({ mensaje: 'sesionId inválido' });
+        }
+        const contexto = obtenerContexto(req);
+        const resultado = await (0, asistencias_service_1.anularSesionDocente)(sesionId, contexto);
+        await (0, auditoria_service_1.registrarEventoAuditoriaSegura)({
+            modulo: 'asistencias',
+            accion: 'anular_sesion',
+            recursoTipo: 'sesion_clase',
+            recursoId: sesionId,
+            detalle: { cursoId: resultado.cursoId },
+            despues: resultado,
+            contexto: contextoAuditoria
+        });
+        res.json(resultado);
+    }
+    catch (error) {
+        if (error instanceof Error) {
+            return res.status(400).json({ mensaje: error.message });
+        }
+        next(error);
+    }
+});
 router.post('/asistencias/registro', ...auth_middleware_1.autenticarConPoliticaAlcance, (0, auth_middleware_1.autorizarRoles)(...rbac_1.ROLES_OPERADORES_ASISTENCIAS), async (req, res, next) => {
     try {
         const contextoAuditoria = (0, auditoria_service_1.construirContextoAuditoria)(req);

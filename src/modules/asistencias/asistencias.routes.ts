@@ -10,6 +10,7 @@ import {
     registrarJustificacionDocente,
     crearSesionDocente,
     cerrarSesionDocente,
+    anularSesionDocente,
     listarSesionesCurso,
     listarJustificaciones,
     resolverJustificacion,
@@ -238,6 +239,41 @@ router.post(
             });
 
             res.json({ ...sesion, matriculas });
+        } catch (error) {
+            if (error instanceof Error) {
+                return res.status(400).json({ mensaje: error.message });
+            }
+            next(error);
+        }
+    }
+);
+
+router.post(
+    '/asistencias/sesiones/:sesionId/anular',
+    ...autenticarConPoliticaAlcance,
+    autorizarRoles(...ROLES_OPERADORES_ASISTENCIAS),
+    async (req, res, next) => {
+        try {
+            const contextoAuditoria = construirContextoAuditoria(req);
+            const sesionId = Number(req.params.sesionId);
+            if (!sesionId) {
+                return res.status(400).json({ mensaje: 'sesionId inválido' });
+            }
+
+            const contexto = obtenerContexto(req);
+            const resultado = await anularSesionDocente(sesionId, contexto);
+
+            await registrarEventoAuditoriaSegura({
+                modulo: 'asistencias',
+                accion: 'anular_sesion',
+                recursoTipo: 'sesion_clase',
+                recursoId: sesionId,
+                detalle: { cursoId: resultado.cursoId },
+                despues: resultado,
+                contexto: contextoAuditoria
+            });
+
+            res.json(resultado);
         } catch (error) {
             if (error instanceof Error) {
                 return res.status(400).json({ mensaje: error.message });

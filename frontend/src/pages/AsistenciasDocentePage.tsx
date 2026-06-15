@@ -895,6 +895,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
   const [nuevaSesionModalidad, setNuevaSesionModalidad] = useState<'presencial' | 'virtual'>('presencial');
   const [creandoSesion, setCreandoSesion] = useState(false);
   const [cerrandoSesionId, setCerrandoSesionId] = useState<number | null>(null);
+  const [cancelandoSesionId, setCancelandoSesionId] = useState<number | null>(null);
   const [cerrarListaModalOpen, setCerrarListaModalOpen] = useState(false);
   const [sesionActivaId, setSesionActivaId] = useState<number | null>(null);
   const [justificaciones, setJustificaciones] = useState<JustificacionRow[]>([]);
@@ -1505,6 +1506,45 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
     await cerrarSesionById(sesionListaAbierta.id);
   }, [sesionListaAbierta, cerrarSesionById]);
 
+  const anularSesion = useCallback(async (sesionId: number) => {
+    setCancelandoSesionId(sesionId);
+    try {
+      const resultado = await apiFetch<{
+        sesionId: number;
+        cursoId: number;
+        matriculas?: Array<{
+          matricula_id: number;
+          porcentaje_asistencia: string | number;
+          faltas_acumuladas: number;
+          estado_academico: string;
+        }>;
+      }>(`/asistencias/sesiones/${sesionId}/anular`, { method: 'POST' });
+      setSesiones((prev) => prev.filter((x) => x.id !== sesionId));
+      listaAbiertaSyncKeyRef.current = null;
+      setSesionActivaId(null);
+      if (resultado.matriculas?.length) {
+        setPlanillaMatrix((prev) => {
+          const next = new Map(prev);
+          for (const m of resultado.matriculas!) {
+            const entry = next.get(Number(m.matricula_id));
+            if (!entry) continue;
+            entry.porcentajeAsistencia =
+              m.porcentaje_asistencia != null ? Number(m.porcentaje_asistencia) : null;
+            entry.faltasAcumuladas = Number(m.faltas_acumuladas) || 0;
+            if (m.estado_academico) entry.estadoAcademico = m.estado_academico;
+          }
+          return next;
+        });
+      }
+      toast.success('Sesión descartada. Podés crear una nueva en la fecha correcta.');
+      await cargarPlanillaMes();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'No se pudo descartar la sesión');
+    } finally {
+      setCancelandoSesionId(null);
+    }
+  }, [cargarPlanillaMes]);
+
   useEffect(() => {
     if (!sesionListaAbierta) setCerrarListaModalOpen(false);
   }, [sesionListaAbierta]);
@@ -1968,15 +2008,31 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                 </button>
 
                 {sesionListaAbierta ? (
-                  <button
-                    type="button"
-                    className="btn-modern btn-modern-sm btn-mobile-cta flex w-full items-center justify-center gap-1.5 border-0 bg-rose-600 font-semibold text-white shadow-md hover:bg-rose-500 lg:w-auto"
-                    disabled={cerrandoSesionId === sesionListaAbierta.id}
-                    onClick={() => setCerrarListaModalOpen(true)}
-                  >
-                    <span className="material-symbols-outlined text-[16px]">fact_check</span>
-                    {cerrandoSesionId === sesionListaAbierta.id ? 'Cerrando...' : 'Revisar y Cerrar Lista'}
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className="btn-modern btn-modern-sm btn-mobile-cta flex w-full items-center justify-center gap-1.5 border-0 bg-rose-600 font-semibold text-white shadow-md hover:bg-rose-500 lg:w-auto"
+                      disabled={cerrandoSesionId === sesionListaAbierta.id || cancelandoSesionId === sesionListaAbierta.id}
+                      onClick={() => setCerrarListaModalOpen(true)}
+                    >
+                      <span className="material-symbols-outlined text-[16px]">fact_check</span>
+                      {cerrandoSesionId === sesionListaAbierta.id ? 'Cerrando...' : 'Revisar y Cerrar Lista'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-modern btn-modern-ghost btn-modern-sm btn-mobile-cta flex w-full items-center justify-center gap-1.5 border border-red-400/50 text-red-600 hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-950/30 lg:w-auto"
+                      disabled={cerrandoSesionId === sesionListaAbierta.id || cancelandoSesionId != null}
+                      title="Elimina la sesión y todos sus registros de asistencia para poder crear una nueva con la fecha correcta"
+                      onClick={() => {
+                        if (sesionListaAbierta) {
+                          void anularSesion(sesionListaAbierta.id);
+                        }
+                      }}
+                    >
+                      <span className="material-symbols-outlined text-[16px]">delete</span>
+                      {cancelandoSesionId === sesionListaAbierta.id ? 'Descartando...' : 'Descartar Sesión'}
+                    </button>
+                  </>
                 ) : null}
               </div>
 
