@@ -906,7 +906,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
         fechaInicio: moduloForm.fechaInicio,
         fechaFin: moduloForm.fechaFin,
       };
-      const nuevo = await apiFetch<Modulo>('/academico/modulos', {
+      await apiFetch<Modulo>('/academico/modulos', {
         method: 'POST',
         body: JSON.stringify(payload),
       });
