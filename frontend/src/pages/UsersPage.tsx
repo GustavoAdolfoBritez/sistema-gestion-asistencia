@@ -351,6 +351,9 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
   const [isEditing, setIsEditing] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
+  const [showInitialPassword, setShowInitialPassword] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const usuariosListScrollRef = useRef<HTMLDivElement | null>(null);
   const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
@@ -1605,25 +1608,51 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                         <div className="grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-[#132a52]">
                           <label className={USUARIO_LABEL}>
                             <span>Nueva contraseña</span>
-                            <input
-                              type="password"
-                              value={newPassword}
-                              onChange={(event) => setNewPassword(event.target.value)}
-                              placeholder="Minimo 8 caracteres"
-                              autoComplete="new-password"
-                              className={USUARIO_INP}
-                            />
+                            <div className="relative">
+                              <input
+                                type={showNewPassword ? 'text' : 'password'}
+                                value={newPassword}
+                                onChange={(event) => setNewPassword(event.target.value)}
+                                placeholder="Minimo 8 caracteres"
+                                autoComplete="new-password"
+                                className={`${USUARIO_INP} pr-10`}
+                              />
+                              <button
+                                type="button"
+                                className="absolute inset-y-0 right-0 flex items-center rounded-r-lg px-3 text-slate-400 hover:text-slate-600 focus:outline-none dark:text-slate-500 dark:hover:text-slate-300"
+                                onClick={() => setShowNewPassword((prev) => !prev)}
+                                aria-label={showNewPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                                aria-pressed={showNewPassword}
+                              >
+                                <span className="material-symbols-outlined text-[20px]">
+                                  {showNewPassword ? 'visibility_off' : 'visibility'}
+                                </span>
+                              </button>
+                            </div>
                           </label>
                           <label className={USUARIO_LABEL}>
                             <span>Confirmar nueva contraseña</span>
-                            <input
-                              type="password"
-                              value={confirmNewPassword}
-                              onChange={(event) => setConfirmNewPassword(event.target.value)}
-                              placeholder="Repite la contraseña"
-                              autoComplete="new-password"
-                              className={USUARIO_INP}
-                            />
+                            <div className="relative">
+                              <input
+                                type={showConfirmNewPassword ? 'text' : 'password'}
+                                value={confirmNewPassword}
+                                onChange={(event) => setConfirmNewPassword(event.target.value)}
+                                placeholder="Repite la contraseña"
+                                autoComplete="new-password"
+                                className={`${USUARIO_INP} pr-10`}
+                              />
+                              <button
+                                type="button"
+                                className="absolute inset-y-0 right-0 flex items-center rounded-r-lg px-3 text-slate-400 hover:text-slate-600 focus:outline-none dark:text-slate-500 dark:hover:text-slate-300"
+                                onClick={() => setShowConfirmNewPassword((prev) => !prev)}
+                                aria-label={showConfirmNewPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                                aria-pressed={showConfirmNewPassword}
+                              >
+                                <span className="material-symbols-outlined text-[20px]">
+                                  {showConfirmNewPassword ? 'visibility_off' : 'visibility'}
+                                </span>
+                              </button>
+                            </div>
                           </label>
                         </div>
                       ) : null}
@@ -2153,5 +2182,4 @@ function CreateUserModal({ onClose, onSubmit, saving, existingUsers: _existingUs
     </div>
   );
 }
-
 
