@@ -910,7 +910,9 @@ export function AcademicoAdminPage({ onLogout }: Props) {
         method: 'POST',
         body: JSON.stringify(payload),
       });
-      setModulos((prev) => [nuevo, ...prev]);
+      // Recargar desde API para obtener campos JOIN (carrera_id, materia, plan, etc.)
+      const modResp = await apiFetch<ApiList<Modulo>>('/academico/modulos');
+      setModulos(modResp?.datos ?? []);
       toast.success('Módulo creado');
       setModuloForm((f) => ({
         materiaId: '',
