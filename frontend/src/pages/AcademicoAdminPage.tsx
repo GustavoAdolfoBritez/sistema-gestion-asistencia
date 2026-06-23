@@ -21,6 +21,7 @@ type Modulo = {
   fecha_fin: string;
   estado: string;
   materia?: string;
+  carrera_id?: number;
 };
 
 type Curso = {
@@ -438,12 +439,10 @@ export function AcademicoAdminPage({ onLogout }: Props) {
   const sortedModulos = useMemo(() => {
     if (!carreraSeleccionadaId) return [];
     const carreraId = Number(carreraSeleccionadaId);
-    const planIds = new Set(planes.filter((p) => p.carrera_id === carreraId).map((p) => p.id));
-    const materiaIds = new Set(materias.filter((m) => planIds.has(m.plan_id)).map((m) => m.id));
     return [...modulos]
-      .filter((m) => materiaIds.has(m.materia_id))
+      .filter((m) => m.carrera_id === carreraId)
       .sort(compareModuloRecientePrimero);
-  }, [modulos, materias, planes, carreraSeleccionadaId]);
+  }, [modulos, carreraSeleccionadaId]);
 
   /** Semestres disponibles en los módulos de la carrera seleccionada (para el formulario "Nuevo curso"). */
   const semestresCursoDisponibles = useMemo(() => {
@@ -754,7 +753,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
 
       let docentesResp: ApiList<DocenteOption> = { total: 0, datos: [] };
       try {
-        docentesResp = await apiFetch<ApiList<DocenteOption>>('/usuarios?rol=Docente&limit=200');
+        docentesResp = await apiFetch<ApiList<DocenteOption>>('/usuarios?rol=Docente');
       } catch {
         /* Roles sin acceso a /usuarios (p. ej. coordinación de facultad): el resto del módulo académico puede usarse igual. */
       }

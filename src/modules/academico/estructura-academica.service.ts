@@ -29,8 +29,8 @@ interface MateriaListOptions extends ListOptions {
   carreraIds?: number[];
 }
 
-function normalizeLimit(limit?: number, max = 1000): number {
-  if (!limit || Number.isNaN(limit)) return 500;
+function normalizeLimit(limit?: number, max = 2_000_000_000): number {
+  if (!limit || Number.isNaN(limit)) return 2_000_000_000;
   return Math.min(Math.max(limit, 1), max);
 }
 

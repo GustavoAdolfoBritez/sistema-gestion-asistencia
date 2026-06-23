@@ -302,8 +302,8 @@ export async function contarUsuarios(filtro: UsuarioFiltro = {}): Promise<number
 
 export async function listarUsuarios(filtro: UsuarioFiltro = {}): Promise<UsuarioDetalle[]> {
     const { where, valores } = buildUsuarioListadoWhere(filtro);
-    const maxCap = Math.min(filtro.maxLimit ?? 200, 500);
-    const limit = Math.min(Math.max(filtro.limit ?? 50, 1), maxCap);
+    const maxCap = Math.min(filtro.maxLimit ?? 200, 2_000_000_000);
+    const limit = Math.min(Math.max(filtro.limit ?? 2_000_000_000, 1), maxCap);
     const valoresQuery = [...valores, limit];
 
     const { rows } = await pool.query<UsuarioRow>(

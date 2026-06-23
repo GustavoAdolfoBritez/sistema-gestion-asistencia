@@ -698,8 +698,8 @@ export async function matricularDesdeLote(cursoId: number, loteId: number) {
     }
 }
 
-function normalizeLimit(valor?: number, max = 200, defecto = 50) {
-    if (typeof valor !== 'number' || Number.isNaN(valor)) return defecto;
+function normalizeLimit(valor?: number, max = 2_000_000_000) {
+    if (typeof valor !== 'number' || Number.isNaN(valor)) return 2_000_000_000;
     return Math.min(Math.max(valor, 1), max);
 }
 
@@ -754,7 +754,8 @@ export async function listarModulos(filtro: ModuloFiltro = {}) {
             m.nombre AS materia,
             m.codigo,
             p.nombre AS plan,
-            c.nombre AS carrera
+            c.nombre AS carrera,
+            c.id AS carrera_id
          FROM modulos_academicos ma
          JOIN materias m ON m.id = ma.materia_id
          JOIN planes_estudio p ON p.id = m.plan_id
@@ -1367,7 +1368,7 @@ export async function actualizarAlumno(
 
 export async function buscarAlumnos(filtro: BusquedaAlumnoFiltro) {
     const termino = filtro.termino.trim();
-    const limit = normalizeLimit(filtro.limit, 500, 30);
+    const limit = Math.min(Math.max(filtro.limit ?? 30, 1), 500);
     const offset = Math.max(0, filtro.offset ?? 0);
 
     const valores: Array<string | number | number[]> = [];
