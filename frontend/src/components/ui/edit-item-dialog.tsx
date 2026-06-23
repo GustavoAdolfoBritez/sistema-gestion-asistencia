@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './dialog';
 import { AppSelect } from './app-select';
 import { toast } from '../../utils/toast';
@@ -10,9 +10,7 @@ export interface EditFormField {
   type?: 'text' | 'number' | 'date';
   required?: boolean;
   placeholder?: string;
-  /** Si está definido, se muestra un desplegable (`AppSelect`) en lugar de un input de texto. */
   options?: { value: string; label: string }[];
-  /** Columnas en modo grid cuando se usan options (ej. años con 4 columnas). */
   columns?: number;
 }
 
@@ -23,7 +21,6 @@ interface EditItemDialogProps {
   onCancel: () => void;
   onSave: (values: Record<string, string>) => void | Promise<void>;
   loading?: boolean;
-  /** Límites min/max para inputs type=date (p. ej. según año y mes del módulo). */
   resolveDateBounds?: (values: Record<string, string>) => { min: string; max: string } | null;
 }
 
@@ -53,32 +50,48 @@ export function EditItemDialog({
   resolveDateBounds,
 }: EditItemDialogProps) {
   const [values, setValues] = useState<Record<string, string>>({});
+  const prevOpenRef = useRef(false);
+  const isFirstRenderAfterOpen = open && !prevOpenRef.current;
 
-  useEffect(() => {
-    if (open) {
+  const fieldsKey = useMemo(
+    () => fields.map((f) => `${f.key}=${f.defaultValue ?? ''}`).join('|'),
+    [fields]
+  );
+
+  useLayoutEffect(() => {
+    if (isFirstRenderAfterOpen) {
       const initial: Record<string, string> = {};
       for (const field of fields) {
         initial[field.key] = field.defaultValue ?? '';
       }
       setValues(initial);
     }
-  }, [open, fields]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    let changed = false;
-    for (const field of fields) {
-      if ((values[field.key] ?? '') !== (field.defaultValue ?? '')) {
-        changed = true;
-        break;
+    if (!open && prevOpenRef.current) {
+      setValues({});
+    }
+
+    prevOpenRef.current = open;
+  }, [open, fieldsKey]);
+
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      let changed = false;
+      for (const field of fields) {
+        if ((values[field.key] ?? '') !== (field.defaultValue ?? '')) {
+          changed = true;
+          break;
+        }
       }
-    }
-    if (!changed) {
-      toast.error('No realizaste ningún cambio.');
-      return;
-    }
-    await onSave(values);
-  };
+      if (!changed) {
+        toast.error('No realizaste ningun cambio.');
+        return;
+      }
+      await onSave(values);
+    },
+    [fields, onSave, values]
+  );
 
   const fieldNodes = fields.map((field) => {
     const dateBounds = field.type === 'date' && resolveDateBounds ? resolveDateBounds(values) : null;
@@ -145,8 +158,29 @@ export function EditItemDialog({
   });
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onCancel(); }}>
-      <DialogContent className="max-w-md max-lg:flex max-lg:max-h-[min(90dvh,calc(100vh-1.5rem))] max-lg:flex-col max-lg:gap-0 max-lg:overflow-hidden max-lg:p-0">
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          if (document.querySelector('.app-dropdown-panel')) return;
+          onCancel();
+        }
+      }}
+    >
+      <DialogContent
+        onInteractOutside={(event) => {
+          const target = event.target as HTMLElement;
+          if (target.closest('.app-dropdown-panel')) {
+            event.preventDefault();
+          }
+        }}
+        onPointerDownOutside={(event) => {
+          const target = event.target as HTMLElement;
+          if (target.closest('.app-dropdown-panel')) {
+            event.preventDefault();
+          }
+        }}
+        className="max-w-md max-lg:flex max-lg:max-h-[min(90dvh,calc(100vh-1.5rem))] max-lg:flex-col max-lg:gap-0 max-lg:overflow-hidden max-lg:p-0">
         <DialogHeader className="max-lg:shrink-0 max-lg:border-b max-lg:border-slate-200 max-lg:px-4 max-lg:py-4 max-lg:pr-12 dark:max-lg:border-slate-700/80">
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>

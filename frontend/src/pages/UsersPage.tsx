@@ -979,46 +979,48 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                         return (
                           <li key={user.id}>
                             <article
-                              className={`overflow-hidden rounded-xl border bg-white shadow-sm transition-shadow dark:bg-[#0e1e38] dark:shadow-none ${
+                              className={`rounded-xl border bg-white shadow-sm transition-shadow dark:bg-[#0e1e38] dark:shadow-none ${
                                 seleccionado
                                   ? 'border-primary/40 ring-2 ring-primary/15 dark:border-primary/50'
                                   : 'border-slate-200/90 hover:shadow-md dark:border-slate-700/80'
                               }`}
                             >
-                              <button
-                                type="button"
-                                className="flex w-full items-center gap-3 p-3 text-left active:bg-slate-50 dark:active:bg-slate-800/40"
-                                onClick={() => seleccionarUsuario(user.id)}
-                              >
-                                <UserAvatar nombres={user.nombres} apellidos={user.apellidos} size="sm" />
-                                <div className="min-w-0 flex-1">
-                                  <p className="break-words text-[15px] font-semibold leading-snug text-slate-900 dark:text-[#f0f4f8]">
-                                    {formatName(user)}
-                                  </p>
-                                  <p className="mt-0.5 truncate text-xs text-slate-500">{user.email}</p>
-                                </div>
-                                <span
-                                  className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize ${claseEstadoUsuarioMovil(user.estado)}`}
+                              <div className="overflow-hidden rounded-t-xl">
+                                <button
+                                  type="button"
+                                  className="flex w-full items-center gap-3 p-3 text-left active:bg-slate-50 dark:active:bg-slate-800/40"
+                                  onClick={() => seleccionarUsuario(user.id)}
                                 >
-                                  {etiquetaEstadoUsuario(user.estado)}
-                                </span>
-                              </button>
+                                  <UserAvatar nombres={user.nombres} apellidos={user.apellidos} size="sm" />
+                                  <div className="min-w-0 flex-1">
+                                    <p className="break-words text-[15px] font-semibold leading-snug text-slate-900 dark:text-[#f0f4f8]">
+                                      {formatName(user)}
+                                    </p>
+                                    <p className="mt-0.5 truncate text-xs text-slate-500">{user.email}</p>
+                                  </div>
+                                  <span
+                                    className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize ${claseEstadoUsuarioMovil(user.estado)}`}
+                                  >
+                                    {etiquetaEstadoUsuario(user.estado)}
+                                  </span>
+                                </button>
 
-                              {rolesVisibles.length ? (
-                                <div className="flex flex-wrap gap-1 px-3 pb-2">
-                                  {rolesVisibles.map((role) => (
-                                    <span
-                                      key={role}
-                                      className="max-w-full truncate rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800/80 dark:text-slate-300"
-                                    >
-                                      {role}
-                                    </span>
-                                  ))}
-                                </div>
-                              ) : null}
+                                {rolesVisibles.length ? (
+                                  <div className="flex flex-wrap gap-1 px-3 pb-2">
+                                    {rolesVisibles.map((role) => (
+                                      <span
+                                        key={role}
+                                        className="max-w-full truncate rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800/80 dark:text-slate-300"
+                                      >
+                                        {role}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </div>
 
                               <div
-                                className="flex items-center gap-2 border-t border-slate-100 bg-slate-50/50 px-2 py-2 dark:border-slate-800/80 dark:bg-[#0a1628]/50"
+                                className="flex items-center gap-2 border-t border-slate-100 bg-slate-50/50 px-2 py-2 rounded-b-xl dark:border-slate-800/80 dark:bg-[#0a1628]/50"
                                 onClick={stopRowSelection}
                                 onMouseDown={stopRowSelection}
                                 onPointerDown={stopRowSelection}

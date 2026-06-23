@@ -291,15 +291,18 @@ function obtenerSemestrePlanCurso(curso: Curso, modulos: Modulo[], materias: Mat
 
 const MAX_SEMESTRE_PLAN = 10;
 
+const ANIO_MODULO_ATRAS = 5;
+const ANIO_MODULO_ADELANTE = 10;
+
 function limitesAnioModulo() {
   const y = new Date().getFullYear();
-  return { min: y, max: 2036 };
+  return { min: y - ANIO_MODULO_ATRAS, max: y + ANIO_MODULO_ADELANTE };
 }
 
 function opcionesAnioModulo(): { value: string; label: string }[] {
-  const currentYear = new Date().getFullYear();
+  const { min, max } = limitesAnioModulo();
   const options: { value: string; label: string }[] = [];
-  for (let y = currentYear; y <= 2036; y++) {
+  for (let y = min; y <= max; y++) {
     options.push({ value: String(y), label: String(y) });
   }
   return options;
@@ -1388,6 +1391,11 @@ export function AcademicoAdminPage({ onLogout }: Props) {
 
   const toDateInputValue = (iso: string | null | undefined) => (iso ? String(iso).slice(0, 10) : '');
 
+  const resolveDateBounds = useCallback(
+    (v: Record<string, string>) => rangoFechasMesModulo(v.anio, v.mes),
+    []
+  );
+
   const handleEditModulo = (mod: Modulo) => {
     const materiaOptions = [...materiasDeCarrera]
       .sort(compareMateriasCurriculares)
@@ -1463,10 +1471,14 @@ export function AcademicoAdminPage({ onLogout }: Props) {
   };
 
   const handleEditCurso = (curso: Curso) => {
-    const moduloOptions = sortedModulos.map((m) => ({
-      value: String(m.id),
-      label: `${m.materia ?? `Módulo ${m.id}`} · ${MESES[(m.mes ?? 1) - 1]} ${m.anio}`,
-    }));
+    const moduloOptions = sortedModulos.map((m) => {
+      const mat = materias.find((mat) => mat.id === m.materia_id);
+      const sem = mat?.semestre ? ` — ${formatearSemestre(mat.semestre)}` : '';
+      return {
+        value: String(m.id),
+        label: `${m.materia ?? `Módulo ${m.id}`}${sem} · ${MESES[(m.mes ?? 1) - 1]} ${m.anio}`,
+      };
+    });
     if (moduloOptions.length === 0) {
       toast.error('No hay módulos disponibles para este curso.');
       return;
@@ -1534,9 +1546,11 @@ export function AcademicoAdminPage({ onLogout }: Props) {
   };
 
   const handleDeleteModulo = (mod: Modulo) => {
+    const mat = materias.find((m) => m.id === mod.materia_id);
+    const sem = mat?.semestre ? ` — ${formatearSemestre(mat.semestre)}` : '';
     setPendingDelete({
       title: 'Eliminar módulo',
-      description: `¿Eliminar el módulo "${mod.materia ?? `Módulo ${mod.id}`} · ${MESES[(mod.mes ?? 1) - 1]} ${mod.anio}"? Se eliminarán también sus cursos y sesiones asociadas.`,
+      description: `¿Eliminar el módulo "${mod.materia ?? `Módulo ${mod.id}`}${sem} · ${MESES[(mod.mes ?? 1) - 1]} ${mod.anio}"? Se eliminarán también sus cursos y sesiones asociadas.`,
       onConfirm: async () => {
         setDialogLoading(true);
         try {
@@ -1554,7 +1568,9 @@ export function AcademicoAdminPage({ onLogout }: Props) {
   };
 
   const handleDeleteCurso = (curso: Curso) => {
-    const label = `${curso.materia ?? `Módulo ${curso.modulo_id}`} · ${curso.docente ?? curso.docente_id}`;
+    const semCurso = obtenerSemestrePlanCurso(curso, modulos, materias);
+    const semCursoStr = semCurso ? ` — ${formatearSemestre(semCurso)}` : '';
+    const label = `${curso.materia ?? `Módulo ${curso.modulo_id}`}${semCursoStr} · ${curso.docente ?? curso.docente_id}`;
     setPendingDelete({
       title: 'Eliminar curso',
       description: `¿Eliminar el curso "${label}"? Se eliminarán también sus matrículas y sesiones asociadas.`,
@@ -2089,15 +2105,29 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                       Ningún módulo coincide con la búsqueda o el año seleccionado.
                     </p>
                   ) : modulosListaVisibles.map((mod) => {
-                    const fechaInicio = mod.fecha_inicio ? new Date(mod.fecha_inicio).toLocaleDateString('es-PY', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
-                    const fechaFin    = mod.fecha_fin    ? new Date(mod.fecha_fin).toLocaleDateString('es-PY', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+                    const formatDateLocal = (iso: string | null | undefined) => {
+                      if (!iso) return '—';
+                      const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
+                      return new Date(y, m - 1, d).toLocaleDateString('es-PY', { day: '2-digit', month: 'short', year: 'numeric' });
+                    };
+                    const fechaInicio = formatDateLocal(mod.fecha_inicio);
+                    const fechaFin    = formatDateLocal(mod.fecha_fin);
                     const periodo = `${MESES[(mod.mes ?? 1) - 1]} ${mod.anio}`;
+                    const materiaModulo = materias.find((m) => m.id === mod.materia_id);
+                    const semestreModulo = materiaModulo?.semestre;
                     return (
                       <div key={mod.id} className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 hover:bg-slate-100 dark:border-slate-700/70 dark:bg-slate-900/40 dark:hover:bg-slate-800/40 max-lg:items-stretch lg:flex-row lg:items-center lg:justify-between lg:gap-3">
                         <div className="flex min-w-0 items-start gap-2.5">
                           <span className="material-symbols-outlined text-primary/70 text-[20px] mt-0.5 shrink-0">book</span>
                           <div className="min-w-0 space-y-0.5">
-                            <p className="truncate text-sm font-semibold">{mod.materia ?? 'Materia'}</p>
+                            <p className="truncate text-sm font-semibold">
+                              {mod.materia ?? 'Materia'}
+                              {semestreModulo ? (
+                                <span className="font-normal text-slate-500 dark:text-slate-400">
+                                  {' — '}{formatearSemestre(semestreModulo)}
+                                </span>
+                              ) : null}
+                            </p>
                             <p className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400">
                               <span className="material-symbols-outlined text-[13px]">calendar_today</span>
                               {periodo}
@@ -2170,10 +2200,14 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                         emptyOptionsText={
                           cursoFiltroSemestre && modulosCursoFiltrados.length === 0 ? 'Sin opciones' : undefined
                         }
-                        options={modulosCursoFiltrados.map((m) => ({
-                          value: String(m.id),
-                          label: `${m.materia ?? `Materia ${m.materia_id}`} · ${MESES[(m.mes ?? 1) - 1]} ${m.anio}`,
-                        }))}
+                        options={modulosCursoFiltrados.map((m) => {
+                          const mat = materias.find((mat) => mat.id === m.materia_id);
+                          const sem = mat?.semestre ? ` — ${formatearSemestre(mat.semestre)}` : '';
+                          return {
+                            value: String(m.id),
+                            label: `${m.materia ?? `Materia ${m.materia_id}`}${sem} · ${MESES[(m.mes ?? 1) - 1]} ${m.anio}`,
+                          };
+                        })}
                         triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                       />
                     </label>
@@ -2355,6 +2389,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                       {cursosListaVisibles.map((curso) => {
                         const isSelected = selectedCursoId === curso.id;
                         const materiaTitulo = curso.materia ?? `Módulo ${curso.modulo_id}`;
+                        const semestreCursoCard = obtenerSemestrePlanCurso(curso, modulos, materias);
                         const docenteNombre = curso.docente ?? String(curso.docente_id ?? '—');
                         const inscriptos = curso.inscriptos ?? 0;
                         return (
@@ -2385,6 +2420,11 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                                       Materia
                                     </span>
                                     {materiaTitulo}
+                                    {semestreCursoCard ? (
+                                      <span className="font-normal text-slate-500 dark:text-slate-400">
+                                        {' — '}{formatearSemestre(semestreCursoCard)}
+                                      </span>
+                                    ) : null}
                                   </span>
                                 </div>
                               </div>
@@ -2758,7 +2798,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
         onCancel={() => setPendingEdit(null)}
         onSave={(values) => { if (pendingEdit) void pendingEdit.onSave(values); }}
         loading={dialogLoading}
-        resolveDateBounds={(v) => rangoFechasMesModulo(v.anio, v.mes)}
+        resolveDateBounds={resolveDateBounds}
       />
     </div>
   );
