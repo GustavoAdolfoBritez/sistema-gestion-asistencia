@@ -353,7 +353,6 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
-  const [showInitialPassword, setShowInitialPassword] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const usuariosListScrollRef = useRef<HTMLDivElement | null>(null);
   const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
