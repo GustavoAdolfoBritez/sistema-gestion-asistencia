@@ -25,7 +25,7 @@ export const PDF_BRAND = {
 export const PDF_BRAND_MARGIN = 40;
 
 /** Zona horaria para textos de generación / filtros en informes. */
-export const PDF_TIMEZONE_PARAGUAY = 'America/Asuncion';
+const PDF_TIMEZONE_PARAGUAY = 'America/Asuncion';
 
 /** Fecha y hora compactas para tablas (DD/MM/AAAA, HH:mm, 24 h, Paraguay). */
 export function formatFechaHoraCompactaParaguay(fecha: Date | string): string {
@@ -60,59 +60,13 @@ export function formatGeneradoParaguay(fecha: Date | string = new Date()): strin
   }).format(d);
 }
 
-export function fitText(doc: PDFKit.PDFDocument, text: string, maxWidth: number): string {
+function fitText(doc: PDFKit.PDFDocument, text: string, maxWidth: number): string {
   const safe = String(text ?? '').replace(/\s+/g, ' ').trim();
   if (!safe) return '—';
   if (doc.widthOfString(safe) <= maxWidth) return safe;
   let out = safe;
   while (out.length > 1 && doc.widthOfString(`${out}…`) > maxWidth) out = out.slice(0, -1);
   return `${out}…`;
-}
-
-export interface BrandDocumentHeaderOpts {
-  title: string;
-  subtitle?: string;
-  generatedAt: string;
-  /** Si existe en disco, se dibuja arriba a la izquierda. */
-  logoPath?: string;
-}
-
-/**
- * Portada compacta: logo opcional, título, subtítulo, fecha de generación.
- * @returns Y siguiente bajo el bloque.
- */
-export function drawDocumentHeader(
-  doc: PDFKit.PDFDocument,
-  opts: BrandDocumentHeaderOpts,
-  marginX: number,
-  startY: number,
-  contentWidth: number
-): number {
-  let y = startY;
-  const logoPath = opts.logoPath;
-  if (logoPath && fs.existsSync(logoPath)) {
-    const h = 36;
-    const w = Math.round(h * 2.2);
-    try {
-      doc.image(logoPath, marginX, y, { width: w, height: h });
-    } catch {
-      /* formato no soportado, etc. */
-    }
-  }
-  doc.fillColor(PDF_BRAND.text).font('Helvetica-Bold').fontSize(16);
-  doc.text(opts.title, marginX, y + 2, { width: contentWidth, align: 'right' });
-  y += 42;
-  if (opts.subtitle) {
-    doc.font('Helvetica').fontSize(10).fillColor(PDF_BRAND.muted);
-    doc.text(opts.subtitle, marginX, y, { width: contentWidth });
-    y += 14;
-  }
-  doc.font('Helvetica').fontSize(9).fillColor(PDF_BRAND.muted);
-  doc.text(`Generado: ${opts.generatedAt}`, marginX, y, { width: contentWidth });
-  y += 16;
-  doc.moveTo(marginX, y).lineTo(marginX + contentWidth, y).strokeColor(PDF_BRAND.accent).lineWidth(1).stroke();
-  y += 12;
-  return y;
 }
 
 export function drawSectionTitle(doc: PDFKit.PDFDocument, marginX: number, y: number, contentWidth: number, title: string): number {
@@ -125,45 +79,9 @@ export function drawSectionTitle(doc: PDFKit.PDFDocument, marginX: number, y: nu
   return y + h + 8;
 }
 
-export interface KeyValueRow {
-  label: string;
-  value: string;
-}
-
-export type DocWithTextMeasure = PDFKit.PDFDocument & {
+type DocWithTextMeasure = PDFKit.PDFDocument & {
   heightOfString(text: string, options?: { width?: number; lineGap?: number }): number;
 };
-
-/** Pares etiqueta / valor: etiqueta en negrita y valor debajo con sangría (evita solapes si el texto largo). */
-export function drawKeyValueRows(
-  doc: PDFKit.PDFDocument,
-  marginX: number,
-  startY: number,
-  contentWidth: number,
-  rows: KeyValueRow[]
-): number {
-  let y = startY;
-  const indent = 10;
-  const valueW = Math.max(40, contentWidth - indent);
-  const lineGap = 0.5;
-  const d = doc as DocWithTextMeasure;
-
-  for (const row of rows) {
-    const label = `${row.label}:`;
-    const rawVal = String(row.value ?? '').trim() || '—';
-
-    doc.fillColor(PDF_BRAND.muted).font('Helvetica-Bold').fontSize(9);
-    const hLabel = d.heightOfString(label, { width: contentWidth, lineGap });
-    doc.text(label, marginX, y, { width: contentWidth, lineGap });
-
-    doc.fillColor(PDF_BRAND.text).font('Helvetica').fontSize(9);
-    const hVal = d.heightOfString(rawVal, { width: valueW, lineGap });
-    doc.text(rawVal, marginX + indent, y + hLabel + 2, { width: valueW, lineGap });
-
-    y += hLabel + 2 + hVal + 8;
-  }
-  return y + 2;
-}
 
 /** Una fila etiqueta + valor apilados (ancho fijo); usado en meta columnada. */
 export function drawStackedLabelValue(
@@ -218,7 +136,7 @@ export interface BuildContentFitTableColumnsOptions {
 }
 
 /** Ancho máximo de una línea (soporta saltos `\n` explícitos en el texto). */
-export function maxLineWidthOfString(doc: PDFKit.PDFDocument, text: string): number {
+function maxLineWidthOfString(doc: PDFKit.PDFDocument, text: string): number {
   const parts = String(text ?? '').split('\n');
   if (!parts.length) return 0;
   return Math.max(...parts.map((line) => doc.widthOfString(line || '—')), 0);

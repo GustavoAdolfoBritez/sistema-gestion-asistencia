@@ -21,3 +21,7 @@ test_db.ts
 .env*
 .prueba
 .lol.txt
+
+# Build output (compilados no rastreados)
+dist/
+frontend/dist/
