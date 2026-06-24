@@ -2136,10 +2136,10 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                         <div className="flex min-w-0 items-start gap-2.5">
                           <span className="material-symbols-outlined text-primary/70 text-[20px] mt-0.5 shrink-0">book</span>
                           <div className="min-w-0 space-y-0.5">
-                            <p className="truncate text-sm font-semibold">
-                              {mod.materia ?? 'Materia'}
+                            <p className="text-sm font-semibold lg:flex lg:min-w-0 lg:items-baseline lg:gap-1">
+                              <span className="lg:truncate lg:min-w-0">{mod.materia ?? 'Materia'}</span>
                               {semestreModulo ? (
-                                <span className="font-normal text-slate-500 dark:text-slate-400">
+                                <span className="font-normal text-slate-500 dark:text-slate-400 whitespace-nowrap shrink-0">
                                   {' — '}{formatearSemestre(semestreModulo)}
                                 </span>
                               ) : null}
@@ -2450,13 +2450,13 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                                   {isSelected ? 'check_circle' : 'school'}
                                 </span>
                                 <div className="min-w-0 flex-1 lg:contents">
-                                  <span className="min-w-0 cursor-pointer text-sm font-semibold leading-snug text-slate-900 max-lg:block max-lg:break-words max-lg:whitespace-normal dark:text-[#e7eef9] lg:truncate">
+                                  <span className="min-w-0 cursor-pointer text-sm font-semibold leading-snug text-slate-900 max-lg:block max-lg:break-words max-lg:whitespace-normal dark:text-[#e7eef9] lg:flex lg:min-w-0 lg:items-baseline lg:gap-1">
                                     <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-500 lg:hidden">
                                       Materia
                                     </span>
-                                    {materiaTitulo}
+                                    <span className="lg:truncate lg:min-w-0">{materiaTitulo}</span>
                                     {semestreCursoCard ? (
-                                      <span className="font-normal text-slate-500 dark:text-slate-400">
+                                      <span className="font-normal text-slate-500 dark:text-slate-400 whitespace-nowrap shrink-0">
                                         {' — '}{formatearSemestre(semestreCursoCard)}
                                       </span>
                                     ) : null}
