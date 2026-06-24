@@ -721,10 +721,6 @@ export function AcademicoAdminPage({ onLogout }: Props) {
   }, [sortedModulos, moduloListaAnio, moduloListaBusqueda]);
 
   const modulosPaginaTotal = Math.max(1, Math.ceil(modulosListaVisibles.length / PAGINA_TAMANO));
-  const modulosPaginaActual = useMemo(
-    () => modulosListaVisibles.slice(modulosPagina * PAGINA_TAMANO, (modulosPagina + 1) * PAGINA_TAMANO),
-    [modulosListaVisibles, modulosPagina]
-  );
 
   const aniosDisponiblesCursos = useMemo(() => {
     const set = new Set<number>();
@@ -750,10 +746,6 @@ export function AcademicoAdminPage({ onLogout }: Props) {
   }, [cursosFiltradosPorCarrera, cursoListaAnio, cursoListaBusqueda]);
 
   const cursosPaginaTotal = Math.max(1, Math.ceil(cursosListaVisibles.length / PAGINA_TAMANO));
-  const cursosPaginaActual = useMemo(
-    () => cursosListaVisibles.slice(cursosPagina * PAGINA_TAMANO, (cursosPagina + 1) * PAGINA_TAMANO),
-    [cursosListaVisibles, cursosPagina]
-  );
 
   const fetchData = useCallback(async () => {
     setLoading(true);
