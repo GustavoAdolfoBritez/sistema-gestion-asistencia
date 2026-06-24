@@ -2139,8 +2139,8 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                             <p className="text-sm font-semibold">
                               <span className="break-words">{mod.materia ?? 'Materia'}</span>
                               {semestreModulo ? (
-                                <span className="font-normal text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                                  {' — '}{formatearSemestre(semestreModulo)}
+                                <span className="block text-xs font-normal text-slate-500 dark:text-slate-400 mt-0.5">
+                                  {formatearSemestre(semestreModulo)}
                                 </span>
                               ) : null}
                             </p>
@@ -2456,8 +2456,8 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                                     </span>
                                     <span>{materiaTitulo}</span>
                                     {semestreCursoCard ? (
-                                      <span className="font-normal text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                                        {' — '}{formatearSemestre(semestreCursoCard)}
+                                      <span className="block text-xs font-normal text-slate-500 dark:text-slate-400 mt-0.5">
+                                        {formatearSemestre(semestreCursoCard)}
                                       </span>
                                     ) : null}
                                   </span>
