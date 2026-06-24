@@ -425,6 +425,10 @@ export function AcademicoAdminPage({ onLogout }: Props) {
   const [moduloListaAnio, setModuloListaAnio] = useState('');
   const [cursoListaBusqueda, setCursoListaBusqueda] = useState('');
   const [cursoListaAnio, setCursoListaAnio] = useState('');
+  const [modulosPagina, setModulosPagina] = useState(0);
+  const [cursosPagina, setCursosPagina] = useState(0);
+
+  const PAGINA_TAMANO = 4;
 
   const alcanceVisualAcademico = useMemo(
     () => deriveAlcanceVisual(alcance),
@@ -716,6 +720,12 @@ export function AcademicoAdminPage({ onLogout }: Props) {
     });
   }, [sortedModulos, moduloListaAnio, moduloListaBusqueda]);
 
+  const modulosPaginaTotal = Math.max(1, Math.ceil(modulosListaVisibles.length / PAGINA_TAMANO));
+  const modulosPaginaActual = useMemo(
+    () => modulosListaVisibles.slice(modulosPagina * PAGINA_TAMANO, (modulosPagina + 1) * PAGINA_TAMANO),
+    [modulosListaVisibles, modulosPagina]
+  );
+
   const aniosDisponiblesCursos = useMemo(() => {
     const set = new Set<number>();
     for (const c of cursosFiltradosPorCarrera) {
@@ -738,6 +748,12 @@ export function AcademicoAdminPage({ onLogout }: Props) {
       return textoCoincideBusqueda(texto, cursoListaBusqueda);
     });
   }, [cursosFiltradosPorCarrera, cursoListaAnio, cursoListaBusqueda]);
+
+  const cursosPaginaTotal = Math.max(1, Math.ceil(cursosListaVisibles.length / PAGINA_TAMANO));
+  const cursosPaginaActual = useMemo(
+    () => cursosListaVisibles.slice(cursosPagina * PAGINA_TAMANO, (cursosPagina + 1) * PAGINA_TAMANO),
+    [cursosListaVisibles, cursosPagina]
+  );
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -794,7 +810,13 @@ export function AcademicoAdminPage({ onLogout }: Props) {
     setAlumnoSearchOpen(false);
     setSelectedCursoId(null);
     setCopiarDesdeCursoId('');
+    setModulosPagina(0);
+    setCursosPagina(0);
   }, [carreraSeleccionadaId, facultadSeleccionadaId]);
+
+  // Resetear pagina al cambiar filtros
+  useEffect(() => { setModulosPagina(0); }, [moduloListaBusqueda, moduloListaAnio]);
+  useEffect(() => { setCursosPagina(0); }, [cursoListaBusqueda, cursoListaAnio]);
 
   // Lotes de alumnos filtrados por carrera y semestre del curso expandido (o del formulario «Nuevo curso»).
   useEffect(() => {
@@ -2105,7 +2127,8 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                     <p className="text-sm text-slate-600 py-6 text-center dark:text-slate-400">
                       Ningún módulo coincide con la búsqueda o el año seleccionado.
                     </p>
-                  ) : modulosListaVisibles.map((mod) => {
+                  ) : modulosListaVisibles.map((mod, i) => {
+                    const enPagina = i >= modulosPagina * PAGINA_TAMANO && i < (modulosPagina + 1) * PAGINA_TAMANO;
                     const formatDateLocal = (iso: string | null | undefined) => {
                       if (!iso) return '—';
                       const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
@@ -2117,7 +2140,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                     const materiaModulo = materias.find((m) => m.id === mod.materia_id);
                     const semestreModulo = materiaModulo?.semestre;
                     return (
-                      <div key={mod.id} className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 hover:bg-slate-100 dark:border-slate-700/70 dark:bg-slate-900/40 dark:hover:bg-slate-800/40 max-lg:items-stretch lg:flex-row lg:items-center lg:justify-between lg:gap-3">
+                      <div key={mod.id} className={`flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 hover:bg-slate-100 dark:border-slate-700/70 dark:bg-slate-900/40 dark:hover:bg-slate-800/40 max-lg:items-stretch lg:flex-row lg:items-center lg:justify-between lg:gap-3${enPagina ? '' : ' max-lg:hidden'}`}>
                         <div className="flex min-w-0 items-start gap-2.5">
                           <span className="material-symbols-outlined text-primary/70 text-[20px] mt-0.5 shrink-0">book</span>
                           <div className="min-w-0 space-y-0.5">
@@ -2151,6 +2174,24 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                       </div>
                     );
                   })}
+                  {modulosPaginaTotal > 1 && (
+                    <div className="lg:hidden flex items-center justify-center gap-1 pt-1">
+                      <button type="button" onClick={() => setModulosPagina((p) => p - 1)} disabled={modulosPagina === 0}
+                        className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 disabled:opacity-30">
+                        ←
+                      </button>
+                      {Array.from({ length: modulosPaginaTotal }, (_, n) => (
+                        <button key={n} type="button" onClick={() => setModulosPagina(n)}
+                          className={`px-2 py-1 text-xs rounded border ${n === modulosPagina ? 'bg-primary text-white border-primary' : 'border-slate-300 dark:border-slate-700'}`}>
+                          {n + 1}
+                        </button>
+                      ))}
+                      <button type="button" onClick={() => setModulosPagina((p) => p + 1)} disabled={modulosPagina >= modulosPaginaTotal - 1}
+                        className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 disabled:opacity-30">
+                        →
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -2387,7 +2428,8 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                         <span />
                       </div>
                       <div className="space-y-1.5 pt-0.5 max-lg:space-y-2">
-                      {cursosListaVisibles.map((curso) => {
+                      {cursosListaVisibles.map((curso, i) => {
+                        const enPagina = i >= cursosPagina * PAGINA_TAMANO && i < (cursosPagina + 1) * PAGINA_TAMANO;
                         const isSelected = selectedCursoId === curso.id;
                         const materiaTitulo = curso.materia ?? `Módulo ${curso.modulo_id}`;
                         const semestreCursoCard = obtenerSemestrePlanCurso(curso, modulos, materias);
@@ -2396,7 +2438,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                         return (
                           <div
                             key={curso.id}
-                            className={`rounded-lg border transition-colors max-lg:flex max-lg:flex-col max-lg:gap-2 max-lg:p-3 lg:grid lg:grid-cols-[1.25rem_minmax(0,1fr)_minmax(0,8.5rem)_minmax(2.5rem,3.5rem)_minmax(0,8.75rem)] lg:items-center lg:gap-x-2 lg:px-3 lg:py-2.5 ${
+                            className={`rounded-lg border transition-colors max-lg:flex max-lg:flex-col max-lg:gap-2 max-lg:p-3 lg:grid lg:grid-cols-[1.25rem_minmax(0,1fr)_minmax(0,8.5rem)_minmax(2.5rem,3.5rem)_minmax(0,8.75rem)] lg:items-center lg:gap-x-2 lg:px-3 lg:py-2.5${enPagina ? '' : ' max-lg:hidden'} ${
                               isSelected
                                 ? 'border-primary/60 bg-primary/5 ring-2 ring-primary/30 dark:bg-primary/10'
                                 : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm dark:border-slate-700/70 dark:bg-slate-900/30 dark:hover:border-slate-600/80'
@@ -2470,6 +2512,24 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                           </div>
                         );
                       })}
+                      {cursosPaginaTotal > 1 && (
+                        <div className="lg:hidden flex items-center justify-center gap-1 pt-1">
+                          <button type="button" onClick={() => setCursosPagina((p) => p - 1)} disabled={cursosPagina === 0}
+                            className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 disabled:opacity-30">
+                            ←
+                          </button>
+                          {Array.from({ length: cursosPaginaTotal }, (_, n) => (
+                            <button key={n} type="button" onClick={() => setCursosPagina(n)}
+                              className={`px-2 py-1 text-xs rounded border ${n === cursosPagina ? 'bg-primary text-white border-primary' : 'border-slate-300 dark:border-slate-700'}`}>
+                              {n + 1}
+                            </button>
+                          ))}
+                          <button type="button" onClick={() => setCursosPagina((p) => p + 1)} disabled={cursosPagina >= cursosPaginaTotal - 1}
+                            className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 disabled:opacity-30">
+                            →
+                          </button>
+                        </div>
+                      )}
                       </div>
                     </div>
                   )}
