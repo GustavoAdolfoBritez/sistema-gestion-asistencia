@@ -425,8 +425,6 @@ export function AcademicoAdminPage({ onLogout }: Props) {
   const [moduloListaAnio, setModuloListaAnio] = useState('');
   const [cursoListaBusqueda, setCursoListaBusqueda] = useState('');
   const [cursoListaAnio, setCursoListaAnio] = useState('');
-  const [modulosVisibles, setModulosVisibles] = useState(15);
-  const [cursosVisibles, setCursosVisibles] = useState(15);
 
   const alcanceVisualAcademico = useMemo(
     () => deriveAlcanceVisual(alcance),
@@ -710,23 +708,12 @@ export function AcademicoAdminPage({ onLogout }: Props) {
 
   const modulosListaVisibles = useMemo(() => {
     const anioFiltro = moduloListaAnio ? Number(moduloListaAnio) : null;
-    const filtrados = sortedModulos.filter((mod) => {
-      if (anioFiltro != null && mod.anio !== anioFiltro) return false;
-      const periodo = `${MESES[(mod.mes ?? 1) - 1]} ${mod.anio ?? ''}`;
-      const texto = [mod.materia ?? '', periodo, mod.estado ?? ''].join(' ');
-      return textoCoincideBusqueda(texto, moduloListaBusqueda);
-    });
-    return filtrados.slice(0, modulosVisibles);
-  }, [sortedModulos, moduloListaAnio, moduloListaBusqueda, modulosVisibles]);
-
-  const modulosTotalFiltrados = useMemo(() => {
-    const anioFiltro = moduloListaAnio ? Number(moduloListaAnio) : null;
     return sortedModulos.filter((mod) => {
       if (anioFiltro != null && mod.anio !== anioFiltro) return false;
       const periodo = `${MESES[(mod.mes ?? 1) - 1]} ${mod.anio ?? ''}`;
       const texto = [mod.materia ?? '', periodo, mod.estado ?? ''].join(' ');
       return textoCoincideBusqueda(texto, moduloListaBusqueda);
-    }).length;
+    });
   }, [sortedModulos, moduloListaAnio, moduloListaBusqueda]);
 
   const aniosDisponiblesCursos = useMemo(() => {
@@ -739,22 +726,6 @@ export function AcademicoAdminPage({ onLogout }: Props) {
 
   const cursosListaVisibles = useMemo(() => {
     const anioFiltro = cursoListaAnio ? Number(cursoListaAnio) : null;
-    const filtrados = cursosFiltradosPorCarrera.filter((curso) => {
-      if (anioFiltro != null && curso.anio !== anioFiltro) return false;
-      const periodo = curso.anio != null ? `${MESES[(curso.mes ?? 1) - 1]} ${curso.anio}` : '';
-      const texto = [
-        curso.materia ?? '',
-        curso.docente ?? '',
-        periodo,
-        formatCursoUbicacionHorario(curso) ?? '',
-      ].join(' ');
-      return textoCoincideBusqueda(texto, cursoListaBusqueda);
-    });
-    return filtrados.slice(0, cursosVisibles);
-  }, [cursosFiltradosPorCarrera, cursoListaAnio, cursoListaBusqueda, cursosVisibles]);
-
-  const cursosTotalFiltrados = useMemo(() => {
-    const anioFiltro = cursoListaAnio ? Number(cursoListaAnio) : null;
     return cursosFiltradosPorCarrera.filter((curso) => {
       if (anioFiltro != null && curso.anio !== anioFiltro) return false;
       const periodo = curso.anio != null ? `${MESES[(curso.mes ?? 1) - 1]} ${curso.anio}` : '';
@@ -765,7 +736,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
         formatCursoUbicacionHorario(curso) ?? '',
       ].join(' ');
       return textoCoincideBusqueda(texto, cursoListaBusqueda);
-    }).length;
+    });
   }, [cursosFiltradosPorCarrera, cursoListaAnio, cursoListaBusqueda]);
 
   const fetchData = useCallback(async () => {
@@ -823,13 +794,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
     setAlumnoSearchOpen(false);
     setSelectedCursoId(null);
     setCopiarDesdeCursoId('');
-    setModulosVisibles(15);
-    setCursosVisibles(15);
   }, [carreraSeleccionadaId, facultadSeleccionadaId]);
-
-  // Resetear paginacion al cambiar filtros
-  useEffect(() => { setModulosVisibles(15); }, [moduloListaBusqueda, moduloListaAnio]);
-  useEffect(() => { setCursosVisibles(15); }, [cursoListaBusqueda, cursoListaAnio]);
 
   // Lotes de alumnos filtrados por carrera y semestre del curso expandido (o del formulario «Nuevo curso»).
   useEffect(() => {
@@ -2088,9 +2053,9 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                   <div className="min-w-0">
                     <h3 className="text-lg font-semibold">Módulos</h3>
                     <p className="text-xs text-slate-600 dark:text-slate-400">
-                      {modulosListaVisibles.length === modulosTotalFiltrados
-                        ? `${modulosTotalFiltrados} registro${modulosTotalFiltrados !== 1 ? 's' : ''}`
-                        : `${modulosListaVisibles.length} de ${modulosTotalFiltrados} registro${modulosTotalFiltrados !== 1 ? 's' : ''}`}
+                      {modulosListaVisibles.length === sortedModulos.length
+                        ? `${sortedModulos.length} registro${sortedModulos.length !== 1 ? 's' : ''}`
+                        : `${modulosListaVisibles.length} de ${sortedModulos.length} registro${sortedModulos.length !== 1 ? 's' : ''}`}
                     </p>
                   </div>
                   <span className="material-symbols-outlined text-slate-500 text-[22px] shrink-0">calendar_month</span>
@@ -2187,15 +2152,6 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                     );
                   })}
                 </div>
-                {modulosTotalFiltrados > modulosVisibles && (
-                  <button
-                    type="button"
-                    className="w-full py-2 text-sm text-primary hover:text-primary/80 font-medium border border-dashed border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                    onClick={() => setModulosVisibles((prev) => prev + 15)}
-                  >
-                    Mostrar más ({modulosTotalFiltrados - modulosVisibles} restantes)
-                  </button>
-                )}
               </div>
             </div>
 
@@ -2369,8 +2325,8 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                     <h3 className="text-lg font-semibold">Cursos</h3>
                     <p className="text-xs text-slate-600 dark:text-slate-400">
                       {cursosListaVisibles.length === cursosFiltradosPorCarrera.length
-                        ? `${cursosTotalFiltrados} registro${cursosTotalFiltrados !== 1 ? 's' : ''}`
-                        : `${cursosListaVisibles.length} de ${cursosTotalFiltrados} registro${cursosTotalFiltrados !== 1 ? 's' : ''}`}
+                        ? `${cursosFiltradosPorCarrera.length} registro${cursosFiltradosPorCarrera.length !== 1 ? 's' : ''}`
+                        : `${cursosListaVisibles.length} de ${cursosFiltradosPorCarrera.length} registro${cursosFiltradosPorCarrera.length !== 1 ? 's' : ''}`}
                     </p>
                   </div>
                   <span className="material-symbols-outlined text-slate-500 text-[22px] shrink-0">school</span>
@@ -2514,15 +2470,6 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                           </div>
                         );
                       })}
-                      {cursosTotalFiltrados > cursosVisibles && (
-                        <button
-                          type="button"
-                          className="w-full py-2 text-sm text-primary hover:text-primary/80 font-medium border border-dashed border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                          onClick={() => setCursosVisibles((prev) => prev + 15)}
-                        >
-                          Mostrar más ({cursosTotalFiltrados - cursosVisibles} restantes)
-                        </button>
-                      )}
                       </div>
                     </div>
                   )}
