@@ -716,7 +716,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
       if (anioFiltro != null && mod.anio !== anioFiltro) return false;
       const periodo = `${MESES[(mod.mes ?? 1) - 1]} ${mod.anio ?? ''}`;
       const mat = materias.find((m) => m.id === mod.materia_id);
-      const semTexto = mat?.semestre ? formatearSemestre(mat.semestre) : '';
+      const semTexto = mat?.semestre ? `${formatearSemestre(mat.semestre)} ${mat.semestre}` : '';
       const texto = [mod.materia ?? '', semTexto, periodo, mod.estado ?? ''].join(' ');
       return textoCoincideBusqueda(texto, moduloListaBusqueda);
     });
@@ -738,7 +738,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
       if (anioFiltro != null && curso.anio !== anioFiltro) return false;
       const periodo = curso.anio != null ? `${MESES[(curso.mes ?? 1) - 1]} ${curso.anio}` : '';
       const semCurso = obtenerSemestrePlanCurso(curso, modulos, materias);
-      const semTexto = semCurso ? formatearSemestre(semCurso) : '';
+      const semTexto = semCurso ? `${formatearSemestre(semCurso)} ${semCurso}` : '';
       const texto = [
         curso.materia ?? '',
         semTexto,
@@ -2097,7 +2097,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                         type="search"
                         aria-label="Buscar en módulos"
                         className={inpListaFiltro}
-                        placeholder="Buscar materia o período…"
+                        placeholder="Buscar materia, semestre o período…"
                         value={moduloListaBusqueda}
                         onChange={(e) => setModuloListaBusqueda(e.target.value)}
                       />
@@ -2387,7 +2387,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                         type="search"
                         aria-label="Buscar en cursos"
                         className={inpListaFiltro}
-                        placeholder="Buscar materia o docente…"
+                        placeholder="Buscar materia, semestre o docente…"
                         value={cursoListaBusqueda}
                         onChange={(e) => setCursoListaBusqueda(e.target.value)}
                       />
