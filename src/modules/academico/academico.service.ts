@@ -1072,6 +1072,15 @@ export async function crearCurso(input: CrearCursoInput) {
         throw new Error('No se pueden crear cursos en un módulo académico cerrado');
     }
 
+    // Verificar que el modulo no tenga ya un curso asignado
+    const { rows: existente } = await pool.query(
+        `SELECT id FROM cursos WHERE modulo_id = $1 LIMIT 1`,
+        [input.moduloId]
+    );
+    if (existente.length > 0) {
+        throw new Error('Este módulo académico ya tiene un curso asignado. Cada módulo solo puede tener un curso.');
+    }
+
     // Acepta tanto docente.id (tabla docentes) como usuario_id (tabla usuarios)
     const { rows: docenteRows } = await pool.query(
         `SELECT id FROM docentes WHERE id = $1 OR usuario_id = $1`,
@@ -1131,6 +1140,14 @@ export async function actualizarCurso(cursoId: number, input: ActualizarCursoInp
         }
         if (String(moduloNuevo.estado).toLowerCase() === 'cerrado') {
             throw new Error('No se pueden mover cursos a un módulo cerrado');
+        }
+        // Verificar que el nuevo modulo no tenga ya otro curso distinto
+        const { rows: cursoExistente } = await pool.query(
+            `SELECT id FROM cursos WHERE modulo_id = $1 AND id != $2 LIMIT 1`,
+            [input.moduloId, cursoId]
+        );
+        if (cursoExistente.length > 0) {
+            throw new Error('El módulo académico destino ya tiene un curso asignado. Cada módulo solo puede tener un curso.');
         }
         valores.push(input.moduloId);
         setFragments.push(`modulo_id = $${valores.length}`);
