@@ -181,19 +181,19 @@ export function EditItemDialog({
           }
         }}
         className="max-w-lg flex flex-col overflow-hidden p-0">
-        <DialogHeader className="shrink-0 px-5 py-4 pr-12">
+        <DialogHeader className="shrink-0 px-5 pt-4 pb-2 pr-12">
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <form
           onSubmit={(e) => {
             void handleSubmit(e);
           }}
-          className="flex min-h-0 flex-1 flex-col overflow-hidden lg:mt-2 lg:gap-4"
+          className="flex flex-col overflow-hidden"
         >
-          <div className="scroll-region flex min-h-0 flex-1 flex-col gap-5 px-5 py-5">
+          <div className="scroll-region flex flex-col gap-5 px-5 max-h-[60vh] overflow-y-auto">
             {fieldNodes}
           </div>
-          <DialogFooter className="btn-mobile-stack shrink-0 gap-2 border-t border-slate-200 bg-white px-5 py-3 dark:border-slate-700/80 dark:bg-[#172d58] lg:flex-row lg:justify-end lg:gap-3 lg:border-0 lg:bg-transparent lg:px-5 lg:py-0">
+          <DialogFooter className="btn-mobile-stack shrink-0 gap-2 border-t border-slate-200 bg-white px-5 py-3 mt-2 dark:border-slate-700/80 dark:bg-[#172d58] lg:flex-row lg:justify-end lg:gap-3 lg:border-0 lg:bg-transparent lg:px-5 lg:py-0">
             <button
               type="button"
               onClick={onCancel}
