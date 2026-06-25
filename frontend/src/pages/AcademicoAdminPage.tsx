@@ -715,10 +715,12 @@ export function AcademicoAdminPage({ onLogout }: Props) {
     return sortedModulos.filter((mod) => {
       if (anioFiltro != null && mod.anio !== anioFiltro) return false;
       const periodo = `${MESES[(mod.mes ?? 1) - 1]} ${mod.anio ?? ''}`;
-      const texto = [mod.materia ?? '', periodo, mod.estado ?? ''].join(' ');
+      const mat = materias.find((m) => m.id === mod.materia_id);
+      const semTexto = mat?.semestre ? formatearSemestre(mat.semestre) : '';
+      const texto = [mod.materia ?? '', semTexto, periodo, mod.estado ?? ''].join(' ');
       return textoCoincideBusqueda(texto, moduloListaBusqueda);
     });
-  }, [sortedModulos, moduloListaAnio, moduloListaBusqueda]);
+  }, [sortedModulos, moduloListaAnio, moduloListaBusqueda, materias]);
 
   const modulosPaginaTotal = Math.max(1, Math.ceil(modulosListaVisibles.length / PAGINA_TAMANO));
 
@@ -735,15 +737,18 @@ export function AcademicoAdminPage({ onLogout }: Props) {
     return cursosFiltradosPorCarrera.filter((curso) => {
       if (anioFiltro != null && curso.anio !== anioFiltro) return false;
       const periodo = curso.anio != null ? `${MESES[(curso.mes ?? 1) - 1]} ${curso.anio}` : '';
+      const semCurso = obtenerSemestrePlanCurso(curso, modulos, materias);
+      const semTexto = semCurso ? formatearSemestre(semCurso) : '';
       const texto = [
         curso.materia ?? '',
+        semTexto,
         curso.docente ?? '',
         periodo,
         formatCursoUbicacionHorario(curso) ?? '',
       ].join(' ');
       return textoCoincideBusqueda(texto, cursoListaBusqueda);
     });
-  }, [cursosFiltradosPorCarrera, cursoListaAnio, cursoListaBusqueda]);
+  }, [cursosFiltradosPorCarrera, cursoListaAnio, cursoListaBusqueda, modulos, materias]);
 
   const cursosPaginaTotal = Math.max(1, Math.ceil(cursosListaVisibles.length / PAGINA_TAMANO));
 
