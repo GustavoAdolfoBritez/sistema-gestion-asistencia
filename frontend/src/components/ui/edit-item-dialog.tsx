@@ -114,6 +114,7 @@ export function EditItemDialog({
         {field.options && field.options.length > 0 ? (
           <AppSelect
             wrapLabel
+            searchable
             className="max-lg:w-full"
             options={field.options}
             value={values[field.key] ?? ''}

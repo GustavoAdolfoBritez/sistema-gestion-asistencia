@@ -1510,9 +1510,10 @@ export function AcademicoAdminPage({ onLogout }: Props) {
       label: formatDocenteLabel(d),
     }));
     if (!docenteOptions.some((o) => o.value === curso.docente_id)) {
+      const docenteActual = docentes.find((d) => d.id === curso.docente_id || d.persona?.id === curso.docente_id);
       docenteOptions.unshift({
         value: curso.docente_id,
-        label: curso.docente ?? String(curso.docente_id),
+        label: docenteActual ? formatDocenteLabel(docenteActual) : (curso.docente ?? curso.docente_id),
       });
     }
 

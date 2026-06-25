@@ -85,6 +85,8 @@ export interface AppSelectProps {
   columns?: number;
   /** En vez de truncar la etiqueta en desktop, hace wrap (para dialogos). */
   wrapLabel?: boolean;
+  /** Muestra un buscador arriba del dropdown para filtrar opciones. */
+  searchable?: boolean;
 }
 
 function labelForValue(
@@ -121,8 +123,10 @@ export function AppSelect({
   compactMenu = false,
   columns,
   wrapLabel = false,
+  searchable = false,
 }: AppSelectProps) {
   const [open, setOpen] = useState(false);
+  const [searchText, setSearchText] = useState('');
   const [dropdownStyle, setDropdownStyle] = useState<{ top: number; left: number; width: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -213,11 +217,16 @@ export function AppSelect({
   }, [allowEmpty, emptyLabel, clearOption, options, value]);
 
   const visibleListOptions = useMemo(() => {
+    let items = listOptions;
     if (open && allowEmpty && value === '') {
-      return listOptions.filter((o) => o.value !== '');
+      items = items.filter((o) => o.value !== '');
     }
-    return listOptions;
-  }, [open, allowEmpty, value, listOptions]);
+    if (searchable && searchText.trim()) {
+      const q = searchText.trim().toLowerCase();
+      items = items.filter((o) => o.label.toLowerCase().includes(q));
+    }
+    return items;
+  }, [open, allowEmpty, value, listOptions, searchable, searchText]);
 
   const renderDropdown = (className: string, style?: CSSProperties) => (
     <ul
@@ -228,6 +237,20 @@ export function AppSelect({
       className={cn(appSelectListClass, listMaxHeight, className, listClassName)}
       style={style}
     >
+      {searchable ? (
+        <li className="sticky top-0 z-10 bg-white dark:bg-[#0b2147] border-b border-slate-200 dark:border-slate-700">
+          <input
+            type="search"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            placeholder="Buscar..."
+            className="w-full px-3 py-2 text-sm bg-transparent border-0 outline-none text-black dark:text-[#e7eef9] placeholder-slate-400"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+            autoFocus
+          />
+        </li>
+      ) : null}
       {visibleListOptions.length === 0 ? (
         <li className={cn('px-3 py-2 text-sm', appDropdownOptionLineClass, appSelectOptionTextClass)}>
           {emptyText}
@@ -250,6 +273,7 @@ export function AppSelect({
                   if (opt.disabled) return;
                   skipOutsideCloseRef.current = true;
                   onChange(opt.value);
+                  setSearchText('');
                   setOpen(false);
                 }}
               >
@@ -278,6 +302,7 @@ export function AppSelect({
         onClick={(e) => {
           if (disabled) return;
           e.stopPropagation();
+          if (open) setSearchText('');
           setOpen((v) => !v);
         }}
         className={cn(
