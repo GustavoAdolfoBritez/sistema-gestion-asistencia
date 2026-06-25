@@ -180,20 +180,20 @@ export function EditItemDialog({
             event.preventDefault();
           }
         }}
-        className="max-w-md max-lg:flex max-lg:max-h-[min(90dvh,calc(100vh-1.5rem))] max-lg:flex-col max-lg:gap-0 max-lg:overflow-hidden max-lg:p-0 overflow-x-hidden">
-        <DialogHeader className="max-lg:shrink-0 max-lg:border-b max-lg:border-slate-200 max-lg:px-4 max-lg:py-4 max-lg:pr-12 dark:max-lg:border-slate-700/80">
+        className="max-w-md flex flex-col overflow-hidden p-0">
+        <DialogHeader className="shrink-0 border-b border-slate-200 px-4 py-4 pr-12 dark:border-slate-700/80 lg:border-0 lg:px-0 lg:py-0 lg:pr-0">
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <form
           onSubmit={(e) => {
             void handleSubmit(e);
           }}
-          className="max-lg:flex max-lg:min-h-0 max-lg:flex-1 max-lg:flex-col max-lg:overflow-hidden lg:mt-2 lg:flex lg:flex-col lg:gap-4"
+          className="flex min-h-0 flex-1 flex-col overflow-hidden lg:mt-2 lg:gap-4"
         >
-          <div className="max-lg:scroll-region max-lg:flex max-lg:min-h-0 max-lg:flex-1 max-lg:flex-col max-lg:gap-4 max-lg:px-4 max-lg:py-4 lg:contents">
+          <div className="scroll-region flex min-h-0 flex-1 flex-col gap-4 px-4 py-4 lg:px-0 lg:py-0">
             {fieldNodes}
           </div>
-          <DialogFooter className="btn-mobile-stack max-lg:mt-0 max-lg:shrink-0 max-lg:flex-col max-lg:gap-2 max-lg:border-t max-lg:border-slate-200 max-lg:bg-white max-lg:px-4 max-lg:py-3 dark:max-lg:border-slate-700/80 dark:max-lg:bg-[#172d58] lg:mt-2 lg:flex-row lg:justify-end lg:gap-3 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0">
+          <DialogFooter className="btn-mobile-stack shrink-0 flex-col gap-2 border-t border-slate-200 bg-white px-4 py-3 dark:border-slate-700/80 dark:bg-[#172d58] lg:flex-row lg:justify-end lg:gap-3 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0">
             <button
               type="button"
               onClick={onCancel}
