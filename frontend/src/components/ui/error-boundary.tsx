@@ -32,6 +32,7 @@ export class ErrorBoundary extends Component<Props, State> {
         mensaje: error.message,
         stack: error.stack?.slice(0, 2000) ?? '',
         componente: info.componentStack?.slice(0, 2000) ?? '',
+        url: window.location.href.slice(0, 500),
         userAgent: navigator.userAgent.slice(0, 500),
         timestamp: new Date().toISOString(),
       };
@@ -48,7 +49,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   handleRetry = () => {
-    this.setState({ hasError: false, error: null });
+    window.location.reload();
   };
 
   handleCleanReload = () => {

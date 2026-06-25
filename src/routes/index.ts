@@ -9,6 +9,7 @@ import usuariosRoutes from '../modules/usuarios/usuarios.routes';
 import academicoRoutes from '../modules/academico/academico.routes';
 import estructuraAcademicaRoutes from '../modules/academico/estructura-academica.routes';
 import auditoriaRoutes from '../modules/auditoria/auditoria.routes';
+import erroresFrontendRoutes from '../modules/errores-frontend/errores-frontend.routes';
 
 const routes = Router();
 
@@ -24,5 +25,6 @@ routes.use(usuariosRoutes);
 routes.use(estructuraAcademicaRoutes);
 routes.use(academicoRoutes);
 routes.use(auditoriaRoutes);
+routes.use(erroresFrontendRoutes);
 
 export default routes;
