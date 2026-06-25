@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '../../lib/utils';
 
 export interface AppSelectOption {
@@ -118,7 +119,9 @@ export function AppSelect({
   columns,
 }: AppSelectProps) {
   const [open, setOpen] = useState(false);
+  const [dropdownStyle, setDropdownStyle] = useState<{ top: number; left: number; width: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const skipOutsideCloseRef = useRef(false);
   const listId = useId();
@@ -138,6 +141,18 @@ export function AppSelect({
   useEffect(() => {
     if (!open) return;
     let removeOutside: (() => void) | undefined;
+
+    // Calcular posicion del dropdown relativa al viewport
+    const updatePosition = () => {
+      if (triggerRef.current) {
+        const rect = triggerRef.current.getBoundingClientRect();
+        setDropdownStyle({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+      }
+    };
+    updatePosition();
+    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition);
+
     const timer = window.setTimeout(() => {
       const onPointerDown = (e: PointerEvent) => {
         if (skipOutsideCloseRef.current) {
@@ -163,6 +178,8 @@ export function AppSelect({
     return () => {
       window.clearTimeout(timer);
       removeOutside?.();
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
     };
   }, [open]);
 
@@ -198,15 +215,10 @@ export function AppSelect({
     return listOptions;
   }, [open, allowEmpty, value, listOptions]);
 
-  const dropdownWidthClass = columns
-    ? 'min-w-[280px]'
-    : compactMenu
-      ? 'w-auto'
-      : 'w-full';
-
   return (
     <div ref={rootRef} className={cn('relative w-full max-w-full min-w-0', className)}>
       <button
+        ref={triggerRef}
         type="button"
         title={title ?? selectedLabel ?? undefined}
         disabled={disabled}
@@ -240,56 +252,63 @@ export function AppSelect({
         </span>
       </button>
 
-      {open && !disabled ? (
-        <ul
-          ref={listRef}
-          id={listId}
-          role="listbox"
-          aria-label={ariaLabel ?? title ?? 'Opciones'}
-          className={cn(
-            'absolute left-0 top-full z-[200] mt-1',
-            dropdownWidthClass,
-            'max-w-[calc(100vw-2rem)]',
-            appSelectListClass,
-            listMaxHeight,
-            !columns && compactMenu && 'py-0.5 shadow-md',
-            columns && 'p-1',
-            listClassName
-          )}
-          style={columns ? { display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: '1px' } : undefined}
-        >
-          {visibleListOptions.length === 0 ? (
-            <li className={cn('px-3 py-2 text-sm', appDropdownOptionLineClass, appSelectOptionTextClass)}>
-              {emptyText}
-            </li>
-          ) : (
-            visibleListOptions.map((opt) => {
-              const isSelected = opt.value === value;
-              return (
-                <li key={opt.value === '' ? '__empty' : opt.value} role="option" aria-selected={isSelected}>
-                  <button
-                    type="button"
-                    disabled={opt.disabled}
-                    className={cn(
-                      appSelectOptionClass(isSelected),
-                      (compactMenu || columns) && 'px-2.5 py-1.5 text-center text-sm'
-                    )}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      if (opt.disabled) return;
-                      skipOutsideCloseRef.current = true;
-                      onChange(opt.value);
-                      setOpen(false);
-                    }}
-                  >
-                    {opt.label}
-                  </button>
-                </li>
-              );
-            })
-          )}
-        </ul>
+      {open && !disabled && dropdownStyle ? (
+        createPortal(
+          <ul
+            ref={listRef}
+            id={listId}
+            role="listbox"
+            aria-label={ariaLabel ?? title ?? 'Opciones'}
+            className={cn(
+              'fixed z-[200]',
+              appSelectListClass,
+              listMaxHeight,
+              !columns && compactMenu && 'py-0.5 shadow-md',
+              columns && 'p-1',
+              listClassName
+            )}
+            style={{
+              top: dropdownStyle.top,
+              left: dropdownStyle.left,
+              width: compactMenu ? 'auto' : dropdownStyle.width,
+              maxWidth: 'calc(100vw - 2rem)',
+              ...(columns ? { display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: '1px' } : {}),
+            }}
+          >
+            {visibleListOptions.length === 0 ? (
+              <li className={cn('px-3 py-2 text-sm', appDropdownOptionLineClass, appSelectOptionTextClass)}>
+                {emptyText}
+              </li>
+            ) : (
+              visibleListOptions.map((opt) => {
+                const isSelected = opt.value === value;
+                return (
+                  <li key={opt.value === '' ? '__empty' : opt.value} role="option" aria-selected={isSelected}>
+                    <button
+                      type="button"
+                      disabled={opt.disabled}
+                      className={cn(
+                        appSelectOptionClass(isSelected),
+                        (compactMenu || columns) && 'px-2.5 py-1.5 text-center text-sm'
+                      )}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (opt.disabled) return;
+                        skipOutsideCloseRef.current = true;
+                        onChange(opt.value);
+                        setOpen(false);
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  </li>
+                );
+              })
+            )}
+          </ul>,
+          document.body
+        )
       ) : null}
     </div>
   );
