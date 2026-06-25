@@ -83,6 +83,8 @@ export interface AppSelectProps {
   compactMenu?: boolean;
   /** Distribuye las opciones en N columnas (grid) en lugar de lista vertical. */
   columns?: number;
+  /** En vez de truncar la etiqueta en desktop, hace wrap (para dialogos). */
+  wrapLabel?: boolean;
 }
 
 function labelForValue(
@@ -118,6 +120,7 @@ export function AppSelect({
   size = 'md',
   compactMenu = false,
   columns,
+  wrapLabel = false,
 }: AppSelectProps) {
   const [open, setOpen] = useState(false);
   const [dropdownStyle, setDropdownStyle] = useState<{ top: number; left: number; width: number } | null>(null);
@@ -286,9 +289,9 @@ export function AppSelect({
         )}
       >
         {selectedLabel ? (
-          <span className={appSelectTriggerLabelClass}>{selectedLabel}</span>
+          <span className={wrapLabel ? 'min-w-0 flex-1 text-inherit whitespace-normal break-words leading-snug' : appSelectTriggerLabelClass}>{selectedLabel}</span>
         ) : (
-          <span className={appSelectTriggerLabelClass}>{emptyText}</span>
+          <span className={wrapLabel ? 'min-w-0 flex-1 text-inherit whitespace-normal break-words leading-snug' : appSelectTriggerLabelClass}>{emptyText}</span>
         )}
         <span
           className={cn(appSelectTriggerChevronClass, size === 'xs' ? 'text-[18px]' : 'text-[22px]')}

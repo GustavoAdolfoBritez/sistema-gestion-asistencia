@@ -1486,14 +1486,21 @@ export function AcademicoAdminPage({ onLogout }: Props) {
   };
 
   const handleEditCurso = (curso: Curso) => {
-    const moduloOptions = sortedModulos.map((m) => {
-      const mat = materias.find((mat) => mat.id === m.materia_id);
-      const sem = mat?.semestre ? ` — ${formatearSemestre(mat.semestre)}` : '';
-      return {
-        value: String(m.id),
-        label: `${m.materia ?? `Módulo ${m.id}`}${sem} · ${MESES[(m.mes ?? 1) - 1]} ${m.anio}`,
-      };
-    });
+    const semestreCurso = obtenerSemestrePlanCurso(curso, modulos, materias);
+    const moduloOptions = sortedModulos
+      .filter((m) => {
+        if (semestreCurso == null) return true;
+        const mat = materias.find((mat) => mat.id === m.materia_id);
+        return (mat?.semestre ?? 1) === semestreCurso;
+      })
+      .map((m) => {
+        const mat = materias.find((mat) => mat.id === m.materia_id);
+        const sem = mat?.semestre ? ` — ${formatearSemestre(mat.semestre)}` : '';
+        return {
+          value: String(m.id),
+          label: `${m.materia ?? `Módulo ${m.id}`}${sem} · ${MESES[(m.mes ?? 1) - 1]} ${m.anio}`,
+        };
+      });
     if (moduloOptions.length === 0) {
       toast.error('No hay módulos disponibles para este curso.');
       return;

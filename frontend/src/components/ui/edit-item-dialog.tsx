@@ -113,6 +113,7 @@ export function EditItemDialog({
         </span>
         {field.options && field.options.length > 0 ? (
           <AppSelect
+            wrapLabel
             className="max-lg:w-full"
             options={field.options}
             value={values[field.key] ?? ''}
