@@ -2737,11 +2737,8 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                           const semStr = semCurso ? ` — ${formatearSemestre(semCurso)}` : '';
                           const docenteStr = c.docente ? ` · ${c.docente}` : '';
                           const nombre = c.materia ?? 'Módulo ' + c.modulo_id;
-                          return {
-                            value: String(c.id),
-                            label: `${nombre}${semStr}${docenteStr}`,
-                          };
-                        }))}
+                          return { value: String(c.id), label: `${nombre}${semStr}${docenteStr}` };
+                        })}
                       triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-sm text-black focus:border-primary focus:outline-none dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                     />
                     <button
