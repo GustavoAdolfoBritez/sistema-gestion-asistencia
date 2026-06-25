@@ -1154,14 +1154,16 @@ export async function actualizarCurso(cursoId: number, input: ActualizarCursoInp
     }
 
     if (input.docenteId) {
+        // Acepta tanto docente.id (tabla docentes) como usuario_id (tabla usuarios)
         const { rows: docenteRows } = await pool.query(
-            `SELECT id FROM docentes WHERE id = $1`,
+            `SELECT id FROM docentes WHERE id = $1 OR usuario_id = $1`,
             [input.docenteId]
         );
         if (!docenteRows[0]) {
             throw new Error('Docente no encontrado');
         }
-        valores.push(input.docenteId);
+        const resolvedDocenteId: string = docenteRows[0].id;
+        valores.push(resolvedDocenteId);
         setFragments.push(`docente_id = $${valores.length}`);
     }
 
