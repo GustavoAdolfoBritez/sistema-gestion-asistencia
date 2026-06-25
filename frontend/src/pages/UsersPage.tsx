@@ -1830,6 +1830,7 @@ function CreateUserModal({ onClose, onSubmit, saving, existingUsers: _existingUs
   const [carreras, setCarreras] = useState<Carrera[]>([]);
   const [scopeFacultadIds, setScopeFacultadIds] = useState<number[]>([]);
   const [scopeCarreraIds, setScopeCarreraIds] = useState<number[]>([]);
+  const [showPassword, setShowPassword] = useState(false);
 
   const scopeRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -2039,12 +2040,25 @@ function CreateUserModal({ onClose, onSubmit, saving, existingUsers: _existingUs
               </label>
               <label className={USUARIO_LABEL}>
                 <span>Contraseña inicial</span>
-                <input
-                  type="password"
-                  value={form.password}
-                  onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
-                  className={`${USUARIO_INP} ${errors.password ? 'border-rose-400' : ''}`}
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={form.password}
+                    onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
+                    className={`${USUARIO_INP} pr-10 ${errors.password ? 'border-rose-400' : ''}`}
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 flex items-center rounded-r-lg px-3 text-slate-400 hover:text-slate-600 focus:outline-none dark:text-slate-500 dark:hover:text-slate-300"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                    aria-pressed={showPassword}
+                  >
+                    <span className="material-symbols-outlined text-[20px]">
+                      {showPassword ? 'visibility_off' : 'visibility'}
+                    </span>
+                  </button>
+                </div>
                 {errors.password ? <p className="text-xs text-rose-400">{errors.password}</p> : null}
               </label>
             </div>
