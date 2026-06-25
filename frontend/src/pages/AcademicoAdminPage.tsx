@@ -267,7 +267,13 @@ function normalizarBusqueda(valor: string) {
 function textoCoincideBusqueda(haystack: string, query: string): boolean {
   const q = normalizarBusqueda(query);
   if (!q) return true;
-  return normalizarTexto(haystack).includes(q);
+  const h = normalizarTexto(haystack);
+  if (/^\d+$/.test(q)) {
+    // Numeros: match exacto de palabra para que "1" no matchee "10"
+    const palabras = h.split(/[\s,.;:()°]+/).filter(Boolean);
+    return palabras.some((p) => p === q);
+  }
+  return h.includes(q);
 }
 
 function extraerNumeroSemestre(descripcion?: string | null) {
