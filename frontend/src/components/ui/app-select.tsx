@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '../../lib/utils';
 
@@ -215,6 +216,51 @@ export function AppSelect({
     return listOptions;
   }, [open, allowEmpty, value, listOptions]);
 
+  const renderDropdown = (className: string, style?: CSSProperties) => (
+    <ul
+      ref={listRef}
+      id={listId}
+      role="listbox"
+      aria-label={ariaLabel ?? title ?? 'Opciones'}
+      className={cn(appSelectListClass, listMaxHeight, className, listClassName)}
+      style={style}
+    >
+      {visibleListOptions.length === 0 ? (
+        <li className={cn('px-3 py-2 text-sm', appDropdownOptionLineClass, appSelectOptionTextClass)}>
+          {emptyText}
+        </li>
+      ) : (
+        visibleListOptions.map((opt) => {
+          const isSelected = opt.value === value;
+          return (
+            <li key={opt.value === '' ? '__empty' : opt.value} role="option" aria-selected={isSelected}>
+              <button
+                type="button"
+                disabled={opt.disabled}
+                className={cn(
+                  appSelectOptionClass(isSelected),
+                  (compactMenu || columns) && 'px-2.5 py-1.5 text-center text-sm'
+                )}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (opt.disabled) return;
+                  skipOutsideCloseRef.current = true;
+                  onChange(opt.value);
+                  setOpen(false);
+                }}
+              >
+                {opt.label}
+              </button>
+            </li>
+          );
+        })
+      )}
+    </ul>
+  );
+
+  const inDialog = rootRef.current?.closest('[role="dialog"]') != null;
+
   return (
     <div ref={rootRef} className={cn('relative w-full max-w-full min-w-0', className)}>
       <button
@@ -253,61 +299,25 @@ export function AppSelect({
       </button>
 
       {open && !disabled && dropdownStyle ? (
-        createPortal(
-          <ul
-            ref={listRef}
-            id={listId}
-            role="listbox"
-            aria-label={ariaLabel ?? title ?? 'Opciones'}
-            className={cn(
-              'fixed z-[200]',
-              appSelectListClass,
-              listMaxHeight,
-              !columns && compactMenu && 'py-0.5 shadow-md',
-              columns && 'p-1',
-              listClassName
-            )}
-            style={{
-              top: dropdownStyle.top,
-              left: dropdownStyle.left,
-              width: compactMenu ? 'auto' : dropdownStyle.width,
-              maxWidth: 'calc(100vw - 2rem)',
-              ...(columns ? { display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: '1px' } : {}),
-            }}
-          >
-            {visibleListOptions.length === 0 ? (
-              <li className={cn('px-3 py-2 text-sm', appDropdownOptionLineClass, appSelectOptionTextClass)}>
-                {emptyText}
-              </li>
-            ) : (
-              visibleListOptions.map((opt) => {
-                const isSelected = opt.value === value;
-                return (
-                  <li key={opt.value === '' ? '__empty' : opt.value} role="option" aria-selected={isSelected}>
-                    <button
-                      type="button"
-                      disabled={opt.disabled}
-                      className={cn(
-                        appSelectOptionClass(isSelected),
-                        (compactMenu || columns) && 'px-2.5 py-1.5 text-center text-sm'
-                      )}
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if (opt.disabled) return;
-                        skipOutsideCloseRef.current = true;
-                        onChange(opt.value);
-                        setOpen(false);
-                      }}
-                    >
-                      {opt.label}
-                    </button>
-                  </li>
-                );
-              })
-            )}
-          </ul>,
-          document.body
+        inDialog ? (
+          renderDropdown(
+            cn('absolute left-0 top-full z-[200] mt-1', compactMenu ? 'w-auto' : 'w-full', 'max-w-[calc(100vw-2rem)]'),
+            columns ? { display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: '1px' } : undefined
+          )
+        ) : (
+          createPortal(
+            renderDropdown(
+              cn('fixed z-[200]', columns && 'p-1', compactMenu && 'py-0.5 shadow-md'),
+              {
+                top: dropdownStyle.top,
+                left: dropdownStyle.left,
+                width: compactMenu ? 'auto' : dropdownStyle.width,
+                maxWidth: 'calc(100vw - 2rem)',
+                ...(columns ? { display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: '1px' } : {}),
+              }
+            ),
+            document.body
+          )
         )
       ) : null}
     </div>
