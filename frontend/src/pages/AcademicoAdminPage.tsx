@@ -2732,9 +2732,14 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                           if (semDestino == null) return true;
                           return semOrigen === semDestino;
                         })
-                        .map((c) => ({
-                          value: String(c.id),
-                          label: `#${c.id} · ${c.materia ?? `Módulo ${c.modulo_id}`}`,
+                        .map((c) => {
+                          const semCurso = obtenerSemestrePlanCurso(c, modulos, materias);
+                          const semStr = semCurso ? ` — ${formatearSemestre(semCurso)}` : '';
+                          const docenteStr = c.docente ? ` · ${c.docente}` : '';
+                          return {
+                            value: String(c.id),
+                            label: `${c.materia ?? `Módulo ${c.modulo_id}`}${semStr}${docenteStr}`,
+                          };
                         }))}
                       triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-sm text-black focus:border-primary focus:outline-none dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                     />
