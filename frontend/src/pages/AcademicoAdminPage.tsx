@@ -254,12 +254,18 @@ function normalizarTexto(valor: string) {
   return valor
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+    .replace(/°/g, ' ')
     .toLowerCase()
     .trim();
 }
 
+function normalizarBusqueda(valor: string) {
+  return normalizarTexto(valor)
+    .replace(/(\d+)(?:do|da|er|ro|ra)\b/gi, '$1');
+}
+
 function textoCoincideBusqueda(haystack: string, query: string): boolean {
-  const q = normalizarTexto(query);
+  const q = normalizarBusqueda(query);
   if (!q) return true;
   return normalizarTexto(haystack).includes(q);
 }
