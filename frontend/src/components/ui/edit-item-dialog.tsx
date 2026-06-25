@@ -105,7 +105,7 @@ export function EditItemDialog({
     return (
       <label
         key={field.key}
-        className="flex flex-col gap-1 text-sm text-[#9fb3d4] max-lg:min-w-0 max-lg:w-full"
+        className="flex flex-col gap-1 text-sm text-[#9fb3d4] max-lg:min-w-0 max-lg:w-full min-w-0"
       >
         <span>
           {field.label}
@@ -127,7 +127,7 @@ export function EditItemDialog({
               });
             }}
             placeholder={field.placeholder ?? 'Seleccionar'}
-            triggerClassName="bg-white border border-slate-300 text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+            triggerClassName="bg-white border border-slate-300 text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9] break-words"
           />
         ) : (
           <input
@@ -180,7 +180,7 @@ export function EditItemDialog({
             event.preventDefault();
           }
         }}
-        className="max-w-md max-lg:flex max-lg:max-h-[min(90dvh,calc(100vh-1.5rem))] max-lg:flex-col max-lg:gap-0 max-lg:overflow-hidden max-lg:p-0">
+        className="max-w-md max-lg:flex max-lg:max-h-[min(90dvh,calc(100vh-1.5rem))] max-lg:flex-col max-lg:gap-0 max-lg:overflow-hidden max-lg:p-0 overflow-x-hidden">
         <DialogHeader className="max-lg:shrink-0 max-lg:border-b max-lg:border-slate-200 max-lg:px-4 max-lg:py-4 max-lg:pr-12 dark:max-lg:border-slate-700/80">
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
