@@ -482,6 +482,15 @@ export async function actualizarPlan(
 }
 
 export async function eliminarPlan(planId: number) {
+  const { rows: mods } = await pool.query(
+    `SELECT ma.id FROM modulos_academicos ma
+     JOIN materias m ON m.id = ma.materia_id
+     WHERE m.plan_id = $1 LIMIT 1`,
+    [planId]
+  );
+  if (mods.length > 0) {
+    throw new Error('No se puede eliminar el plan porque tiene materias con módulos académicos activos. Eliminá primero los módulos.');
+  }
   const { rowCount } = await pool.query('DELETE FROM planes_estudio WHERE id = $1', [planId]);
   if (!rowCount) {
     throw new Error('Plan no encontrado');
@@ -595,6 +604,13 @@ export async function actualizarMateria(
 }
 
 export async function eliminarMateria(materiaId: number) {
+  const { rows: mods } = await pool.query(
+    'SELECT id FROM modulos_academicos WHERE materia_id = $1 LIMIT 1',
+    [materiaId]
+  );
+  if (mods.length > 0) {
+    throw new Error('No se puede eliminar la materia porque tiene módulos académicos asociados. Eliminá primero los módulos.');
+  }
   const { rowCount } = await pool.query('DELETE FROM materias WHERE id = $1', [materiaId]);
   if (!rowCount) {
     throw new Error('Materia no encontrada');
