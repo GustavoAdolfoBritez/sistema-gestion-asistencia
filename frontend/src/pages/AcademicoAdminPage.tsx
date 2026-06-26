@@ -72,6 +72,7 @@ type LoteAlumnos = {
   destino_carrera_id: number | null;
   /** Alumnos de la carrera del lote con semestre_curricular = semestre parseado de `descripcion` (0 = vacío). */
   alumnos_en_etiqueta_semestre?: number | null;
+  cohorte_anio?: number | null;
 };
 
 type DocenteOption = {
@@ -1134,7 +1135,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
     });
   };
 
-  const handleMatricularDesdeLote = async (cursoId: number, loteId: number, semestre: string) => {
+  const handleMatricularDesdeLote = async (cursoId: number, loteId: number, semestre: number) => {
     if (!loteId) {
       toast.error('Selecciona un semestre');
       return;
@@ -2662,26 +2663,31 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                         }
                         return false;
                       });
-                      const lotesPorSemestre = new Map<number, LoteAlumnos>();
+                      const lotesPorSemestre = new Map<string, LoteAlumnos>();
                       for (const lote of [...lotesParaCurso].sort((a, b) => b.id - a.id)) {
                         const semestre = extraerNumeroSemestre(lote.descripcion);
                         if (!semestre) continue;
                         if (semestreCurso != null && semestre !== semestreCurso) continue;
                         if (lote.alumnos_en_etiqueta_semestre === 0) continue;
-                        if (lotesPorSemestre.has(semestre)) continue;
-                        lotesPorSemestre.set(semestre, lote);
+                        const key = `${semestre}_${lote.cohorte_anio ?? 's/c'}`;
+                        if (lotesPorSemestre.has(key)) continue;
+                        lotesPorSemestre.set(key, lote);
                       }
-                      const semestresDisponibles = Array.from(lotesPorSemestre.entries()).sort((a, b) => a[0] - b[0]);
+                      const semestresDisponibles = Array.from(lotesPorSemestre.entries()).sort((a, b) => {
+                        const sA = parseInt(a[0]);
+                        const sB = parseInt(b[0]);
+                        return sA - sB;
+                      });
                       const sinPlanillasCompatibles = semestreCurso == null || semestresDisponibles.length === 0;
                       const semestreSelRaw = semestreLotePorCurso[curso.id] ?? '';
                       const semestreSeleccionado =
-                        !sinPlanillasCompatibles && semestresDisponibles.some(([s]) => String(s) === semestreSelRaw)
+                        !sinPlanillasCompatibles && semestresDisponibles.some(([s]) => s === semestreSelRaw)
                           ? semestreSelRaw
                           : !sinPlanillasCompatibles && semestresDisponibles.length === 1
-                            ? String(semestresDisponibles[0][0])
+                            ? semestresDisponibles[0][0]
                             : '';
                       const loteSeleccionado = semestreSeleccionado
-                        ? lotesPorSemestre.get(Number(semestreSeleccionado)) ?? null
+                        ? lotesPorSemestre.get(semestreSeleccionado) ?? null
                         : null;
                       const placeholderLote = sinPlanillasCompatibles
                         ? 'Sin planilla para este semestre'
@@ -2698,10 +2704,14 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                               disabled={sinPlanillasCompatibles}
                               onChange={(v) => setSemestreLotePorCurso((prev) => ({ ...prev, [curso.id]: v }))}
                               placeholder={placeholderLote}
-                              options={semestresDisponibles.map(([semestre]) => ({
-                                value: String(semestre),
-                                label: formatearSemestre(semestre),
-                              }))}
+                              options={semestresDisponibles.map(([key, lote]) => {
+                                const semNum = parseInt(key);
+                                const cohorteLabel = lote.cohorte_anio ? ` - Año Ingreso: ${lote.cohorte_anio}` : '';
+                                return {
+                                  value: key,
+                                  label: `${formatearSemestre(semNum)}${cohorteLabel}`,
+                                };
+                              })}
                               triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-sm text-black focus:border-primary focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                             />
                             <button
@@ -2713,7 +2723,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                                 void handleMatricularDesdeLote(
                                   curso.id,
                                   loteSeleccionado.id,
-                                  formatearSemestre(Number(semestreSeleccionado))
+                                  parseInt(semestreSeleccionado)
                                 )
                               }
                             >

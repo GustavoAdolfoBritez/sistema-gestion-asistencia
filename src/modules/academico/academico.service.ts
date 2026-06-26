@@ -375,6 +375,7 @@ export async function listarLotesAlumnos(carreraId?: number, semestre?: number) 
         ejecutado_en: string;
         destino_carrera_id: number | null;
         destino_carrera: string | null;
+        cohorte_anio: number | null;
     }>(
         `SELECT
             l.id,
@@ -384,7 +385,8 @@ export async function listarLotesAlumnos(carreraId?: number, semestre?: number) 
             l.estado,
             l.ejecutado_en,
             l.destino_carrera_id,
-            l.destino_carrera
+            l.destino_carrera,
+            l.cohorte_anio
          FROM lotes_importacion l
          ${where}
          ORDER BY l.id DESC
@@ -1285,6 +1287,13 @@ export async function copiarMatriculasDesdeCurso(
                  WHERE cu.id = $1
                  LIMIT 1
              ) dest
+             CROSS JOIN LATERAL (
+                 SELECT MIN(al2.cohorte_anio) AS cohorte_anio
+                 FROM matriculas m2
+                 JOIN alumnos al2 ON al2.id = m2.alumno_id
+                 WHERE m2.curso_id = $2 AND al2.cohorte_anio IS NOT NULL
+                 HAVING MIN(al2.cohorte_anio) = MAX(al2.cohorte_anio)
+             ) origen_cohorte
              WHERE m.curso_id = $2
                AND NOT EXISTS (
                    SELECT 1 FROM matriculas mt WHERE mt.curso_id = $1 AND mt.alumno_id = m.alumno_id
@@ -1293,6 +1302,11 @@ export async function copiarMatriculasDesdeCurso(
                    al.referencia_carrera_id IS NULL
                    OR al.referencia_carrera_id <> dest.cid
                    OR COALESCE(al.semestre_curricular, 1) = dest.ms
+               )
+               AND (
+                   origen_cohorte.cohorte_anio IS NULL
+                   OR al.cohorte_anio IS NULL
+                   OR al.cohorte_anio = origen_cohorte.cohorte_anio
                )
              ORDER BY m.orden_lista NULLS LAST, m.id
               RETURNING id`,
