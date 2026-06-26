@@ -274,8 +274,6 @@ export function AppSelect({
     </ul>
   );
 
-  const inDialog = rootRef.current?.closest('[role="dialog"]') != null;
-
   return (
     <div ref={rootRef} className={cn('relative w-full max-w-full min-w-0', className)}>
       <button
@@ -315,25 +313,18 @@ export function AppSelect({
       </button>
 
       {open && !disabled && dropdownStyle ? (
-        inDialog ? (
+        createPortal(
           renderDropdown(
-            cn('absolute left-0 top-full z-[200] mt-1', compactMenu ? 'w-auto' : 'w-full', 'max-w-[calc(100vw-2rem)]'),
-            columns ? { display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: '1px' } : undefined
-          )
-        ) : (
-          createPortal(
-            renderDropdown(
-              cn('fixed z-[200]', columns && 'p-1', compactMenu && 'py-0.5 shadow-md'),
-              {
-                top: dropdownStyle.top,
-                left: dropdownStyle.left,
-                width: compactMenu ? 'auto' : dropdownStyle.width,
-                maxWidth: 'calc(100vw - 2rem)',
-                ...(columns ? { display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: '1px' } : {}),
-              }
-            ),
-            document.body
-          )
+            cn('fixed z-[200]', columns && 'p-1', compactMenu && 'py-0.5 shadow-md'),
+            {
+              top: dropdownStyle.top,
+              left: dropdownStyle.left,
+              width: compactMenu ? 'auto' : dropdownStyle.width,
+              maxWidth: 'calc(100vw - 2rem)',
+              ...(columns ? { display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: '1px' } : {}),
+            }
+          ),
+          document.body
         )
       ) : null}
     </div>

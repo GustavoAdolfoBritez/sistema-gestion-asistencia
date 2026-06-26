@@ -181,7 +181,7 @@ export function EditItemDialog({
             event.preventDefault();
           }
         }}
-        className="max-w-lg flex flex-col p-0 max-h-[90vh]">
+        className="max-w-lg flex flex-col overflow-hidden p-0">
         <DialogHeader className="shrink-0 px-5 pt-4 pb-2 pr-12">
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
