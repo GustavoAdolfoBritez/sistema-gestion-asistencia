@@ -148,9 +148,7 @@ export function AppSelect({
 
   useEffect(() => {
     if (!open) return;
-    let removeOutside: (() => void) | undefined;
 
-    // Calcular posicion del dropdown relativa al viewport
     const updatePosition = () => {
       if (triggerRef.current) {
         const rect = triggerRef.current.getBoundingClientRect();
@@ -161,33 +159,23 @@ export function AppSelect({
     window.addEventListener('scroll', updatePosition, true);
     window.addEventListener('resize', updatePosition);
 
-    const timer = window.setTimeout(() => {
-      const onPointerDown = (e: PointerEvent) => {
-        if (skipOutsideCloseRef.current) {
-          skipOutsideCloseRef.current = false;
-          return;
-        }
-        const target = e.target as Node;
-        if (rootRef.current?.contains(target) || listRef.current?.contains(target)) {
-          return;
-        }
-        setOpen(false);
-      };
-      const onKey = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') setOpen(false);
-      };
-      document.addEventListener('pointerdown', onPointerDown, true);
-      document.addEventListener('keydown', onKey);
-      removeOutside = () => {
-        document.removeEventListener('pointerdown', onPointerDown, true);
-        document.removeEventListener('keydown', onKey);
-      };
-    }, 0);
+    const handleCloseCondition = (e: Event) => {
+      const target = e.target as HTMLElement;
+      if (rootRef.current?.contains(target) || listRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+
+    // Clics, toques y cambios de foco (crucial contra el Focus Trap de Radix UI)
+    document.addEventListener('mousedown', handleCloseCondition);
+    document.addEventListener('touchstart', handleCloseCondition);
+    document.addEventListener('focusin', handleCloseCondition);
+
     return () => {
-      window.clearTimeout(timer);
-      removeOutside?.();
       window.removeEventListener('scroll', updatePosition, true);
       window.removeEventListener('resize', updatePosition);
+      document.removeEventListener('mousedown', handleCloseCondition);
+      document.removeEventListener('touchstart', handleCloseCondition);
+      document.removeEventListener('focusin', handleCloseCondition);
     };
   }, [open]);
 
