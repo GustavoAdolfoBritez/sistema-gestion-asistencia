@@ -1782,6 +1782,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                               <div className="w-full sm:max-w-md">
                                   <AppSelect
                                     aria-label="Semestre del plan"
+                                    portal
                                     value={semElegido ? String(semActivo) : ''}
                                     onChange={(v) => {
                                       if (v === '') return;

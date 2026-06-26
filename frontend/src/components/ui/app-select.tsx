@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '../../lib/utils';
 
 export interface AppSelectOption {
@@ -85,6 +86,8 @@ export interface AppSelectProps {
   wrapLabel?: boolean;
   /** Muestra un buscador arriba del dropdown para filtrar opciones. */
   searchable?: boolean;
+  /** Renderiza el dropdown en document.body para que no se recorte con overflow:hidden. */
+  portal?: boolean;
 }
 
 function labelForValue(
@@ -122,10 +125,13 @@ export function AppSelect({
   columns,
   wrapLabel = false,
   searchable = false,
+  portal = false,
 }: AppSelectProps) {
   const [open, setOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
+  const [dropdownStyle, setDropdownStyle] = useState<{ top: number; left: number; width: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const skipOutsideCloseRef = useRef(false);
   const listId = useId();
@@ -145,6 +151,24 @@ export function AppSelect({
   useEffect(() => {
     if (!open) return;
     let removeOutside: (() => void) | undefined;
+    let cleanupPortal: (() => void) | undefined;
+
+    if (portal) {
+      const updatePosition = () => {
+        if (triggerRef.current) {
+          const rect = triggerRef.current.getBoundingClientRect();
+          setDropdownStyle({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+        }
+      };
+      updatePosition();
+      window.addEventListener('scroll', updatePosition, true);
+      window.addEventListener('resize', updatePosition);
+      cleanupPortal = () => {
+        window.removeEventListener('scroll', updatePosition, true);
+        window.removeEventListener('resize', updatePosition);
+      };
+    }
+
     const timer = window.setTimeout(() => {
       const onPointerDown = (e: PointerEvent) => {
         if (skipOutsideCloseRef.current) {
@@ -170,8 +194,9 @@ export function AppSelect({
     return () => {
       window.clearTimeout(timer);
       removeOutside?.();
+      cleanupPortal?.();
     };
-  }, [open]);
+  }, [open, portal]);
 
   useEffect(() => {
     if (disabled) setOpen(false);
@@ -219,6 +244,7 @@ export function AppSelect({
   return (
     <div ref={rootRef} className={cn('relative w-full max-w-full min-w-0', className)}>
       <button
+        ref={portal ? triggerRef : undefined}
         type="button"
         title={title ?? selectedLabel ?? undefined}
         disabled={disabled}
@@ -252,7 +278,51 @@ export function AppSelect({
         </span>
       </button>
 
-      {open && !disabled ? (
+      {open && !disabled && (!portal || dropdownStyle) ? (
+        portal && dropdownStyle ? (
+          createPortal(
+            <ul
+              ref={listRef}
+              id={listId}
+              role="listbox"
+              aria-label={ariaLabel ?? title ?? 'Opciones'}
+              className={cn(
+                'fixed z-[200]',
+                appSelectListClass,
+                listMaxHeight,
+                !columns && compactMenu && 'py-0.5 shadow-md',
+                columns && 'p-1',
+                listClassName
+              )}
+              style={{
+                top: dropdownStyle.top,
+                left: dropdownStyle.left,
+                width: compactMenu ? 'auto' : dropdownStyle.width,
+                maxWidth: 'calc(100vw - 2rem)',
+                ...(columns ? { display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: '1px' } : {}),
+              }}
+            >
+              {searchable ? (
+                <li className="sticky top-0 z-10 bg-white dark:bg-[#0b2147] border-b border-slate-200 dark:border-slate-700">
+                  <input type="search" value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Buscar..." className="w-full px-3 py-2 text-sm bg-transparent border-0 outline-none text-black dark:text-[#e7eef9] placeholder-slate-400" autoFocus />
+                </li>
+              ) : null}
+              {visibleListOptions.length === 0 ? (
+                <li className={cn('px-3 py-2 text-sm', appDropdownOptionLineClass, appSelectOptionTextClass)}>{emptyText}</li>
+              ) : (
+                visibleListOptions.map((opt) => {
+                  const isSelected = opt.value === value;
+                  return (
+                    <li key={opt.value === '' ? '__empty' : opt.value} role="option" aria-selected={isSelected}>
+                      <button type="button" disabled={opt.disabled} className={cn(appSelectOptionClass(isSelected), (compactMenu || columns) && 'px-2.5 py-1.5 text-center text-sm')} onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); if (opt.disabled) return; skipOutsideCloseRef.current = true; onChange(opt.value); setOpen(false); }}>{opt.label}</button>
+                    </li>
+                  );
+                })
+              )}
+            </ul>,
+            document.body
+          )
+        ) : (
         <ul
           ref={listRef}
           id={listId}
@@ -314,6 +384,7 @@ export function AppSelect({
             })
           )}
         </ul>
+        )
       ) : null}
     </div>
   );
