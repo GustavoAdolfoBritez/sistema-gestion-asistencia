@@ -1444,7 +1444,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
     setPendingEdit({
       title: 'Editar módulo',
       fields: [
-        { key: 'materiaId', label: 'Materia', required: true, defaultValue: String(mod.materia_id), options: materiaOptions },
+        { key: 'materiaId', label: 'Materia', required: true, defaultValue: String(mod.materia_id), options: materiaOptions, searchable: true },
         { key: 'anio', label: 'Año', required: true, defaultValue: String(mod.anio), options: opcionesAnioModulo(), columns: 4 },
         { key: 'mes', label: 'Mes', required: true, defaultValue: String(mod.mes), options: mesOptions },
         { key: 'fechaInicio', label: 'Fecha inicio', type: 'date', required: true, defaultValue: toDateInputValue(mod.fecha_inicio) },
@@ -1540,8 +1540,8 @@ export function AcademicoAdminPage({ onLogout }: Props) {
     setPendingEdit({
       title: 'Editar curso',
       fields: [
-        { key: 'moduloId', label: 'Módulo académico', required: true, defaultValue: String(curso.modulo_id), options: moduloOptions },
-        { key: 'docenteId', label: 'Docente', required: true, defaultValue: curso.docente_id, options: docenteOptions },
+        { key: 'moduloId', label: 'Módulo académico', required: true, defaultValue: String(curso.modulo_id), options: moduloOptions, searchable: true },
+        { key: 'docenteId', label: 'Docente', required: true, defaultValue: curso.docente_id, options: docenteOptions, searchable: true },
         { key: 'aula', label: 'Aula (opcional)', defaultValue: curso.aula ?? '' },
         { key: 'horarioInicio', label: 'Horario inicio (opcional)', defaultValue: curso.horario_inicio ? String(curso.horario_inicio).slice(0, 5) : '' },
         { key: 'horarioFin', label: 'Horario fin (opcional)', defaultValue: curso.horario_fin ? String(curso.horario_fin).slice(0, 5) : '' },
