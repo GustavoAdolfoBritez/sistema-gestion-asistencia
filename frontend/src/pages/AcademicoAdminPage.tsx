@@ -520,7 +520,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
         })
       : docentesOrdenados;
 
-    return base.slice(0, 8);
+    return base;
   }, [docenteSearch, docentesOrdenados]);
 
   const facultadesOpciones = useMemo(() => {
