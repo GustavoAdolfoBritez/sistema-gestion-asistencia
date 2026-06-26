@@ -39,11 +39,30 @@ interface ApiList<T> {
 }
 
 const RESULTADOS: Array<'ok' | 'error'> = ['ok', 'error'];
-const MODULOS_SUGERIDOS = ['auth', 'usuarios', 'asistencias', 'reportes', 'importaciones', 'academico'];
+const MODULOS_SUGERIDOS = ['auth', 'usuarios', 'asistencias', 'reportes', 'importaciones', 'academico', 'auditoria', 'alumnos'];
 const ACCIONES_SUGERIDAS_POR_MODULO: Record<string, string[]> = {
   auth: ['login', 'logout'],
-  usuarios: ['crear_usuario', 'actualizar_usuario', 'actualizar_estado_usuario', 'actualizar_roles_usuario', 'reset_password_usuario', 'eliminar_usuario'],
-  asistencias: ['crear_sesion', 'cerrar_sesion', 'registrar_asistencia', 'marcar_todos_presentes', 'registrar_justificacion', 'resolver_justificacion'],
+  usuarios: [
+    'crear_usuario',
+    'actualizar_usuario',
+    'actualizar_estado_usuario',
+    'actualizar_roles_usuario',
+    'actualizar_scopes_usuario',
+    'reset_password_usuario',
+    'eliminar_usuario',
+    'exportar_usuarios_pdf',
+  ],
+  asistencias: [
+    'crear_sesion',
+    'cerrar_sesion',
+    'reabrir_sesion',
+    'anular_sesion',
+    'registrar_asistencia',
+    'registrar_asistencias_lote',
+    'marcar_todos_presentes',
+    'registrar_justificacion',
+    'resolver_justificacion',
+  ],
   reportes: [
     'actualizar_alerta',
     'recalcular_estadistica',
@@ -52,6 +71,33 @@ const ACCIONES_SUGERIDAS_POR_MODULO: Record<string, string[]> = {
     'generar_informe_alumno_pdf',
     'generar_consolidado_riesgo_pdf',
     'generar_estadisticas_ausentismo_pdf',
+  ],
+  importaciones: [
+    'confirmar_lote',
+    'descartar_lote',
+  ],
+  academico: [
+    'crear_modulo',
+    'actualizar_modulo',
+    'eliminar_modulo',
+    'crear_curso',
+    'actualizar_curso',
+    'eliminar_curso',
+    'crear_materia',
+    'eliminar_materia',
+    'crear_plan',
+    'eliminar_plan',
+    'matricular_alumno',
+    'desmatricular_alumno',
+    'matricular_desde_lote',
+    'promocionar_semestre_curricular',
+    'promocionar_semestre_curricular_masivo_facultad',
+  ],
+  auditoria: [
+    'exportar_auditoria_pdf',
+  ],
+  alumnos: [
+    'editar_alumno',
   ],
 };
 
@@ -330,6 +376,34 @@ function formatearRecurso(evento: EventoAuditoria): string {
   if (tipo === 'sesion' && ['login', 'logout', 'refresh_token'].includes(evento.accion)) {
     return `usuario ${recursoId}`.trim();
   }
+
+  // Intentar extraer info del detalle para modulos y cursos
+  if (esObjeto(evento.detalle)) {
+    const d = evento.detalle as Record<string, unknown>;
+    if (tipo === 'modulo_academico' || tipo === 'modulo') {
+      const materia = typeof d.materia === 'string' ? d.materia : null;
+      const anio = d.anio != null ? String(d.anio) : '';
+      const mes = d.mes != null ? String(d.mes).padStart(2, '0') : '';
+      const partes = [materia, anio && mes ? `${anio}-${mes}` : ''].filter(Boolean);
+      return partes.length ? `${partes.join(' · ')} ${recursoId}`.trim() : `Módulo ${recursoId}`.trim();
+    }
+    if (tipo === 'curso') {
+      const materia = typeof d.materia === 'string' ? d.materia : null;
+      const docente = typeof d.docente === 'string' ? d.docente : null;
+      const partes = [materia, docente].filter(Boolean);
+      return partes.length ? `${partes.join(' · ')} ${recursoId}`.trim() : `Curso ${recursoId}`.trim();
+    }
+    if (tipo === 'materia') {
+      const nombre = typeof d.nombre === 'string' ? d.nombre : null;
+      const codigo = typeof d.codigo === 'string' ? d.codigo : '';
+      return nombre ? `Materia: ${nombre}${codigo ? ` (${codigo})` : ''}`.trim() : `Materia ${recursoId}`.trim();
+    }
+    if (tipo === 'plan') {
+      const nombre = typeof d.nombre === 'string' ? d.nombre : null;
+      return nombre ? `Plan: ${nombre}`.trim() : `Plan ${recursoId}`.trim();
+    }
+  }
+
   return `${evento.recurso_tipo ?? '-'} ${recursoId}`.trim();
 }
 
@@ -759,8 +833,13 @@ export function AuditoriaPage({ onLogout }: Props) {
   }, [eventos]);
 
   const accionesDisponibles = useMemo(() => {
-    const sugeridas = modulo ? (ACCIONES_SUGERIDAS_POR_MODULO[modulo] ?? []) : Object.values(ACCIONES_SUGERIDAS_POR_MODULO).flat();
-    return Array.from(new Set([...sugeridas, ...Array.from(accionesVistas)]))
+    const sugeridas = modulo
+      ? (ACCIONES_SUGERIDAS_POR_MODULO[modulo] ?? [])
+      : Object.values(ACCIONES_SUGERIDAS_POR_MODULO).flat();
+    const desdeDatos = modulo
+      ? []
+      : Array.from(accionesVistas);
+    return Array.from(new Set([...sugeridas, ...desdeDatos]))
       .filter((item) => item.toLowerCase() !== 'todos' && item.toLowerCase() !== 'todas')
       .sort((a, b) => etiquetaAccion(a).localeCompare(etiquetaAccion(b), 'es'));
   }, [accionesVistas, modulo]);
