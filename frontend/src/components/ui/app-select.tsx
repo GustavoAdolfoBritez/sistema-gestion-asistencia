@@ -159,7 +159,7 @@ export function AppSelect({
     window.addEventListener('scroll', updatePosition, true);
     window.addEventListener('resize', updatePosition);
 
-    const onPointerDown = (e: PointerEvent) => {
+    const onPointerDown = (e: MouseEvent) => {
       if (skipOutsideCloseRef.current) {
         skipOutsideCloseRef.current = false;
         return;
@@ -177,14 +177,14 @@ export function AppSelect({
       setOpen(false);
     };
 
-    document.addEventListener('pointerdown', onPointerDown, true);
+    document.addEventListener('mousedown', onPointerDown);
     document.addEventListener('keydown', onKey);
     document.addEventListener('focusin', onFocusIn);
 
     return () => {
       window.removeEventListener('scroll', updatePosition, true);
       window.removeEventListener('resize', updatePosition);
-      document.removeEventListener('pointerdown', onPointerDown, true);
+      document.removeEventListener('mousedown', onPointerDown);
       document.removeEventListener('keydown', onKey);
       document.removeEventListener('focusin', onFocusIn);
     };
