@@ -159,23 +159,34 @@ export function AppSelect({
     window.addEventListener('scroll', updatePosition, true);
     window.addEventListener('resize', updatePosition);
 
-    const handleCloseCondition = (e: Event) => {
+    const onPointerDown = (e: PointerEvent) => {
+      if (skipOutsideCloseRef.current) {
+        skipOutsideCloseRef.current = false;
+        return;
+      }
+      const target = e.target as Node;
+      if (rootRef.current?.contains(target) || listRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    const onFocusIn = (e: FocusEvent) => {
       const target = e.target as HTMLElement;
       if (rootRef.current?.contains(target) || listRef.current?.contains(target)) return;
       setOpen(false);
     };
 
-    // Clics, toques y cambios de foco (crucial contra el Focus Trap de Radix UI)
-    document.addEventListener('mousedown', handleCloseCondition);
-    document.addEventListener('touchstart', handleCloseCondition);
-    document.addEventListener('focusin', handleCloseCondition);
+    document.addEventListener('pointerdown', onPointerDown, true);
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('focusin', onFocusIn);
 
     return () => {
       window.removeEventListener('scroll', updatePosition, true);
       window.removeEventListener('resize', updatePosition);
-      document.removeEventListener('mousedown', handleCloseCondition);
-      document.removeEventListener('touchstart', handleCloseCondition);
-      document.removeEventListener('focusin', handleCloseCondition);
+      document.removeEventListener('pointerdown', onPointerDown, true);
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('focusin', onFocusIn);
     };
   }, [open]);
 
