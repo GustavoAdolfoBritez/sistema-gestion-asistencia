@@ -899,10 +899,10 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
 
                 {filtersOpen ? (
                   <div className="grid grid-cols-1 gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-surface-dark max-lg:mt-2.5 max-lg:gap-3 max-lg:border-slate-200 max-lg:bg-slate-50/80 max-lg:p-3 max-lg:shadow-none dark:max-lg:border-slate-700 dark:max-lg:bg-[#0b2147]/40 lg:mt-5 lg:flex lg:flex-wrap lg:items-end lg:gap-x-6 lg:gap-y-3 lg:p-4">
-                    <label className={`${USUARIO_LABEL} lg:w-52 lg:shrink-0`}>
+                    <label className={`${USUARIO_LABEL} lg:w-64 lg:shrink-0`}>
                       <span>Rol</span>
                       <AppSelect
-                        className="lg:max-w-[13rem]"
+                        className="lg:max-w-[16rem]"
                         value={roleFilter}
                         onChange={setRoleFilter}
                         clearOption={{ value: 'all', label: 'Todos los roles' }}
@@ -910,7 +910,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                           value: role.value,
                           label: role.label,
                         }))}
-                        triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9] lg:max-w-[13rem]"
+                        triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                       />
                     </label>
                     <label className={`${USUARIO_LABEL} lg:w-52 lg:shrink-0`}>
