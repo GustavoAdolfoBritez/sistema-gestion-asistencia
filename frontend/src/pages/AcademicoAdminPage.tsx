@@ -1366,9 +1366,12 @@ export function AcademicoAdminPage({ onLogout }: Props) {
         { key: 'codigo', label: 'Código', defaultValue: materia.codigo, required: true },
         {
           key: 'semestre',
-          label: 'Semestre (1–10)',
+          label: 'Semestre',
           defaultValue: String(materia.semestre ?? 1),
-          type: 'number',
+          options: Array.from({ length: MAX_SEMESTRE_PLAN }, (_, i) => ({
+            value: String(i + 1),
+            label: formatearSemestre(i + 1),
+          })),
           required: true,
         },
       ],
