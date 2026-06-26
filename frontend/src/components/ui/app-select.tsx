@@ -1,6 +1,4 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import type { CSSProperties } from 'react';
-import { createPortal } from 'react-dom';
 import { cn } from '../../lib/utils';
 
 export interface AppSelectOption {
@@ -127,9 +125,7 @@ export function AppSelect({
 }: AppSelectProps) {
   const [open, setOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
-  const [dropdownStyle, setDropdownStyle] = useState<{ top: number; left: number; width: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const skipOutsideCloseRef = useRef(false);
   const listId = useId();
@@ -148,47 +144,32 @@ export function AppSelect({
 
   useEffect(() => {
     if (!open) return;
-
-    const updatePosition = () => {
-      if (triggerRef.current) {
-        const rect = triggerRef.current.getBoundingClientRect();
-        setDropdownStyle({ top: rect.bottom + 4, left: rect.left, width: rect.width });
-      }
-    };
-    updatePosition();
-    window.addEventListener('scroll', updatePosition, true);
-    window.addEventListener('resize', updatePosition);
-
-    const onPointerDown = (e: MouseEvent | TouchEvent) => {
-      if (skipOutsideCloseRef.current) {
-        skipOutsideCloseRef.current = false;
-        return;
-      }
-      const target = e.target as Node;
-      if (rootRef.current?.contains(target) || listRef.current?.contains(target)) return;
-      setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    const onFocusIn = (e: FocusEvent) => {
-      const target = e.target as HTMLElement;
-      if (rootRef.current?.contains(target) || listRef.current?.contains(target)) return;
-      setOpen(false);
-    };
-
-    document.addEventListener('mousedown', onPointerDown);
-    document.addEventListener('touchstart', onPointerDown);
-    document.addEventListener('keydown', onKey);
-    document.addEventListener('focusin', onFocusIn);
-
+    let removeOutside: (() => void) | undefined;
+    const timer = window.setTimeout(() => {
+      const onPointerDown = (e: PointerEvent) => {
+        if (skipOutsideCloseRef.current) {
+          skipOutsideCloseRef.current = false;
+          return;
+        }
+        const target = e.target as Node;
+        if (rootRef.current?.contains(target) || listRef.current?.contains(target)) {
+          return;
+        }
+        setOpen(false);
+      };
+      const onKey = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') setOpen(false);
+      };
+      document.addEventListener('pointerdown', onPointerDown, true);
+      document.addEventListener('keydown', onKey);
+      removeOutside = () => {
+        document.removeEventListener('pointerdown', onPointerDown, true);
+        document.removeEventListener('keydown', onKey);
+      };
+    }, 0);
     return () => {
-      window.removeEventListener('scroll', updatePosition, true);
-      window.removeEventListener('resize', updatePosition);
-      document.removeEventListener('mousedown', onPointerDown);
-      document.removeEventListener('touchstart', onPointerDown);
-      document.removeEventListener('keydown', onKey);
-      document.removeEventListener('focusin', onFocusIn);
+      window.clearTimeout(timer);
+      removeOutside?.();
     };
   }, [open]);
 
@@ -229,68 +210,15 @@ export function AppSelect({
     return items;
   }, [open, allowEmpty, value, listOptions, searchable, searchText]);
 
-  const renderDropdown = (className: string, style?: CSSProperties) => (
-    <ul
-      ref={listRef}
-      id={listId}
-      role="listbox"
-      aria-label={ariaLabel ?? title ?? 'Opciones'}
-      className={cn(appSelectListClass, listMaxHeight, className, listClassName)}
-      style={style}
-    >
-      {searchable ? (
-        <li className="sticky top-0 z-10 bg-white dark:bg-[#0b2147] border-b border-slate-200 dark:border-slate-700">
-          <input
-            type="search"
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            placeholder="Buscar..."
-            className="w-full px-3 py-2 text-sm bg-transparent border-0 outline-none text-black dark:text-[#e7eef9] placeholder-slate-400"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-            autoFocus
-          />
-        </li>
-      ) : null}
-      {visibleListOptions.length === 0 ? (
-        <li className={cn('px-3 py-2 text-sm', appDropdownOptionLineClass, appSelectOptionTextClass)}>
-          {emptyText}
-        </li>
-      ) : (
-        visibleListOptions.map((opt) => {
-          const isSelected = opt.value === value;
-          return (
-            <li key={opt.value === '' ? '__empty' : opt.value} role="option" aria-selected={isSelected}>
-              <button
-                type="button"
-                disabled={opt.disabled}
-                className={cn(
-                  appSelectOptionClass(isSelected),
-                  (compactMenu || columns) && 'px-2.5 py-1.5 text-center text-sm'
-                )}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (opt.disabled) return;
-                  skipOutsideCloseRef.current = true;
-                  onChange(opt.value);
-                  setSearchText('');
-                  setOpen(false);
-                }}
-              >
-                {opt.label}
-              </button>
-            </li>
-          );
-        })
-      )}
-    </ul>
-  );
+  const dropdownWidthClass = columns
+    ? 'min-w-[280px]'
+    : compactMenu
+      ? 'w-auto'
+      : 'w-full';
 
   return (
     <div ref={rootRef} className={cn('relative w-full max-w-full min-w-0', className)}>
       <button
-        ref={triggerRef}
         type="button"
         title={title ?? selectedLabel ?? undefined}
         disabled={disabled}
@@ -301,7 +229,6 @@ export function AppSelect({
         onClick={(e) => {
           if (disabled) return;
           e.stopPropagation();
-          if (open) setSearchText('');
           setOpen((v) => !v);
         }}
         className={cn(
@@ -325,20 +252,68 @@ export function AppSelect({
         </span>
       </button>
 
-      {open && !disabled && dropdownStyle ? (
-        createPortal(
-          renderDropdown(
-            cn('fixed z-[200]', columns && 'p-1', compactMenu && 'py-0.5 shadow-md'),
-            {
-              top: dropdownStyle.top,
-              left: dropdownStyle.left,
-              width: compactMenu ? 'auto' : dropdownStyle.width,
-              maxWidth: 'calc(100vw - 2rem)',
-              ...(columns ? { display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: '1px' } : {}),
-            }
-          ),
-          document.body
-        )
+      {open && !disabled ? (
+        <ul
+          ref={listRef}
+          id={listId}
+          role="listbox"
+          aria-label={ariaLabel ?? title ?? 'Opciones'}
+          className={cn(
+            'absolute left-0 top-full z-[200] mt-1',
+            dropdownWidthClass,
+            'max-w-[calc(100vw-2rem)]',
+            appSelectListClass,
+            listMaxHeight,
+            !columns && compactMenu && 'py-0.5 shadow-md',
+            columns && 'p-1',
+            listClassName
+          )}
+          style={columns ? { display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: '1px' } : undefined}
+        >
+          {searchable ? (
+            <li className="sticky top-0 z-10 bg-white dark:bg-[#0b2147] border-b border-slate-200 dark:border-slate-700">
+              <input
+                type="search"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                placeholder="Buscar..."
+                className="w-full px-3 py-2 text-sm bg-transparent border-0 outline-none text-black dark:text-[#e7eef9] placeholder-slate-400"
+                autoFocus
+              />
+            </li>
+          ) : null}
+          {visibleListOptions.length === 0 ? (
+            <li className={cn('px-3 py-2 text-sm', appDropdownOptionLineClass, appSelectOptionTextClass)}>
+              {emptyText}
+            </li>
+          ) : (
+            visibleListOptions.map((opt) => {
+              const isSelected = opt.value === value;
+              return (
+                <li key={opt.value === '' ? '__empty' : opt.value} role="option" aria-selected={isSelected}>
+                  <button
+                    type="button"
+                    disabled={opt.disabled}
+                    className={cn(
+                      appSelectOptionClass(isSelected),
+                      (compactMenu || columns) && 'px-2.5 py-1.5 text-center text-sm'
+                    )}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (opt.disabled) return;
+                      skipOutsideCloseRef.current = true;
+                      onChange(opt.value);
+                      setOpen(false);
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                </li>
+              );
+            })
+          )}
+        </ul>
       ) : null}
     </div>
   );

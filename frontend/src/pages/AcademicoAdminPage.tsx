@@ -1364,23 +1364,8 @@ export function AcademicoAdminPage({ onLogout }: Props) {
       fields: [
         { key: 'nombre', label: 'Nombre', defaultValue: materia.nombre, required: true },
         { key: 'codigo', label: 'Código', defaultValue: materia.codigo, required: true },
-        {
-          key: 'semestre',
-          label: 'Semestre',
-          defaultValue: String(materia.semestre ?? 1),
-          options: Array.from({ length: MAX_SEMESTRE_PLAN }, (_, i) => ({
-            value: String(i + 1),
-            label: formatearSemestre(i + 1),
-          })),
-          required: true,
-        },
       ],
       onSave: async (values) => {
-        const semRaw = Number(values.semestre);
-        if (!Number.isFinite(semRaw) || semRaw < 1 || semRaw > MAX_SEMESTRE_PLAN) {
-          toast.error(`El semestre debe ser un número entre 1 y ${MAX_SEMESTRE_PLAN}`);
-          return;
-        }
         setDialogLoading(true);
         try {
           const actualizada = await apiFetch<Materia>(`/academico/materias/${materia.id}`, {
@@ -1388,7 +1373,6 @@ export function AcademicoAdminPage({ onLogout }: Props) {
             body: JSON.stringify({
               nombre: values.nombre,
               codigo: values.codigo,
-              semestre: semRaw,
             }),
           });
           setMaterias((prev) => prev.map((m) => (m.id === materia.id ? actualizada : m)));
@@ -1446,7 +1430,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
       fields: [
         { key: 'materiaId', label: 'Materia', required: true, defaultValue: String(mod.materia_id), options: materiaOptions, searchable: true },
         { key: 'anio', label: 'Año', required: true, defaultValue: String(mod.anio), options: opcionesAnioModulo(), columns: 4 },
-        { key: 'mes', label: 'Mes', required: true, defaultValue: String(mod.mes), options: mesOptions },
+        { key: 'mes', label: 'Mes', required: true, defaultValue: String(mod.mes), options: mesOptions, columns: 3 },
         { key: 'fechaInicio', label: 'Fecha inicio', type: 'date', required: true, defaultValue: toDateInputValue(mod.fecha_inicio) },
         { key: 'fechaFin', label: 'Fecha fin', type: 'date', required: true, defaultValue: toDateInputValue(mod.fecha_fin) },
       ],
@@ -2034,6 +2018,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                         setModuloForm((f) => ({ ...f, mes: v, fechaInicio: '', fechaFin: '' }));
                       }}
                       placeholder="Mes"
+                      columns={3}
                       options={MESES.map((nombre, i) => ({
                         value: String(i + 1),
                         label: nombre,

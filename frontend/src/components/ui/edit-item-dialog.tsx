@@ -183,7 +183,7 @@ export function EditItemDialog({
             event.preventDefault();
           }
         }}
-        className="max-w-lg flex flex-col overflow-hidden p-0">
+        className="max-w-lg flex flex-col max-h-[85vh] overflow-hidden p-0">
         <DialogHeader className="shrink-0 px-5 pt-4 pb-2 pr-12">
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
@@ -191,9 +191,9 @@ export function EditItemDialog({
           onSubmit={(e) => {
             void handleSubmit(e);
           }}
-          className="flex flex-col overflow-hidden"
+          className="flex flex-col overflow-y-auto"
         >
-          <div className="scroll-region flex flex-col gap-5 px-5 pb-2 max-h-[60vh] overflow-y-auto">
+          <div className="flex flex-col gap-5 px-5 pb-2">
             {fieldNodes}
           </div>
           <DialogFooter className="btn-mobile-stack shrink-0 gap-2 border-t border-slate-200 bg-white px-5 py-4 mt-2 dark:border-slate-700/80 dark:bg-[#172d58] lg:flex-row lg:justify-end lg:gap-3 lg:border-0 lg:bg-transparent lg:px-5 lg:pb-4 lg:pt-1">
