@@ -114,7 +114,6 @@ export function EditItemDialog({
         {field.options && field.options.length > 0 ? (
           <AppSelect
             wrapLabel
-            searchable
             className="max-lg:w-full"
             options={field.options}
             value={values[field.key] ?? ''}
@@ -182,7 +181,7 @@ export function EditItemDialog({
             event.preventDefault();
           }
         }}
-        className="max-w-lg flex flex-col overflow-hidden p-0">
+        className="max-w-lg flex flex-col p-0 max-h-[90vh]">
         <DialogHeader className="shrink-0 px-5 pt-4 pb-2 pr-12">
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
