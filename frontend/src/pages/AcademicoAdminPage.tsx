@@ -1430,7 +1430,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
       fields: [
         { key: 'materiaId', label: 'Materia', required: true, defaultValue: String(mod.materia_id), options: materiaOptions, searchable: true },
         { key: 'anio', label: 'Año', required: true, defaultValue: String(mod.anio), options: opcionesAnioModulo(), columns: 4 },
-        { key: 'mes', label: 'Mes', required: true, defaultValue: String(mod.mes), options: mesOptions, columns: 3 },
+        { key: 'mes', label: 'Mes', required: true, defaultValue: String(mod.mes), options: mesOptions, columns: 3, columnsMobile: 1 },
         { key: 'fechaInicio', label: 'Fecha inicio', type: 'date', required: true, defaultValue: toDateInputValue(mod.fecha_inicio) },
         { key: 'fechaFin', label: 'Fecha fin', type: 'date', required: true, defaultValue: toDateInputValue(mod.fecha_fin) },
       ],
@@ -1948,6 +1948,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                     <span className="text-slate-600 text-xs dark:text-slate-400">Semestre del plan</span>
                     <AppSelect
                       aria-label="Semestre para filtrar materias"
+                      columns={2}
                       value={moduloFiltroSemestre}
                       disabled={!contextoAcademicoListo}
                       onChange={(v) => {
@@ -2020,6 +2021,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                       }}
                       placeholder="Mes"
                       columns={3}
+                      columnsMobile={1}
                       options={MESES.map((nombre, i) => ({
                         value: String(i + 1),
                         label: nombre,
@@ -2217,6 +2219,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                     <span className="text-slate-600 text-xs dark:text-slate-400">Semestre</span>
                     <AppSelect
                       aria-label="Semestre del curso"
+                      columns={2}
                       value={cursoFiltroSemestre}
                       disabled={!contextoAcademicoListo || !carreraSeleccionadaId}
                       onChange={(v) => {

@@ -82,6 +82,8 @@ export interface AppSelectProps {
   compactMenu?: boolean;
   /** Distribuye las opciones en N columnas (grid) en lugar de lista vertical. */
   columns?: number;
+  /** Columnas en mobile (si no se define, usa el mismo valor que columns). */
+  columnsMobile?: number;
   /** En vez de truncar la etiqueta en desktop, hace wrap (para dialogos). */
   wrapLabel?: boolean;
   /** Muestra un buscador arriba del dropdown para filtrar opciones. */
@@ -123,18 +125,28 @@ export function AppSelect({
   size = 'md',
   compactMenu = false,
   columns,
+  columnsMobile,
   wrapLabel = false,
   searchable = false,
   portal = false,
 }: AppSelectProps) {
   const [open, setOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
   const [dropdownStyle, setDropdownStyle] = useState<{ top: number; left: number; width: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const skipOutsideCloseRef = useRef(false);
   const listId = useId();
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  const effectiveColumns = columns != null ? (isMobile && columnsMobile != null ? columnsMobile : columns) : undefined;
 
   const selectedLabel = useMemo(
     () => labelForValue(options, value, allowEmpty, emptyLabel, clearOption),
@@ -235,8 +247,8 @@ export function AppSelect({
     return items;
   }, [open, allowEmpty, value, listOptions, searchable, searchText]);
 
-  const dropdownWidthClass = columns
-    ? 'min-w-[280px]'
+  const dropdownWidthClass = effectiveColumns
+    ? effectiveColumns > 1 ? 'min-w-[280px]' : 'w-full'
     : compactMenu
       ? 'w-auto'
       : 'w-full';
@@ -290,8 +302,8 @@ export function AppSelect({
                 'fixed z-[200]',
                 appSelectListClass,
                 listMaxHeight,
-                !columns && compactMenu && 'py-0.5 shadow-md',
-                columns && 'p-1',
+                !effectiveColumns && compactMenu && 'py-0.5 shadow-md',
+                effectiveColumns && 'p-1',
                 listClassName
               )}
               style={{
@@ -299,7 +311,7 @@ export function AppSelect({
                 left: dropdownStyle.left,
                 width: compactMenu ? 'auto' : dropdownStyle.width,
                 maxWidth: 'calc(100vw - 2rem)',
-                ...(columns ? { display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: '1px' } : {}),
+                ...(effectiveColumns ? { display: 'grid', gridTemplateColumns: `repeat(${effectiveColumns}, 1fr)`, gap: '1px' } : {}),
               }}
             >
               {searchable ? (
@@ -314,7 +326,7 @@ export function AppSelect({
                   const isSelected = opt.value === value;
                   return (
                     <li key={opt.value === '' ? '__empty' : opt.value} role="option" aria-selected={isSelected}>
-                      <button type="button" disabled={opt.disabled} className={cn(appSelectOptionClass(isSelected), (compactMenu || columns) && 'px-2.5 py-1.5 text-center text-sm')} onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); if (opt.disabled) return; skipOutsideCloseRef.current = true; onChange(opt.value); setOpen(false); }}>{opt.label}</button>
+                      <button type="button" disabled={opt.disabled} className={cn(appSelectOptionClass(isSelected), (compactMenu || effectiveColumns) && 'px-2.5 py-1.5 text-center text-sm')} onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); if (opt.disabled) return; skipOutsideCloseRef.current = true; onChange(opt.value); setOpen(false); }}>{opt.label}</button>
                     </li>
                   );
                 })
@@ -334,11 +346,11 @@ export function AppSelect({
             'max-w-[calc(100vw-2rem)]',
             appSelectListClass,
             listMaxHeight,
-            !columns && compactMenu && 'py-0.5 shadow-md',
-            columns && 'p-1',
+            !effectiveColumns && compactMenu && 'py-0.5 shadow-md',
+            effectiveColumns && 'p-1',
             listClassName
           )}
-          style={columns ? { display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: '1px' } : undefined}
+          style={effectiveColumns ? { display: 'grid', gridTemplateColumns: `repeat(${effectiveColumns}, 1fr)`, gap: '1px' } : undefined}
         >
           {searchable ? (
             <li className="sticky top-0 z-10 bg-white dark:bg-[#0b2147] border-b border-slate-200 dark:border-slate-700">
@@ -366,7 +378,7 @@ export function AppSelect({
                     disabled={opt.disabled}
                     className={cn(
                       appSelectOptionClass(isSelected),
-                      (compactMenu || columns) && 'px-2.5 py-1.5 text-center text-sm'
+                      (compactMenu || effectiveColumns) && 'px-2.5 py-1.5 text-center text-sm'
                     )}
                     onMouseDown={(e) => {
                       e.preventDefault();

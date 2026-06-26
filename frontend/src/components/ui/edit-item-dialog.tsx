@@ -12,6 +12,7 @@ export interface EditFormField {
   placeholder?: string;
   options?: { value: string; label: string }[];
   columns?: number;
+  columnsMobile?: number;
   searchable?: boolean;
 }
 
@@ -120,6 +121,7 @@ export function EditItemDialog({
             options={field.options}
             value={values[field.key] ?? ''}
             columns={field.columns}
+            columnsMobile={field.columnsMobile}
             onChange={(v) => {
               setValues((prev) => {
                 const next = { ...prev, [field.key]: v };
