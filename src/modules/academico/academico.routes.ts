@@ -209,13 +209,19 @@ router.delete('/academico/modulos/:moduloId', async (req, res, next) => {
             const alcance = await resolverAlcanceMatriculasFacultad(usuarioId, roles);
             await assertModuloIdEnAlcance(moduloId, alcance);
         }
+        const { rows: modInfo } = await pool.query(
+            `SELECT m.nombre AS materia, ma.anio, ma.mes
+             FROM modulos_academicos ma JOIN materias m ON m.id = ma.materia_id WHERE ma.id = $1`,
+            [moduloId]
+        );
         await eliminarModulo(moduloId);
         await registrarEventoAuditoriaSegura({
             modulo: 'academico',
             accion: 'eliminar_modulo',
             recursoTipo: 'modulo_academico',
             recursoId: moduloId,
-            detalle: { moduloId },
+            recursoResumen: modInfo[0] ? `Módulo eliminado: ${modInfo[0].materia} (${modInfo[0].anio}-${String(modInfo[0].mes).padStart(2, '0')})` : null,
+            detalle: { moduloId, materia: modInfo[0]?.materia ?? null, anio: modInfo[0]?.anio ?? null, mes: modInfo[0]?.mes ?? null },
             contexto: contextoAuditoria
         });
         res.status(204).send();
@@ -380,13 +386,24 @@ router.delete('/academico/cursos/:cursoId', async (req, res, next) => {
             const alcance = await resolverAlcanceMatriculasFacultad(usuarioId, roles);
             await assertCursoEnAlcance(cursoId, alcance);
         }
+        const { rows: cursoInfo } = await pool.query(
+            `SELECT m.nombre AS materia, u.nombres, u.apellidos
+             FROM cursos c
+             JOIN modulos_academicos ma ON ma.id = c.modulo_id
+             JOIN materias m ON m.id = ma.materia_id
+             JOIN docentes d ON d.id = c.docente_id
+             JOIN usuarios u ON u.id = d.usuario_id
+             WHERE c.id = $1`,
+            [cursoId]
+        );
         await eliminarCurso(cursoId);
         await registrarEventoAuditoriaSegura({
             modulo: 'academico',
             accion: 'eliminar_curso',
             recursoTipo: 'curso',
             recursoId: cursoId,
-            detalle: { cursoId },
+            recursoResumen: cursoInfo[0] ? `Curso eliminado: ${cursoInfo[0].materia} · ${cursoInfo[0].nombres} ${cursoInfo[0].apellidos}` : null,
+            detalle: { cursoId, materia: cursoInfo[0]?.materia ?? null, docente: cursoInfo[0] ? `${cursoInfo[0].nombres} ${cursoInfo[0].apellidos}` : null },
             contexto: contextoAuditoria
         });
         res.status(204).send();

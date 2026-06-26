@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { pool } from '../../config/database';
 import { autenticarConPoliticaAlcance, autorizarRoles } from '../../middlewares/auth.middleware';
 import { ROLES_ADMIN_O_ACADEMICOS, ROLES_GESTION_ACADEMICA_OPERATIVA, ROLES_LECTURA_DIRECCION } from '../../utils/rbac';
 import {
@@ -28,6 +29,7 @@ import {
   actualizarMateria,
   eliminarMateria,
 } from './estructura-academica.service';
+import { construirContextoAuditoria, registrarEventoAuditoriaSegura } from '../auditoria/auditoria.service';
 
 const router = Router();
 
@@ -348,6 +350,7 @@ router.patch('/academico/planes/:planId', mwGestionOperativa, async (req, res, n
 
 router.delete('/academico/planes/:planId', mwGestionOperativa, async (req, res, next) => {
   try {
+    const contextoAuditoria = construirContextoAuditoria(req);
     const usuarioId = req.usuario?.usuarioId;
     const roles = req.usuario?.roles ?? [];
     const planId = Number(req.params.planId);
@@ -358,7 +361,17 @@ router.delete('/academico/planes/:planId', mwGestionOperativa, async (req, res, 
       const alcance = await resolverAlcanceMatriculasFacultad(usuarioId, roles);
       await assertPlanIdEnAlcance(planId, alcance);
     }
+    const { rows: pl } = await pool.query('SELECT nombre FROM planes_estudio WHERE id = $1', [planId]);
     await eliminarPlan(planId);
+    await registrarEventoAuditoriaSegura({
+      modulo: 'academico',
+      accion: 'eliminar_plan',
+      recursoTipo: 'plan',
+      recursoId: planId,
+      recursoResumen: pl[0] ? `Plan eliminado: ${pl[0].nombre}` : null,
+      detalle: { planId, nombre: pl[0]?.nombre ?? null },
+      contexto: contextoAuditoria,
+    });
     res.status(204).send();
   } catch (error: any) {
     if (error?.code === '23503') {
@@ -476,6 +489,7 @@ router.patch('/academico/materias/:materiaId', mwGestionOperativa, async (req, r
 
 router.delete('/academico/materias/:materiaId', mwGestionOperativa, async (req, res, next) => {
   try {
+    const contextoAuditoria = construirContextoAuditoria(req);
     const usuarioId = req.usuario?.usuarioId;
     const roles = req.usuario?.roles ?? [];
     const materiaId = Number(req.params.materiaId);
@@ -486,7 +500,17 @@ router.delete('/academico/materias/:materiaId', mwGestionOperativa, async (req, 
       const alcance = await resolverAlcanceMatriculasFacultad(usuarioId, roles);
       await assertMateriaIdEnAlcance(materiaId, alcance);
     }
+    const { rows: mat } = await pool.query('SELECT nombre, codigo FROM materias WHERE id = $1', [materiaId]);
     await eliminarMateria(materiaId);
+    await registrarEventoAuditoriaSegura({
+      modulo: 'academico',
+      accion: 'eliminar_materia',
+      recursoTipo: 'materia',
+      recursoId: materiaId,
+      recursoResumen: mat[0] ? `Materia eliminada: ${mat[0].nombre} (${mat[0].codigo})` : null,
+      detalle: { materiaId, nombre: mat[0]?.nombre ?? null, codigo: mat[0]?.codigo ?? null },
+      contexto: contextoAuditoria,
+    });
     res.status(204).send();
   } catch (error: any) {
     if (error?.code === '23503') {
