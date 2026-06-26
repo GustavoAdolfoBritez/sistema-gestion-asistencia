@@ -2554,12 +2554,12 @@ export function AcademicoAdminPage({ onLogout }: Props) {
               </div>
             </div>
 
-            {cursoSeleccionado ? (
-              <div
-                ref={planillaPanelRef}
-                className="min-w-0 rounded-xl border border-slate-200 bg-white shadow-sm scroll-mt-4 dark:border-slate-800 dark:bg-[#132a52] dark:shadow-none flex flex-col min-h-0"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 p-4 dark:border-slate-800 max-lg:flex-col max-lg:gap-2 max-lg:p-3">
+            <div
+              ref={planillaPanelRef}
+              className="min-w-0 rounded-xl border border-slate-200 bg-white shadow-sm scroll-mt-4 dark:border-slate-800 dark:bg-[#132a52] dark:shadow-none flex flex-col min-h-0"
+            >
+              {cursoSeleccionado ? (
+                <>                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 p-4 dark:border-slate-800 max-lg:flex-col max-lg:gap-2 max-lg:p-3">
                   <div className="min-w-0 space-y-1 max-lg:w-full">
                     <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Planilla de alumnos</p>
                     <h3 className="text-lg font-semibold text-black dark:text-[#e7eef9] max-lg:break-words max-lg:leading-snug max-lg:whitespace-normal lg:truncate">
@@ -2852,8 +2852,17 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                     )}
                   </div>
                 </div>
-              </div>
-            ) : null}
+              </>
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-3 py-16 px-4 text-center">
+                  <span className="material-symbols-outlined text-5xl text-slate-300 dark:text-slate-600">group</span>
+                  <div>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Planilla de alumnos</p>
+                    <p className="text-slate-400 dark:text-slate-500 text-xs mt-1">Seleccioná un curso para ver su planilla</p>
+                  </div>
+                </div>
+              )}
+            </div>
             </div>
             </div>
 
