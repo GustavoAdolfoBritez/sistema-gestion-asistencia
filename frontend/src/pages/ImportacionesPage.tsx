@@ -297,7 +297,8 @@ function formatRecordFieldLabel(key: string) {
 }
 
 function recordPreviewEntries(record: ImportRecord, max = 12) {
-  const raw = Object.entries(record.datos ?? {}).filter(([key]) => !key.startsWith('_planilla'));
+  const hidden = ['_planilla', 'destino_', 'semestre'];
+  const raw = Object.entries(record.datos ?? {}).filter(([key]) => !hidden.some((p) => key.startsWith(p)));
   if (!raw.length) {
     return { entries: [] as Array<{ key: string; label: string; value: string }>, truncated: false, total: 0 };
   }
@@ -1589,9 +1590,6 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                         <div>
                           <p className="text-sm font-medium text-[#f0f4f8] xl:text-slate-900 dark:xl:text-[#f0f4f8]">
                             Registros cargados
-                          </p>
-                          <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
-                            Vista previa de cada fila del Excel (campos detectados en el archivo).
                           </p>
                         </div>
                         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filtrar registros">
