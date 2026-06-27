@@ -853,15 +853,17 @@ export async function actualizarModulo(moduloId: number, input: ActualizarModulo
     const setFragments: string[] = [];
     const valores: Array<string | number> = [];
 
+    const { rows: moduloActual } = await pool.query(
+        'SELECT materia_id, anio, mes FROM modulos_academicos WHERE id = $1',
+        [moduloId]
+    );
+    if (!moduloActual[0]) {
+        throw new Error('Módulo no encontrado');
+    }
+    const cur = moduloActual[0];
+
     if (typeof input.materiaId === 'number') {
-        const { rows: moduloActual } = await pool.query(
-            'SELECT materia_id FROM modulos_academicos WHERE id = $1',
-            [moduloId]
-        );
-        if (!moduloActual[0]) {
-            throw new Error('Módulo no encontrado');
-        }
-        if (input.materiaId !== moduloActual[0].materia_id) {
+        if (input.materiaId !== cur.materia_id) {
             const { rows: cursos } = await pool.query(
                 'SELECT id FROM cursos WHERE modulo_id = $1 LIMIT 1',
                 [moduloId]
@@ -875,6 +877,15 @@ export async function actualizarModulo(moduloId: number, input: ActualizarModulo
     }
 
     if (typeof input.anio === 'number') {
+        if (input.anio !== cur.anio) {
+            const { rows: cursos } = await pool.query(
+                'SELECT id FROM cursos WHERE modulo_id = $1 LIMIT 1',
+                [moduloId]
+            );
+            if (cursos.length > 0) {
+                throw new Error('No se puede cambiar el año de un módulo que ya tiene cursos asignados.');
+            }
+        }
         valores.push(input.anio);
         setFragments.push(`anio = $${valores.length}`);
     }
@@ -882,6 +893,15 @@ export async function actualizarModulo(moduloId: number, input: ActualizarModulo
     if (typeof input.mes === 'number') {
         if (input.mes < 1 || input.mes > 12) {
             throw new Error('El mes debe estar entre 1 y 12');
+        }
+        if (input.mes !== cur.mes) {
+            const { rows: cursos } = await pool.query(
+                'SELECT id FROM cursos WHERE modulo_id = $1 LIMIT 1',
+                [moduloId]
+            );
+            if (cursos.length > 0) {
+                throw new Error('No se puede cambiar el mes de un módulo que ya tiene cursos asignados.');
+            }
         }
         valores.push(input.mes);
         setFragments.push(`mes = $${valores.length}`);
@@ -1665,6 +1685,8 @@ export interface AlumnoSemestreCurricularListItem {
     semestre_curricular: number;
     /** Año de cohorte de ingreso (desde importación / lote); null si no se registró. */
     cohorte_anio: number | null;
+    /** Fecha de la última promoción de semestre; null si nunca fue promovido. */
+    promocionado_en: string | null;
 }
 
 export async function listarAlumnosPorSemestreCurricular(
@@ -1689,7 +1711,8 @@ export async function listarAlumnosPorSemestreCurricular(
             al.numero_documento,
             COALESCE(al.nombre_apellido, CONCAT(COALESCE(al.apellidos, ''), ', ', COALESCE(al.nombres, ''))) AS nombre_completo,
             al.semestre_curricular,
-            al.cohorte_anio
+            al.cohorte_anio,
+            al.promocionado_en
          FROM alumnos al
          WHERE al.referencia_carrera_id = $1
            AND al.semestre_curricular = $2${cohorteCondicion}
@@ -1781,9 +1804,19 @@ export async function promocionarSemestreCurricular(params: {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
+        // Limpiar promocionado_en de los que ya estaban en el destino
+        await client.query(
+            `UPDATE alumnos
+             SET promocionado_en = NULL
+             WHERE referencia_carrera_id = $1
+               AND semestre_curricular = $2
+               AND NOT (id = ANY($3::uuid[]))`,
+            [carreraId, destino, ids]
+        );
         const { rowCount } = await client.query(
             `UPDATE alumnos al
-             SET semestre_curricular = $1
+             SET semestre_curricular = $1,
+                 promocionado_en = NOW()
              WHERE al.id = ANY($2::uuid[])
                AND al.referencia_carrera_id = $3
                AND al.semestre_curricular = $4`,
@@ -1827,6 +1860,7 @@ export interface PreviewPromocionMasivaFacultadFila {
     carreraId: number;
     carreraNombre: string;
     cantidadAlumnos: number;
+    promovidos: boolean;
 }
 
 export async function previewPromocionSemestreMasivaFacultad(
@@ -1848,23 +1882,25 @@ export async function previewPromocionSemestreMasivaFacultad(
         queryParams.push(cohorteAnio);
         cohorteCondicion = ` AND al.cohorte_anio = $${queryParams.length}`;
     }
-    const { rows } = await pool.query<{ carrera_id: number; carrera_nombre: string; cantidad: string }>(
+    const { rows } = await pool.query<{ carrera_id: number; carrera_nombre: string; cantidad: string; promovidos: boolean }>(
         `SELECT ca.id AS carrera_id,
                 ca.nombre AS carrera_nombre,
-                COUNT(al.id)::text AS cantidad
+                COUNT(al.id)::text AS cantidad,
+                al.promocionado_en IS NOT NULL AS promovidos
          FROM carreras ca
          LEFT JOIN alumnos al ON al.referencia_carrera_id = ca.id
            AND al.semestre_curricular = $1${cohorteCondicion}
          WHERE ca.id = ANY($2::int[])
-         GROUP BY ca.id, ca.nombre
-         ORDER BY ca.nombre`,
+         GROUP BY ca.id, ca.nombre, al.promocionado_en IS NOT NULL
+         ORDER BY ca.nombre, promovidos`,
         queryParams
     );
     const filas: PreviewPromocionMasivaFacultadFila[] = rows
         .map((r) => ({
             carreraId: r.carrera_id,
             carreraNombre: r.carrera_nombre,
-            cantidadAlumnos: Number(r.cantidad) || 0
+            cantidadAlumnos: Number(r.cantidad) || 0,
+            promovidos: r.promovidos === true,
         }))
         .filter((f) => f.cantidadAlumnos > 0);
     const totalAlumnos = filas.reduce((acc, f) => acc + f.cantidadAlumnos, 0);
@@ -1906,13 +1942,26 @@ export async function ejecutarPromocionSemestreMasivaFacultad(params: {
             carreraFilter = `AND NOT (c.id = ANY($5::int[]))`;
         }
 
+        // Limpiar promocionado_en de los que ya estaban en el destino
+        await client.query(
+            `UPDATE alumnos
+             SET promocionado_en = NULL
+             WHERE semestre_curricular = $1
+               AND cohorte_anio = $2
+               AND referencia_carrera_id IN (
+                 SELECT c.id FROM carreras c WHERE c.facultad_id = $3
+               )`,
+            [destino, cohorteAnio, facultadId]
+        );
+
         const { rows } = await client.query<{ cid: number; cantidad: string }>(
             `WITH carreras_elegibles AS (
                 SELECT c.id FROM carreras c WHERE c.facultad_id = $2 ${carreraFilter}
              ),
              upd AS (
                 UPDATE alumnos al
-                SET semestre_curricular = $1
+                SET semestre_curricular = $1,
+                    promocionado_en = NOW()
                 FROM carreras_elegibles ce
                 WHERE al.referencia_carrera_id = ce.id
                   AND al.semestre_curricular = $3

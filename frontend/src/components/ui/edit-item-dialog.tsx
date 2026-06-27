@@ -26,6 +26,7 @@ interface EditItemDialogProps {
   onSave: (values: Record<string, string>) => void | Promise<void>;
   loading?: boolean;
   resolveDateBounds?: (values: Record<string, string>) => { min: string; max: string } | null;
+  warning?: string;
 }
 
 function fechasFueraDeRango(
@@ -52,6 +53,7 @@ export function EditItemDialog({
   onSave,
   loading = false,
   resolveDateBounds,
+  warning,
 }: EditItemDialogProps) {
   const [values, setValues] = useState<Record<string, string>>({});
   const prevOpenRef = useRef(false);
@@ -201,6 +203,11 @@ export function EditItemDialog({
         className="max-w-lg flex flex-col max-h-[85vh] overflow-hidden p-0">
         <DialogHeader className="shrink-0 px-5 pt-4 pb-2 pr-12">
           <DialogTitle>{title}</DialogTitle>
+          {warning ? (
+            <p className="mt-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 rounded-lg px-3 py-2 border border-amber-200 dark:border-amber-500/20">
+              {warning}
+            </p>
+          ) : null}
         </DialogHeader>
         <form
           onSubmit={(e) => {

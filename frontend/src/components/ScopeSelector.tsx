@@ -36,17 +36,21 @@ const skeletonFieldClass = 'rounded bg-slate-200 dark:bg-white/10';
 /** Placeholder mientras se resuelve alcance y catálogo (evita flash de selectores vacíos). */
 export function ScopeSelectorSkeleton({
   soloCarrera = false,
+  soloFacultad = false,
   hideLabel = false,
   className = '',
   gridClassName,
 }: {
   soloCarrera?: boolean;
+  soloFacultad?: boolean;
   hideLabel?: boolean;
   className?: string;
   /** Ej. `xl:grid-cols-2` o `grid-cols-1 lg:grid-cols-2` */
   gridClassName?: string;
 }) {
-  const grid = gridClassName ?? (soloCarrera ? 'grid-cols-1' : 'grid-cols-1 xl:grid-cols-2');
+  const grid = gridClassName ?? (soloCarrera || soloFacultad ? 'grid-cols-1' : 'grid-cols-1 xl:grid-cols-2');
+  const mostrarFacultad = !soloCarrera;
+  const mostrarCarrera = !soloFacultad;
   const labelH = hideLabel ? 'hidden' : 'block';
   const layoutClass = gridClassName?.trimStart().startsWith('flex')
     ? cn(gridClassName, className)
@@ -54,16 +58,18 @@ export function ScopeSelectorSkeleton({
 
   return (
     <div className={layoutClass}>
-      {!soloCarrera ? (
+      {mostrarFacultad ? (
         <div className="space-y-2">
           <Skeleton className={`h-3 w-16 ${labelH} ${skeletonFieldClass}`} />
           <Skeleton className={`h-10 w-full rounded-lg ${skeletonFieldClass}`} />
         </div>
       ) : null}
-      <div className="space-y-2">
-        <Skeleton className={`h-3 w-14 ${labelH} ${skeletonFieldClass}`} />
-        <Skeleton className={`h-10 w-full rounded-lg ${skeletonFieldClass}`} />
-      </div>
+      {mostrarCarrera ? (
+        <div className="space-y-2">
+          <Skeleton className={`h-3 w-14 ${labelH} ${skeletonFieldClass}`} />
+          <Skeleton className={`h-10 w-full rounded-lg ${skeletonFieldClass}`} />
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -33,11 +33,11 @@ interface AlumnoSemestreRow {
   numero_documento: string;
   nombre_completo: string;
   semestre_curricular: number;
-  /** Año de cohorte de ingreso; ausente o null en alumnos cargados antes de registrar cohorte. */
   cohorte_anio?: number | null;
+  promocionado_en?: string | null;
 }
 
-type CohorteGrupoKey = number | 'sin';
+type CohorteGrupoKey = number | string;
 
 /** Excluir alumno o grupo de la promoción (legible en claro y oscuro). */
 const btnEliminarPromocionClass =
@@ -54,16 +54,25 @@ function etiquetaSemestreOrdinal(n: number): string {
   return `${n}° semestre`;
 }
 
+function grupoEsPromovido(filas: AlumnoSemestreRow[]): boolean {
+  return filas.some((r) => r.promocionado_en != null);
+}
+
 function claveCohorte(row: AlumnoSemestreRow): CohorteGrupoKey {
   const c = row.cohorte_anio;
   if (c == null || !Number.isFinite(Number(c))) return 'sin';
-  return Math.trunc(Number(c));
+  return row.promocionado_en ? `${Math.trunc(Number(c))}_p` : Math.trunc(Number(c));
 }
 
 interface PreviewMasivaFila {
   carreraId: number;
   carreraNombre: string;
   cantidadAlumnos: number;
+  promovidos: boolean;
+}
+
+function previewKey(fila: PreviewMasivaFila): string {
+  return `${fila.carreraId}_${fila.promovidos ? 'p' : 'e'}`;
 }
 
 export function PromocionSemestrePage({ onLogout }: Props) {
@@ -89,10 +98,11 @@ export function PromocionSemestrePage({ onLogout }: Props) {
   const [semestreMasivo, setSemestreMasivo] = useState('1');
   const [cohorteAnioMasivo, setCohorteAnioMasivo] = useState('');
   const [previewMasiva, setPreviewMasiva] = useState<PreviewMasivaFila[] | null>(null);
-  const [excluirCarrerasMasiva, setExcluirCarrerasMasiva] = useState<Set<number>>(new Set());
+  const [excluirCarrerasMasiva, setExcluirCarrerasMasiva] = useState<Set<string>>(new Set());
   const [loadingPreviewMasiva, setLoadingPreviewMasiva] = useState(false);
   const [loadingEjecutarMasiva, setLoadingEjecutarMasiva] = useState(false);
   const [confirmMasivaOpen, setConfirmMasivaOpen] = useState(false);
+  const [gruposColapsados, setGruposColapsados] = useState<Set<string>>(new Set());
   const listaAlumnosRef = useRef<HTMLDivElement>(null);
   const scrollListaTrasCargaRef = useRef(false);
 
@@ -175,6 +185,9 @@ export function PromocionSemestrePage({ onLogout }: Props) {
       }));
       setLista(rows);
       setIdsIncluidos(new Set(rows.map((r) => r.id)));
+      // Colapsar grupos si hay mas de uno
+      const claves = new Set(rows.map((r) => claveCohorte(r)));
+      setGruposColapsados(claves.size > 1 ? new Set([...claves].map(String)) : new Set());
       if (rows.length) {
         toast.success(`${rows.length} alumno(s) en semestre ${sem}.`);
       } else {
@@ -261,7 +274,10 @@ export function PromocionSemestrePage({ onLogout }: Props) {
   const cantIncluidos = lista.filter((r) => idsIncluidos.has(r.id)).length;
 
   const maxCohorteEnLista = useMemo(() => {
-    const nums = lista.map(claveCohorte).filter((k): k is number => k !== 'sin');
+    const nums = lista
+      .map(claveCohorte)
+      .filter((k) => k !== 'sin')
+      .map((k) => parseInt(String(k)));
     return nums.length ? Math.max(...nums) : null;
   }, [lista]);
 
@@ -276,7 +292,14 @@ export function PromocionSemestrePage({ onLogout }: Props) {
     const keys = [...m.keys()].sort((a, b) => {
       if (a === 'sin') return 1;
       if (b === 'sin') return -1;
-      return b - a;
+      const aProm = String(a).endsWith('_p');
+      const bProm = String(b).endsWith('_p');
+      const aNum = parseInt(String(a));
+      const bNum = parseInt(String(b));
+      if (aNum !== bNum) return bNum - aNum;
+      if (aProm && !bProm) return 1;
+      if (!aProm && bProm) return -1;
+      return 0;
     });
     return keys.map((cohorte) => ({ cohorte, filas: m.get(cohorte) ?? [] }));
   }, [lista]);
@@ -284,7 +307,7 @@ export function PromocionSemestrePage({ onLogout }: Props) {
   const totalMasivaEfectivo = useMemo(() => {
     if (!previewMasiva?.length) return 0;
     return previewMasiva
-      .filter((f) => !excluirCarrerasMasiva.has(f.carreraId))
+      .filter((f) => !excluirCarrerasMasiva.has(previewKey(f)))
       .reduce((acc, f) => acc + f.cantidadAlumnos, 0);
   }, [previewMasiva, excluirCarrerasMasiva]);
 
@@ -322,7 +345,11 @@ export function PromocionSemestrePage({ onLogout }: Props) {
         }
       );
       setPreviewMasiva(data.filas ?? []);
-      setExcluirCarrerasMasiva(new Set());
+      const autoExcluir = new Set<string>();
+      for (const f of data.filas ?? []) {
+        if (f.promovidos) autoExcluir.add(previewKey(f));
+      }
+      setExcluirCarrerasMasiva(autoExcluir);
       const tot = data.totalAlumnos ?? 0;
       if (tot) {
         toast.success(`Vista previa: ${tot} alumno(s) en semestre ${sem}.`);
@@ -355,7 +382,7 @@ export function PromocionSemestrePage({ onLogout }: Props) {
         body: JSON.stringify({
           facultadId: fid,
           semestreOrigen: sem,
-          excluirCarreraIds: [...excluirCarrerasMasiva],
+          excluirCarreraIds: [...new Set([...excluirCarrerasMasiva].map((k) => parseInt(k)))],
           cohorteAnio: cohorte,
         }),
       });
@@ -373,11 +400,11 @@ export function PromocionSemestrePage({ onLogout }: Props) {
     }
   };
 
-  const toggleExcluirCarreraMasiva = (carreraIdNum: number) => {
+  const toggleExcluirCarreraMasiva = (key: string) => {
     setExcluirCarrerasMasiva((prev) => {
       const next = new Set(prev);
-      if (next.has(carreraIdNum)) next.delete(carreraIdNum);
-      else next.add(carreraIdNum);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   };
@@ -409,7 +436,8 @@ export function PromocionSemestrePage({ onLogout }: Props) {
             </div>
           </header>
 
-          <section className="scroll-region app-scroll-content flex-1 min-h-0 min-w-0 overflow-auto p-4 sm:p-6 space-y-4">
+          <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            <div className="scroll-region flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4">
             <AcademicoSubnav />
             {!ocultarFacultad ? (
               <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4 text-black shadow-sm dark:border-slate-800 dark:bg-[#132a52] dark:text-[#e7eef9] dark:shadow-none">
@@ -422,12 +450,12 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                   específico y evitar que distintas promociones sean afectadas simultáneamente.
                   En la vista previa podés <strong className="text-black dark:text-[#e7eef9]">excluir carreras</strong> antes de confirmar.
                 </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {!contextoSelectorListo ? (
-                  <ScopeSelectorSkeleton className="lg:col-span-2" gridClassName="grid-cols-1" />
+                  <ScopeSelectorSkeleton soloFacultad className="lg:col-span-1" gridClassName="grid-cols-1" />
                 ) : (
                 <ScopeSelector
-                  className="lg:col-span-2"
+                  className="lg:col-span-1"
                   label="Facultad"
                   options={facultadesDisponibles}
                   value={facultadMasivaId}
@@ -442,8 +470,10 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                 )}
                 <div className="space-y-2">
                   <label className="text-xs uppercase text-slate-500 dark:text-slate-400">Semestre de origen</label>
-                  <AppSelect
-                    aria-label="Semestre masivo"
+                    <AppSelect
+                      portal
+                      columns={3}
+                      aria-label="Semestre masivo"
                     value={semestreMasivo}
                     disabled={!facultadMasivaId}
                     onChange={(v) => {
@@ -462,8 +492,10 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                   <label className="text-xs uppercase text-slate-500 dark:text-slate-400">
                     Año de ingreso <span className="text-rose-500 dark:text-rose-400 normal-case">*</span>
                   </label>
-                  <AppSelect
-                    aria-label="Año de ingreso masiva"
+                    <AppSelect
+                      portal
+                      columns={5}
+                      aria-label="Año de ingreso masiva"
                     value={cohorteAnioMasivo}
                     disabled={!facultadMasivaId}
                     onChange={(v) => {
@@ -491,6 +523,7 @@ export function PromocionSemestrePage({ onLogout }: Props) {
               </div>
 
               {previewMasiva && previewMasiva.length > 0 ? (
+                <div>
                 <div className="space-y-3 border border-slate-200 rounded-lg p-3 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/25">
                     <div className="flex flex-col gap-3 text-sm max-lg:items-stretch sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                     <span className="text-slate-600 dark:text-slate-300">
@@ -499,44 +532,59 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                       <strong className="text-black dark:text-[#e7eef9]">{cohorteAnioMasivo}</strong> → semestre{' '}
                       {Number(semestreMasivo) + 1}
                     </span>
-                    <div className="app-mobile-cta-footer max-lg:w-full">
-                    <button
-                      type="button"
-                      disabled={!puedeEjecutarMasiva}
-                      onClick={() => setConfirmMasivaOpen(true)}
-                      className="btn-modern btn-modern-success btn-mobile-cta shrink-0 px-3 py-1.5 text-sm font-medium max-md:w-full md:w-auto"
-                    >
-                      Promocionar todo (facultad)
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={!puedeEjecutarMasiva}
+                        onClick={() => setConfirmMasivaOpen(true)}
+                        className="btn-modern btn-modern-success btn-mobile-cta shrink-0 px-3 py-1.5 text-sm font-medium max-md:w-full md:w-auto"
+                      >
+                        Promocionar todo (facultad)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setPreviewMasiva(null); setExcluirCarrerasMasiva(new Set()); }}
+                        className="shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 dark:hover:text-slate-300 dark:hover:bg-slate-800"
+                        aria-label="Cerrar vista previa"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">close</span>
+                      </button>
+                    </div>
                     </div>
                   </div>
                   <div className="rounded-md border border-slate-200 dark:border-slate-800 max-lg:max-h-none max-lg:overflow-visible lg:max-h-[min(280px,40vh)] lg:overflow-y-auto lg:overscroll-contain">
                     <table className="w-full text-sm">
                       <thead className="bg-slate-100 dark:bg-slate-950/50 text-left text-xs uppercase text-slate-500 dark:text-slate-400">
                         <tr>
-                          <th className="px-3 py-2 w-10">Excl.</th>
-                          <th className="px-3 py-2">Carrera</th>
-                          <th className="px-3 py-2 text-right">Alumnos</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {previewMasiva.map((fila) => {
-                          const excl = excluirCarrerasMasiva.has(fila.carreraId);
-                          return (
-                            <tr
-                              key={fila.carreraId}
-                              className={excl ? 'opacity-45 border-t border-slate-800' : 'border-t border-slate-800'}
-                            >
-                              <td className="px-3 py-2">
-                                <input
-                                  type="checkbox"
-                                  checked={excl}
-                                  onChange={() => toggleExcluirCarreraMasiva(fila.carreraId)}
-                                  aria-label={`Excluir ${fila.carreraNombre}`}
-                                />
-                              </td>
-                              <td className="px-3 py-2 text-black dark:text-[#e7eef9]">{fila.carreraNombre}</td>
-                               <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">{fila.cantidadAlumnos}</td>
+                      <th className="px-3 py-2 w-10">Excluir</th>
+                      <th className="px-3 py-2">Carrera</th>
+                      <th className="px-3 py-2 text-right">Alumnos</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {previewMasiva.map((fila) => {
+                      const excl = excluirCarrerasMasiva.has(previewKey(fila));
+                      const key = previewKey(fila);
+                      return (
+                        <tr
+                          key={key}
+                          className={excl ? 'opacity-45 border-t border-slate-800' : 'border-t border-slate-800'}
+                        >
+                          <td className="px-3 py-2">
+                            <input
+                              type="checkbox"
+                              checked={excl}
+                              onChange={() => toggleExcluirCarreraMasiva(key)}
+                              aria-label={`Excluir ${fila.carreraNombre}`}
+                            />
+                          </td>
+                          <td className="px-3 py-2 text-black dark:text-[#e7eef9]">
+                            {fila.carreraNombre}
+                            {fila.promovidos ? (
+                              <span className="ml-1.5 text-[11px] text-amber-500">Promocionado</span>
+                            ) : null}
+                          </td>
+                          <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">{fila.cantidadAlumnos}</td>
                             </tr>
                           );
                         })}
@@ -606,8 +654,10 @@ export function PromocionSemestrePage({ onLogout }: Props) {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs uppercase text-slate-500 dark:text-slate-400">Semestre de origen</label>
-                  <AppSelect
-                    aria-label="Semestre"
+                    <AppSelect
+                      portal
+                      columns={3}
+                      aria-label="Semestre"
                     value={semestre}
                     disabled={!carreraId}
                     onChange={(v) => {
@@ -626,8 +676,10 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                   <label className="text-xs uppercase text-slate-500 dark:text-slate-400">
                     Año de ingreso <span className="text-rose-500 dark:text-rose-400 normal-case">*</span>
                   </label>
-                  <AppSelect
-                    aria-label="Año de ingreso carrera"
+                    <AppSelect
+                      portal
+                      columns={5}
+                      aria-label="Año de ingreso carrera"
                     value={anioIngresoCarrera}
                     disabled={!carreraId}
                     onChange={(v) => {
@@ -725,29 +777,52 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                 <div className="rounded-lg border border-slate-800 max-lg:max-h-none max-lg:overflow-visible lg:max-h-[min(420px,50vh)] lg:overflow-hidden lg:overflow-y-auto lg:overscroll-contain">
                   {listaPorCohorte.map(({ cohorte, filas }) => {
                     const variasCohortes = listaPorCohorte.length > 1;
+                    const esPromovido = cohorte !== 'sin' && grupoEsPromovido(filas);
                     const badgeReciente =
                       variasCohortes &&
                       cohorte !== 'sin' &&
                       maxCohorteEnLista != null &&
-                      cohorte === maxCohorteEnLista;
+                      parseInt(String(cohorte)) === maxCohorteEnLista &&
+                      !esPromovido;
                     const badgePrevia =
                       variasCohortes &&
                       cohorte !== 'sin' &&
                       maxCohorteEnLista != null &&
-                      cohorte < maxCohorteEnLista;
+                      parseInt(String(cohorte)) < maxCohorteEnLista &&
+                      !esPromovido;
                     const inclEnGrupo = filas.filter((r) => idsIncluidos.has(r.id)).length;
                     const idsGrupo = filas.map((r) => r.id);
+                    const colapsado = gruposColapsados.has(String(cohorte));
                     return (
-                      <div key={String(cohorte)} className="border-b border-slate-200 dark:border-slate-800 last:border-b-0">
-                        <div className="sticky top-0 z-[1] flex flex-wrap items-center gap-2 gap-y-1 border-b border-slate-200 bg-slate-50/95 px-3 py-2 dark:border-slate-800 dark:bg-slate-950/95 max-lg:flex-col max-lg:items-stretch max-lg:gap-1.5 max-lg:px-4 max-lg:py-2.5">
+                      <div key={String(cohorte)} id={`grupo-${String(cohorte)}`} className="border-b border-slate-200 dark:border-slate-800 last:border-b-0">
+                        <div
+                          className="sticky top-0 z-[1] flex flex-wrap items-center gap-2 gap-y-1 border-b border-slate-200 bg-slate-50/95 px-3 py-2 dark:border-slate-800 dark:bg-slate-950/95 max-lg:flex-col max-lg:items-stretch max-lg:gap-1.5 max-lg:px-4 max-lg:py-2.5 cursor-pointer"
+                          onClick={() => {
+                            const key = String(cohorte);
+                            setGruposColapsados((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(key)) {
+                                next.delete(key);
+                                // Scroll al expandir
+                                setTimeout(() => {
+                                  document.getElementById(`grupo-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                }, 50);
+                              } else {
+                                next.add(key);
+                              }
+                              return next;
+                            });
+                          }}
+                        >
+                          <span className="material-symbols-outlined text-[16px] text-slate-400 shrink-0">{colapsado ? 'chevron_right' : 'expand_more'}</span>
                           <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 max-lg:break-words">
                             {cohorte === 'sin'
                               ? 'Sin año de ingreso registrado'
-                              : `Año de ingreso ${cohorte}`}
+                              : `Año de ingreso ${String(cohorte).replace('_p', '')}`}
                           </span>
                           {badgeReciente ? (
                             <span className="text-[10px] sm:text-xs rounded px-2 py-0.5 bg-emerald-900/50 text-emerald-200 border border-emerald-800/60">
-                              Año de ingreso más reciente
+                              Existente
                             </span>
                           ) : null}
                           {badgePrevia ? (
@@ -755,11 +830,16 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                               Año de ingreso anterior
                             </span>
                           ) : null}
+                          {esPromovido ? (
+                            <span className="text-[10px] sm:text-xs rounded px-2 py-0.5 bg-amber-900/50 text-amber-200 border border-amber-800/60">
+                              Promocionado
+                            </span>
+                          ) : null}
                           <span className="text-xs tabular-nums text-slate-500 max-lg:w-full">
                             {inclEnGrupo}/{filas.length} incluidos
                           </span>
                           {variasCohortes ? (
-                            <div className="ml-auto flex shrink-0 gap-1.5 max-lg:ml-0 max-lg:w-full max-lg:flex-wrap">
+                            <div className="ml-auto flex shrink-0 gap-1.5 max-lg:ml-0 max-lg:w-full max-lg:flex-wrap" onClick={(e) => e.stopPropagation()}>
                               <button
                                 type="button"
                                 className="text-[11px] px-2 py-0.5 rounded border border-emerald-700/70 text-emerald-300 hover:bg-emerald-900/40"
@@ -776,7 +856,7 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                                 <button
                                   type="button"
                                   className={btnEliminarGrupoClass}
-                                  title="Eliminar todos los alumnos de este grupo de la promoción"
+                                  title="Quitar todos los alumnos de este grupo de la promoción"
                                   onClick={() =>
                                     setIdsIncluidos((prev) => {
                                       const next = new Set(prev);
@@ -788,7 +868,7 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                                   <span className="material-symbols-outlined text-[14px]" aria-hidden>
                                     group_remove
                                   </span>
-                                  Eliminar grupo
+                                  No incluir grupo
                                 </button>
                               ) : (
                                 <button
@@ -809,6 +889,7 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                             </div>
                           ) : null}
                         </div>
+                        {!colapsado ? (
                         <ul className="divide-y divide-slate-200 dark:divide-slate-800">
                           {filas.map((row) => {
                             const incl = idsIncluidos.has(row.id);
@@ -855,12 +936,14 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                             );
                           })}
                         </ul>
+                        ) : null}
                       </div>
                     );
                   })}
                 </div>
               </div>
             ) : null}
+            </div>
           </section>
         </main>
       </div>
