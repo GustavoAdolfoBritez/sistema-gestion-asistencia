@@ -10,6 +10,7 @@ export interface EditFormField {
   type?: 'text' | 'number' | 'date';
   required?: boolean;
   disabled?: boolean;
+  disabledHint?: string;
   placeholder?: string;
   options?: { value: string; label: string }[];
   columns?: number;
@@ -115,50 +116,60 @@ export function EditItemDialog({
           {field.required ? <span className="text-rose-400"> *</span> : null}
         </span>
         {field.options && field.options.length > 0 ? (
-          <AppSelect
-            wrapLabel
-            searchable={field.searchable ?? false}
-            disabled={field.disabled ?? false}
-            className="max-lg:w-full"
-            options={field.options}
-            value={values[field.key] ?? ''}
-            columns={field.columns}
-            columnsMobile={field.columnsMobile}
-            onChange={(v) => {
-              setValues((prev) => {
-                const next = { ...prev, [field.key]: v };
-                if (field.key === 'anio' || field.key === 'mes') {
-                  return fechasFueraDeRango(next, resolveDateBounds?.(next) ?? null);
-                }
-                return next;
-              });
-            }}
-            placeholder={field.placeholder ?? 'Seleccionar'}
-            triggerClassName="bg-white border border-slate-300 text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9] py-2.5 break-words"
-          />
+          <>
+            <AppSelect
+              wrapLabel
+              searchable={field.searchable ?? false}
+              disabled={field.disabled ?? false}
+              className="max-lg:w-full"
+              options={field.options}
+              value={values[field.key] ?? ''}
+              columns={field.columns}
+              columnsMobile={field.columnsMobile}
+              onChange={(v) => {
+                setValues((prev) => {
+                  const next = { ...prev, [field.key]: v };
+                  if (field.key === 'anio' || field.key === 'mes') {
+                    return fechasFueraDeRango(next, resolveDateBounds?.(next) ?? null);
+                  }
+                  return next;
+                });
+              }}
+              placeholder={field.placeholder ?? 'Seleccionar'}
+              triggerClassName="bg-white border border-slate-300 text-black dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9] py-2.5 break-words"
+            />
+            {field.disabled && field.disabledHint ? (
+              <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">{field.disabledHint}</p>
+            ) : null}
+          </>
         ) : (
-          <input
-            type={field.type ?? 'text'}
-            value={values[field.key] ?? ''}
-            required={field.required}
-            placeholder={field.placeholder}
-            disabled={field.disabled || (field.type === 'date' && !dateBounds)}
-            min={field.type === 'date' ? (field.key === 'fechaFin' ? fechaFinMin : dateBounds?.min) : undefined}
-            max={field.type === 'date' ? dateBounds?.max : undefined}
-            onChange={(e) => {
-              setValues((prev) => {
-                let next = { ...prev, [field.key]: e.target.value };
-                if (field.key === 'fechaInicio' && next.fechaFin && e.target.value && next.fechaFin < e.target.value) {
-                  next.fechaFin = '';
-                }
-                if (field.key === 'anio' || field.key === 'mes') {
-                  next = fechasFueraDeRango(next, resolveDateBounds?.(next) ?? null);
-                }
-                return next;
-              });
-            }}
-            className="px-3 py-2 rounded-lg bg-[#132a52] border border-[#223c49] text-[#f0f4f8] text-sm focus:outline-none focus:border-primary disabled:opacity-50 disabled:cursor-not-allowed max-lg:w-full max-lg:min-w-0"
-          />
+          <>
+            <input
+              type={field.type ?? 'text'}
+              value={values[field.key] ?? ''}
+              required={field.required}
+              placeholder={field.placeholder}
+              disabled={field.disabled || (field.type === 'date' && !dateBounds)}
+              min={field.type === 'date' ? (field.key === 'fechaFin' ? fechaFinMin : dateBounds?.min) : undefined}
+              max={field.type === 'date' ? dateBounds?.max : undefined}
+              onChange={(e) => {
+                setValues((prev) => {
+                  let next = { ...prev, [field.key]: e.target.value };
+                  if (field.key === 'fechaInicio' && next.fechaFin && e.target.value && next.fechaFin < e.target.value) {
+                    next.fechaFin = '';
+                  }
+                  if (field.key === 'anio' || field.key === 'mes') {
+                    next = fechasFueraDeRango(next, resolveDateBounds?.(next) ?? null);
+                  }
+                  return next;
+                });
+              }}
+              className="px-3 py-2 rounded-lg bg-[#132a52] border border-[#223c49] text-[#f0f4f8] text-sm focus:outline-none focus:border-primary disabled:opacity-50 disabled:cursor-not-allowed max-lg:w-full max-lg:min-w-0"
+            />
+            {field.disabled && field.disabledHint ? (
+              <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">{field.disabledHint}</p>
+            ) : null}
+          </>
         )}
       </label>
     );
