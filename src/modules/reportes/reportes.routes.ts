@@ -818,7 +818,7 @@ router.post('/reportes/cierre-mensual', autorizarRoles(...ROLES_CIERRE_MENSUAL_E
             await verificarPasswordUsuarioAutenticado(usuarioId, String(password));
         } catch (err) {
             const msg = err instanceof Error ? err.message : 'No se pudo verificar la contraseña';
-            const status = msg === 'Contraseña incorrecta' ? 401 : 400;
+            const status = msg === 'Contraseña incorrecta' ? 403 : 400;
             return res.status(status).json({ mensaje: msg });
         }
 
