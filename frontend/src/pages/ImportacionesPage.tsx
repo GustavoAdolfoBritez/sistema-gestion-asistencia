@@ -1108,6 +1108,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                     <label className="flex min-w-0 flex-col gap-2 text-sm">
                       <span className="text-[#9fb3d4] font-medium">Semestre</span>
                       <AppSelect
+                        columns={5}
                         value={semestreSeleccionado}
                         disabled={!carreraSeleccionadaId}
                         onChange={setSemestreSeleccionado}

@@ -854,6 +854,22 @@ export async function actualizarModulo(moduloId: number, input: ActualizarModulo
     const valores: Array<string | number> = [];
 
     if (typeof input.materiaId === 'number') {
+        const { rows: moduloActual } = await pool.query(
+            'SELECT materia_id FROM modulos_academicos WHERE id = $1',
+            [moduloId]
+        );
+        if (!moduloActual[0]) {
+            throw new Error('Módulo no encontrado');
+        }
+        if (input.materiaId !== moduloActual[0].materia_id) {
+            const { rows: cursos } = await pool.query(
+                'SELECT id FROM cursos WHERE modulo_id = $1 LIMIT 1',
+                [moduloId]
+            );
+            if (cursos.length > 0) {
+                throw new Error('No se puede cambiar la materia de un módulo que ya tiene cursos asignados.');
+            }
+        }
         valores.push(input.materiaId);
         setFragments.push(`materia_id = $${valores.length}`);
     }
@@ -1132,6 +1148,16 @@ export async function actualizarCurso(cursoId: number, input: ActualizarCursoInp
     const valores: Array<string | number | null> = [];
 
     if (typeof input.moduloId === 'number') {
+        // Verificar que el curso no tenga planilla asignada antes de cambiar de modulo
+        if (input.moduloId !== base.modulo_id) {
+            const { rows: matriculas } = await pool.query(
+                'SELECT id FROM matriculas WHERE curso_id = $1 LIMIT 1',
+                [cursoId]
+            );
+            if (matriculas.length > 0) {
+                throw new Error('No se puede cambiar el módulo de un curso que ya tiene planilla asignada.');
+            }
+        }
         const { rows: moduloRows } = await pool.query(
             `SELECT id, estado FROM modulos_academicos WHERE id = $1`,
             [input.moduloId]

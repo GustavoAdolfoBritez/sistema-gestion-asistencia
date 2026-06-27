@@ -1426,10 +1426,12 @@ export function AcademicoAdminPage({ onLogout }: Props) {
       return;
     }
 
+    const moduloHasCurso = cursos.some((c) => c.modulo_id === mod.id);
+
     setPendingEdit({
       title: 'Editar módulo',
       fields: [
-        { key: 'materiaId', label: 'Materia', required: true, defaultValue: String(mod.materia_id), options: materiaOptions, searchable: true },
+        { key: 'materiaId', label: 'Materia', required: true, defaultValue: String(mod.materia_id), options: materiaOptions, searchable: true, disabled: moduloHasCurso },
         { key: 'anio', label: 'Año', required: true, defaultValue: String(mod.anio), options: opcionesAnioModulo(), columns: 4 },
         { key: 'mes', label: 'Mes', required: true, defaultValue: String(mod.mes), options: mesOptions, columns: 3, columnsMobile: 1 },
         { key: 'fechaInicio', label: 'Fecha inicio', type: 'date', required: true, defaultValue: toDateInputValue(mod.fecha_inicio) },
@@ -1525,7 +1527,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
     setPendingEdit({
       title: 'Editar curso',
       fields: [
-        { key: 'moduloId', label: 'Módulo académico', required: true, defaultValue: String(curso.modulo_id), options: moduloOptions, searchable: true },
+        { key: 'moduloId', label: 'Módulo académico', required: true, defaultValue: String(curso.modulo_id), options: moduloOptions, searchable: true, disabled: (curso.inscriptos ?? 0) > 0 },
         { key: 'docenteId', label: 'Docente', required: true, defaultValue: curso.docente_id, options: docenteOptions, searchable: true },
         { key: 'aula', label: 'Aula (opcional)', defaultValue: curso.aula ?? '' },
         { key: 'horarioInicio', label: 'Horario inicio (opcional)', defaultValue: curso.horario_inicio ? String(curso.horario_inicio).slice(0, 5) : '' },
@@ -1949,7 +1951,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                     <span className="text-slate-600 text-xs dark:text-slate-400">Semestre del plan</span>
                     <AppSelect
                       aria-label="Semestre para filtrar materias"
-                      columns={2}
+                      columns={5}
                       value={moduloFiltroSemestre}
                       disabled={!contextoAcademicoListo}
                       onChange={(v) => {
@@ -2220,7 +2222,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                     <span className="text-slate-600 text-xs dark:text-slate-400">Semestre</span>
                     <AppSelect
                       aria-label="Semestre del curso"
-                      columns={2}
+                      columns={5}
                       value={cursoFiltroSemestre}
                       disabled={!contextoAcademicoListo || !carreraSeleccionadaId}
                       onChange={(v) => {

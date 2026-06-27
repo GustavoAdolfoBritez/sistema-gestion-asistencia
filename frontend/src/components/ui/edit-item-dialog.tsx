@@ -9,6 +9,7 @@ export interface EditFormField {
   defaultValue?: string;
   type?: 'text' | 'number' | 'date';
   required?: boolean;
+  disabled?: boolean;
   placeholder?: string;
   options?: { value: string; label: string }[];
   columns?: number;
@@ -117,6 +118,7 @@ export function EditItemDialog({
           <AppSelect
             wrapLabel
             searchable={field.searchable ?? false}
+            disabled={field.disabled ?? false}
             className="max-lg:w-full"
             options={field.options}
             value={values[field.key] ?? ''}
@@ -140,7 +142,7 @@ export function EditItemDialog({
             value={values[field.key] ?? ''}
             required={field.required}
             placeholder={field.placeholder}
-            disabled={field.type === 'date' && !dateBounds}
+            disabled={field.disabled || (field.type === 'date' && !dateBounds)}
             min={field.type === 'date' ? (field.key === 'fechaFin' ? fechaFinMin : dateBounds?.min) : undefined}
             max={field.type === 'date' ? dateBounds?.max : undefined}
             onChange={(e) => {
