@@ -1822,6 +1822,15 @@ export async function promocionarSemestreCurricular(params: {
                AND al.semestre_curricular = $4`,
             [destino, ids, carreraId, semestreOrigen]
         );
+        // Limpiar promocionado_en de los que quedaron en el origen (ahora son el grupo existente)
+        await client.query(
+            `UPDATE alumnos
+             SET promocionado_en = NULL
+             WHERE referencia_carrera_id = $1
+               AND semestre_curricular = $2
+               AND NOT (id = ANY($3::uuid[]))`,
+            [carreraId, semestreOrigen, ids]
+        );
         await renombrarLotesAlumnosDescripcionTrasPromocion(client, {
             semestreOrigen,
             semestreDestino: destino,
@@ -1983,6 +1992,18 @@ export async function ejecutarPromocionSemestreMasivaFacultad(params: {
         }));
         const actualizados = porCarrera.reduce((s, r) => s + r.actualizados, 0);
         const carreraIds = porCarrera.map((r) => r.carreraId);
+
+        // Limpiar promocionado_en de los que quedaron en el origen
+        if (carreraIds.length > 0) {
+            await client.query(
+                `UPDATE alumnos
+                 SET promocionado_en = NULL
+                 WHERE referencia_carrera_id = ANY($1::int[])
+                   AND semestre_curricular = $2
+                   AND cohorte_anio = $3`,
+                [carreraIds, semestreOrigen, cohorteAnio]
+            );
+        }
 
         await renombrarLotesAlumnosDescripcionTrasPromocion(client, {
             semestreOrigen,

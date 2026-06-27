@@ -771,6 +771,14 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                         </span>
                         Promocionar al {etiquetaSemestreOrdinal(Number(semestre) + 1)}
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => { setLista([]); setIdsIncluidos(new Set()); }}
+                        className="shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 dark:hover:text-slate-300 dark:hover:bg-slate-700"
+                        aria-label="Cerrar lista"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">close</span>
+                      </button>
                     </div>
                   </div>
                 </div>
