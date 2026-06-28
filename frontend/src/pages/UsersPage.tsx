@@ -1247,6 +1247,10 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                     <span className="text-xs tabular-nums text-slate-500 mr-2">Mostrando {(pagina - 1) * USUARIOS_POR_PAGINA + 1}–{Math.min(pagina * USUARIOS_POR_PAGINA, filteredUsers.length)} de {filteredUsers.length}</span>
                     <div className="flex items-center gap-1.5">
                       <button type="button" className="btn-modern btn-modern-ghost h-8 w-8 shrink-0 !min-h-0 !p-0 hover:!translate-y-0 active:!translate-y-0"
+                        disabled={loading} onClick={() => { setPagina(1); loadUsers(); }}>
+                        <span className="material-symbols-outlined text-[18px]">refresh</span>
+                      </button>
+                      <button type="button" className="btn-modern btn-modern-ghost h-8 w-8 shrink-0 !min-h-0 !p-0 hover:!translate-y-0 active:!translate-y-0"
                         disabled={pagina <= 1} onClick={() => setPagina(1)}>
                         <span className="material-symbols-outlined text-[18px]">first_page</span>
                       </button>
