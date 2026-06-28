@@ -480,11 +480,13 @@ async function construirDescripcionesRecursos(eventos: EventoAuditoria[]): Promi
             [loteIds]
         );
         for (const row of rows) {
-            const desc = row.descripcion ? ` · ${row.descripcion}` : '';
-            map.set(
-                buildRecursoKey('lote_alumnos', row.id),
-                `Lote importación #${row.id} (${row.tipo_lote}, ${row.estado})${desc}`
-            );
+            const carrera = (row.descripcion ?? '').split('·')[2]?.trim() || '';
+            const partes = (row.descripcion ?? '').split('·');
+            const semestre = partes.find((p) => /semestre/i.test(p))?.trim() || '';
+            const cohorte = partes.find((p) => /año de ingreso/i.test(p))?.trim() || '';
+            const info = [carrera, semestre, cohorte].filter(Boolean).join(', ');
+            const etiqueta = info ? `Lote #${row.id}: ${info}` : `Lote #${row.id} (${row.tipo_lote})`;
+            map.set(buildRecursoKey('lote_alumnos', row.id), etiqueta);
         }
     }
 

@@ -341,6 +341,8 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | EstadoUsuario>('all');
+  const [pagina, setPagina] = useState(1);
+  const USUARIOS_POR_PAGINA = 8;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<EditableUserState | null>(null);
@@ -456,6 +458,21 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
       return matchesSearch && matchesRole && matchesStatus;
     });
   }, [users, searchTerm, roleFilter, statusFilter]);
+
+  const usuariosPaginados = useMemo(() => {
+    const inicio = (pagina - 1) * USUARIOS_POR_PAGINA;
+    return filteredUsers.slice(inicio, inicio + USUARIOS_POR_PAGINA);
+  }, [filteredUsers, pagina]);
+
+  const totalPaginas = Math.max(1, Math.ceil(filteredUsers.length / USUARIOS_POR_PAGINA));
+
+  // Reset pagina al cambiar filtros
+  useEffect(() => { setPagina(1); }, [searchTerm, roleFilter, statusFilter]);
+
+  // Clamp pagina si excede el total
+  useEffect(() => {
+    if (pagina > totalPaginas) setPagina(totalPaginas);
+  }, [pagina, totalPaginas]);
 
   const rolEdicion = draft?.roles[0];
 
@@ -939,10 +956,8 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                       <span className="lg:hidden">Directorio</span>
                     </p>
                     <p className="text-sm text-[#c9d7ed] max-lg:text-[13px] max-lg:font-medium max-lg:text-slate-800 dark:max-lg:text-[#c9d7ed]">
-                      <span className="max-lg:hidden">Se encontraron {filteredUsers.length} registros</span>
-                      <span className="lg:hidden">
-                        {filteredUsers.length} {filteredUsers.length === 1 ? 'usuario' : 'usuarios'}
-                      </span>
+                      <span className="max-lg:hidden">{filteredUsers.length} registros · Página {pagina} de {totalPaginas}</span>
+                      <span className="lg:hidden">{filteredUsers.length} {filteredUsers.length === 1 ? 'usuario' : 'usuarios'} · Pág. {pagina}/{totalPaginas}</span>
                     </p>
                   </div>
                   <span className="shrink-0 text-xs text-slate-500 max-lg:hidden">
@@ -951,7 +966,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                 </div>
                 <div
                   ref={usuariosListScrollRef}
-                  className="scroll-region app-scroll-content flex min-h-0 flex-1 flex-col"
+                  className="scroll-region app-scroll-content flex min-h-0 flex-1 flex-col pb-4"
                 >
 
                   <ul className="space-y-2.5 p-0 max-lg:pt-1 lg:hidden">
@@ -973,7 +988,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                         </button>
                       </li>
                     ) : filteredUsers.length ? (
-                      filteredUsers.map((user) => {
+                      usuariosPaginados.map((user) => {
                         const rolesVisibles = etiquetasRoles(user.roles);
                         const seleccionado = selectedUserId === user.id;
                         return (
@@ -1121,7 +1136,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                           </td>
                         </tr>
                       ) : filteredUsers.length ? (
-                        filteredUsers.map((user) => {
+                        usuariosPaginados.map((user) => {
                           const isSelected = selectedUserId === user.id;
                           return (
                             <tr
@@ -1225,8 +1240,32 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                         </tr>
                       )}
                     </tbody>
-                  </table>
+                   </table>
                 </div>
+                {totalPaginas > 1 ? (
+                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-slate-200 px-4 py-2.5 dark:border-slate-800 max-lg:justify-center">
+                    <span className="text-xs tabular-nums text-slate-500 mr-2">Mostrando {(pagina - 1) * USUARIOS_POR_PAGINA + 1}–{Math.min(pagina * USUARIOS_POR_PAGINA, filteredUsers.length)} de {filteredUsers.length}</span>
+                    <div className="flex items-center gap-1.5">
+                      <button type="button" className="btn-modern btn-modern-ghost h-8 w-8 shrink-0 !min-h-0 !p-0 hover:!translate-y-0 active:!translate-y-0"
+                        disabled={pagina <= 1} onClick={() => setPagina(1)}>
+                        <span className="material-symbols-outlined text-[18px]">first_page</span>
+                      </button>
+                      <button type="button" className="btn-modern btn-modern-ghost h-8 w-8 shrink-0 !min-h-0 !p-0 hover:!translate-y-0 active:!translate-y-0"
+                        disabled={pagina <= 1} onClick={() => setPagina((p) => Math.max(1, p - 1))}>
+                        <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+                      </button>
+                      <span className="min-w-[6.5rem] px-1 text-center text-xs tabular-nums text-slate-500">Página {pagina} de {totalPaginas}</span>
+                      <button type="button" className="btn-modern btn-modern-ghost h-8 w-8 shrink-0 !min-h-0 !p-0 hover:!translate-y-0 active:!translate-y-0"
+                        disabled={pagina >= totalPaginas} onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}>
+                        <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+                      </button>
+                      <button type="button" className="btn-modern btn-modern-ghost h-8 w-8 shrink-0 !min-h-0 !p-0 hover:!translate-y-0 active:!translate-y-0"
+                        disabled={pagina >= totalPaginas} onClick={() => setPagina(totalPaginas)}>
+                        <span className="material-symbols-outlined text-[18px]">last_page</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
               </div>
             </section>
