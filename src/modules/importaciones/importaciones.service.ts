@@ -855,14 +855,15 @@ function formatearErrorAlumnosOtraCarrera(
     _carreraDestino: string | null
 ): string {
     const n = conflictos.length;
-    const primero = conflictos[0];
-    const nombre = primero.nombre || 'Sin nombre';
-    const doc = primero.doc;
-
     if (n === 1) {
-        return `El alumno «${nombre}» (CI ${doc}) ya está registrado en ${primero.carrera}.`;
+        const unico = conflictos[0];
+        return `El alumno «${unico.nombre || 'Sin nombre'}» (CI ${unico.doc}) ya está registrado en ${unico.carrera}.`;
     }
-    return `${n} alumnos ya están registrados. El primero es «${nombre}» (CI ${doc}) en ${primero.carrera}.`;
+    if (n <= 5) {
+        const lista = conflictos.map((c) => `${c.nombre || 'Sin nombre'} (CI ${c.doc})`).join(' · ');
+        return `${n} alumnos ya están registrados en ${conflictos[0].carrera}: ${lista}`;
+    }
+    return `${n} alumnos ya están registrados en ${conflictos[0].carrera}.`;
 }
 
 function prepararPayloadRegistro(

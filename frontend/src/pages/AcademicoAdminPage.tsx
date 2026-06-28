@@ -974,7 +974,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
         moduloId: Number(cursoForm.moduloId),
         docenteId: cursoForm.docenteId,
       };
-      await apiFetch<Curso>('/academico/cursos', {
+      const nuevoCurso = await apiFetch<Curso>('/academico/cursos', {
         method: 'POST',
         body: JSON.stringify(payload),
       });
@@ -985,6 +985,10 @@ export function AcademicoAdminPage({ onLogout }: Props) {
       ]);
       setModulos(modResp?.datos ?? []);
       setCursos(cursoResp?.datos ?? []);
+      // Auto-seleccionar el nuevo curso
+      if (nuevoCurso?.id) {
+        setSelectedCursoId(nuevoCurso.id);
+      }
       toast.success('Curso creado');
       setCursoForm({ moduloId: '', docenteId: '' });
     setCursoFiltroSemestre('');
