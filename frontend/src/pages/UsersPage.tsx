@@ -342,7 +342,10 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | EstadoUsuario>('all');
   const [pagina, setPagina] = useState(1);
-  const [sortOrder, setSortOrder] = useState<'default' | 'az' | 'za'>('default');
+  const [sortOrder, setSortOrder] = useState<'default' | 'az' | 'za'>(() => {
+    const saved = localStorage.getItem('usuariosSortOrder');
+    return saved === 'az' || saved === 'za' ? saved : 'default';
+  });
   const USUARIOS_POR_PAGINA = 8;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -479,6 +482,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
   const totalPaginas = Math.max(1, Math.ceil(sortedUsers.length / USUARIOS_POR_PAGINA));
 
   // Reset pagina al cambiar filtros
+  useEffect(() => { localStorage.setItem('usuariosSortOrder', sortOrder); }, [sortOrder]);
   useEffect(() => { setPagina(1); }, [searchTerm, roleFilter, statusFilter, sortOrder]);
 
   // Clamp pagina si excede el total
