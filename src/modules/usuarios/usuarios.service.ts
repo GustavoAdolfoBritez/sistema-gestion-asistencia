@@ -67,6 +67,8 @@ export interface UsuarioFiltro {
     maxLimit?: number;
     /** Misma semántica que los filtros de la pantalla de usuarios (vista). */
     rolCategoria?: UsuarioRolCategoriaFiltro;
+    /** Orden de la lista: 'az' | 'za' */
+    orden?: string;
 }
 
 interface UsuarioRow {
@@ -727,6 +729,16 @@ export async function construirExportUsuariosPdfBuffer(
         limit: CAP_EXPORT_USUARIOS_PDF,
         maxLimit: CAP_EXPORT_USUARIOS_PDF,
     });
+
+    // Aplicar orden si se especifico
+    if (filtro.orden === 'az' || filtro.orden === 'za') {
+        const az = filtro.orden === 'az';
+        datos.sort((a, b) => {
+            const nameA = `${a.nombres} ${a.apellidos}`.trim().toLowerCase();
+            const nameB = `${b.nombres} ${b.apellidos}`.trim().toLowerCase();
+            return az ? nameA.localeCompare(nameB, 'es') : nameB.localeCompare(nameA, 'es');
+        });
+    }
 
     const filtrosResumen = [
         filtro.estado ? `estado=${filtro.estado}` : null,

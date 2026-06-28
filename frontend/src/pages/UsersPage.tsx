@@ -342,6 +342,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | EstadoUsuario>('all');
   const [pagina, setPagina] = useState(1);
+  const [sortOrder, setSortOrder] = useState<'default' | 'az' | 'za'>('default');
   const USUARIOS_POR_PAGINA = 8;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -459,15 +460,26 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
     });
   }, [users, searchTerm, roleFilter, statusFilter]);
 
+  const sortedUsers = useMemo(() => {
+    if (sortOrder === 'default') return filteredUsers;
+    const sorted = [...filteredUsers];
+    sorted.sort((a, b) => {
+      const nameA = `${a.nombres ?? ''} ${a.apellidos ?? ''}`.trim().toLowerCase();
+      const nameB = `${b.nombres ?? ''} ${b.apellidos ?? ''}`.trim().toLowerCase();
+      return sortOrder === 'az' ? nameA.localeCompare(nameB, 'es') : nameB.localeCompare(nameA, 'es');
+    });
+    return sorted;
+  }, [filteredUsers, sortOrder]);
+
   const usuariosPaginados = useMemo(() => {
     const inicio = (pagina - 1) * USUARIOS_POR_PAGINA;
-    return filteredUsers.slice(inicio, inicio + USUARIOS_POR_PAGINA);
-  }, [filteredUsers, pagina]);
+    return sortedUsers.slice(inicio, inicio + USUARIOS_POR_PAGINA);
+  }, [sortedUsers, pagina]);
 
-  const totalPaginas = Math.max(1, Math.ceil(filteredUsers.length / USUARIOS_POR_PAGINA));
+  const totalPaginas = Math.max(1, Math.ceil(sortedUsers.length / USUARIOS_POR_PAGINA));
 
   // Reset pagina al cambiar filtros
-  useEffect(() => { setPagina(1); }, [searchTerm, roleFilter, statusFilter]);
+  useEffect(() => { setPagina(1); }, [searchTerm, roleFilter, statusFilter, sortOrder]);
 
   // Clamp pagina si excede el total
   useEffect(() => {
@@ -753,6 +765,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
       if (q) body.q = q;
       if (statusFilter !== 'all') body.estado = statusFilter;
       Object.assign(body, roleFilterToExportBody(roleFilter));
+      if (sortOrder !== 'default') body.orden = sortOrder;
 
       await generarYAbrirPdf('/usuarios/export/pdf', {
         method: 'POST',
@@ -766,7 +779,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
     } finally {
       setExportLoading(false);
     }
-  }, [searchTerm, statusFilter, roleFilter]);
+  }, [searchTerm, statusFilter, roleFilter, sortOrder]);
 
   const handleCreateUser = async (payload: CreateUserPayload) => {
     setCreateLoading(true);
@@ -956,8 +969,8 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                       <span className="lg:hidden">Directorio</span>
                     </p>
                     <p className="text-sm text-[#c9d7ed] max-lg:text-[13px] max-lg:font-medium max-lg:text-slate-800 dark:max-lg:text-[#c9d7ed]">
-                      <span className="max-lg:hidden">{filteredUsers.length} registros · Página {pagina} de {totalPaginas}</span>
-                      <span className="lg:hidden">{filteredUsers.length} {filteredUsers.length === 1 ? 'usuario' : 'usuarios'} · Pág. {pagina}/{totalPaginas}</span>
+                      <span className="max-lg:hidden">{sortedUsers.length} registros · Página {pagina} de {totalPaginas}</span>
+                      <span className="lg:hidden">{sortedUsers.length} {sortedUsers.length === 1 ? 'usuario' : 'usuarios'} · Pág. {pagina}/{totalPaginas}</span>
                     </p>
                   </div>
                   <span className="shrink-0 text-xs text-slate-500 max-lg:hidden">
@@ -1099,8 +1112,20 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                   <table className="hidden w-full min-w-[640px] border-separate border-spacing-0 text-left lg:table">
                     <thead>
                       <tr className="text-xs font-semibold uppercase tracking-wider text-slate-900 dark:text-white">
-                        <th className="sticky top-0 z-10 bg-slate-50 px-6 py-4 dark:bg-[#0b2147]">
-                          Nombre e identificación
+                        <th className="sticky top-0 z-10 bg-slate-50 px-6 py-4 dark:bg-[#0b2147] cursor-pointer select-none" onClick={() => setSortOrder((o) => o === 'default' ? 'az' : o === 'az' ? 'za' : 'default')}>
+                          <span className="inline-flex items-center gap-1">
+                            Nombre e identificación
+                            <span className="inline-flex items-center gap-0.5 text-[11px] font-normal text-slate-400 normal-case">
+                              {sortOrder === 'default' ? (
+                                <><span className="material-symbols-outlined text-[14px]">swap_vert</span> Más reciente</>
+                              ) : (
+                                <>
+                                  <span className="material-symbols-outlined text-[14px]">{sortOrder === 'az' ? 'arrow_upward' : 'arrow_downward'}</span>
+                                  {sortOrder === 'az' ? 'A – Z' : 'Z – A'}
+                                </>
+                              )}
+                            </span>
+                          </span>
                         </th>
                         <th className="sticky top-0 z-10 bg-slate-50 px-6 py-4 dark:bg-[#0b2147]">
                           Rol
@@ -1244,7 +1269,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                 </div>
                 {totalPaginas > 1 ? (
                   <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-slate-200 px-4 py-2.5 dark:border-slate-800 max-lg:justify-center">
-                    <span className="text-xs tabular-nums text-slate-500 mr-2">Mostrando {(pagina - 1) * USUARIOS_POR_PAGINA + 1}–{Math.min(pagina * USUARIOS_POR_PAGINA, filteredUsers.length)} de {filteredUsers.length}</span>
+                    <span className="text-xs tabular-nums text-slate-500 mr-2">Mostrando {(pagina - 1) * USUARIOS_POR_PAGINA + 1}–{Math.min(pagina * USUARIOS_POR_PAGINA, sortedUsers.length)} de {sortedUsers.length}</span>
                     <div className="flex items-center gap-1.5">
                       <button type="button" className="btn-modern btn-modern-ghost h-8 w-8 shrink-0 !min-h-0 !p-0 hover:!translate-y-0 active:!translate-y-0"
                         disabled={loading} onClick={() => { setPagina(1); loadUsers(); }}>

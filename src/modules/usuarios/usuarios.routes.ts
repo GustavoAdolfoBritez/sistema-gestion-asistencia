@@ -51,7 +51,7 @@ const ROL_CATEGORIAS = new Set(['admins', 'secretaria', 'directores', 'docentes'
 usuariosApi.post('/export/pdf', autorizarRoles(...ROLES_GESTION_USUARIOS), async (req, res, next) => {
     try {
         const contextoAuditoria = construirContextoAuditoria(req);
-        const { estado, rol, q, rolCategoria } = req.body ?? {};
+        const { estado, rol, q, rolCategoria, orden } = req.body ?? {};
 
         const estadoFiltrado =
             typeof estado === 'string' && ESTADOS.includes(estado as EstadoUsuario) ? (estado as EstadoUsuario) : undefined;
@@ -72,6 +72,7 @@ usuariosApi.post('/export/pdf', autorizarRoles(...ROLES_GESTION_USUARIOS), async
                 rol: typeof rol === 'string' && rol.trim() ? rol.trim() : undefined,
                 busqueda: typeof q === 'string' && q.trim() ? q.trim() : undefined,
                 rolCategoria: cat,
+                orden: typeof orden === 'string' ? orden : undefined,
             },
             {
                 exportedBy: contextoAuditoria.actorEmail ?? contextoAuditoria.actorUsuarioId,
