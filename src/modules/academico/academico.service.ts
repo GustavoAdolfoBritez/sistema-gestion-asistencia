@@ -2019,3 +2019,11 @@ export async function ejecutarPromocionSemestreMasivaFacultad(params: {
         client.release();
     }
 }
+
+export async function limpiarMatriculasCurso(cursoId: number): Promise<{ eliminadas: number }> {
+    const { rowCount } = await pool.query(
+        'DELETE FROM matriculas WHERE curso_id = $1',
+        [cursoId]
+    );
+    return { eliminadas: rowCount ?? 0 };
+}

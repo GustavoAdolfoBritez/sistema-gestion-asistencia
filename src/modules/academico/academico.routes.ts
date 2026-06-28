@@ -7,6 +7,7 @@ import {
     eliminarModulo,
     actualizarCurso,
     eliminarCurso,
+    limpiarMatriculasCurso,
     listarModulos,
     listarCursos,
     copiarMatriculasDesdeCurso,
@@ -495,6 +496,18 @@ router.delete('/academico/cursos/:cursoId/matriculas/:alumnoId', async (req, res
             detalle: { cursoId, alumnoId },
             contexto: contextoAuditoria
         });
+        res.json(resultado);
+    } catch (error) {
+        if (error instanceof Error) return res.status(400).json({ mensaje: error.message });
+        next(error);
+    }
+});
+
+router.delete('/academico/cursos/:cursoId/planilla', async (req, res, next) => {
+    try {
+        const cursoId = Number(req.params.cursoId);
+        if (!cursoId) return res.status(400).json({ mensaje: 'cursoId inválido' });
+        const resultado = await limpiarMatriculasCurso(cursoId);
         res.json(resultado);
     } catch (error) {
         if (error instanceof Error) return res.status(400).json({ mensaje: error.message });

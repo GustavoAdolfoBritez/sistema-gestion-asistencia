@@ -2736,6 +2736,38 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                             >
                               {loteImportLoading ? '...' : 'Asignar'}
                             </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPendingDelete({
+                                  title: 'Limpiar planilla',
+                                  description: `¿Eliminar todos los alumnos de esta planilla?`,
+                                  onConfirm: async () => {
+                                    setDialogLoading(true);
+                                    try {
+                                      await apiFetch(`/academico/cursos/${curso.id}/planilla`, { method: 'DELETE' });
+                                      setPlanillaMap((prev) => {
+                                        const next = new Map(prev);
+                                        next.set(curso.id, []);
+                                        return next;
+                                      });
+                                      setCursos((prev) => prev.map((c) => c.id === curso.id ? { ...c, inscriptos: 0 } : c));
+                                      toast.success('Planilla limpiada');
+                                      setPendingDelete(null);
+                                    } catch (error) {
+                                      toast.error(error instanceof Error ? error.message : 'No se pudo limpiar la planilla');
+                                    } finally {
+                                      setDialogLoading(false);
+                                    }
+                                  },
+                                });
+                              }}
+                              className="shrink-0 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center"
+                              title="Limpiar planilla"
+                              disabled={(curso.inscriptos ?? 0) === 0}
+                            >
+                              <span className="material-symbols-outlined text-[18px]">delete</span>
+                            </button>
                           </div>
                         </div>
                       );
