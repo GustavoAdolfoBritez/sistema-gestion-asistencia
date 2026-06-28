@@ -255,12 +255,6 @@ async function validarCursoDestinoMatriculas(input: CrearLoteInput) {
     }
 }
 
-function semestresLoteCoinciden(a: number | null, b: number | null): boolean {
-    if (a == null && b == null) return true;
-    if (a == null || b == null) return false;
-    return a === b;
-}
-
 /** Evita cargas duplicadas del mismo archivo (pendiente o ya confirmado para la misma carrera/semestre). */
 async function assertLoteImportacionNoDuplicado(input: CrearLoteInput, usuarioId: string): Promise<void> {
     const archivo = (input.archivoFuente ?? '').trim();
@@ -289,7 +283,6 @@ async function assertLoteImportacionNoDuplicado(input: CrearLoteInput, usuarioId
         return;
     }
 
-    const semNuevo = extraerSemestreDesdeDescripcionLoteImport(input.descripcion ?? null);
     const cohorteSql = Math.trunc(input.cohorteAnio);
 
     const { rows } = await pool.query<{ id: number; estado: string; descripcion: string | null }>(
@@ -304,13 +297,8 @@ async function assertLoteImportacionNoDuplicado(input: CrearLoteInput, usuarioId
            AND LOWER(TRIM(estado)) = 'completado'`,
         [usuarioId, input.tipoLote, archivo, input.destinoCarreraId, input.destinoFacultadId ?? null, cohorteSql]
     );
-
-    for (const row of rows) {
-        const semExist = extraerSemestreDesdeDescripcionLoteImport(row.descripcion);
-        if (!semestresLoteCoinciden(semNuevo, semExist)) {
-            continue;
-        }
-        throw new Error(`«${archivo}» ya fue importado y confirmado (lote #${row.id}).`);
+    if (rows.length > 0) {
+        throw new Error(`«${archivo}» ya fue importado y confirmado (lote #${rows[0].id}).`);
     }
 }
 
@@ -846,14 +834,14 @@ async function validarCoherenciaRegistrosAlumnosImportacion(
         return;
     }
 
-    const { rows: malAsignados } = await cliente.query<{ doc: string; carrera: string }>(
-        `SELECT TRIM(BOTH FROM a.numero_documento) AS doc, c.nombre AS carrera
+    const { rows: malAsignados } = await cliente.query<{ doc: string; carrera: string; nombre: string | null }>(
+        `SELECT TRIM(BOTH FROM a.numero_documento) AS doc, c.nombre AS carrera,
+                a.nombre_apellido AS nombre
          FROM alumnos a
          INNER JOIN carreras c ON c.id = a.referencia_carrera_id
          WHERE TRIM(BOTH FROM a.numero_documento) = ANY($1::text[])
-           AND a.referencia_carrera_id IS NOT NULL
-           AND a.referencia_carrera_id <> $2`,
-        [uniqueDocs, carreraIdDest]
+           AND a.referencia_carrera_id IS NOT NULL`,
+        [uniqueDocs]
     );
 
     if (malAsignados.length) {
@@ -861,19 +849,20 @@ async function validarCoherenciaRegistrosAlumnosImportacion(
     }
 }
 
-/** Mensaje breve: alumnos del Excel ya vinculados a otra carrera en el sistema. */
+/** Mensaje: alumnos del Excel ya registrados en el sistema. */
 function formatearErrorAlumnosOtraCarrera(
-    conflictos: Array<{ doc: string; carrera: string }>,
+    conflictos: Array<{ doc: string; carrera: string; nombre: string | null }>,
     _carreraDestino: string | null
 ): string {
     const n = conflictos.length;
-    const carrerasEnSistema = [...new Set(conflictos.map((c) => c.carrera.trim()).filter(Boolean))];
-    const carrera = carrerasEnSistema[0] ?? 'otra carrera';
+    const primero = conflictos[0];
+    const nombre = primero.nombre || 'Sin nombre';
+    const doc = primero.doc;
 
     if (n === 1) {
-        return `Este alumno ya está en ${carrera}.`;
+        return `El alumno «${nombre}» (CI ${doc}) ya está registrado en ${primero.carrera}.`;
     }
-    return `Estos ${n} alumnos ya están en ${carrera}.`;
+    return `${n} alumnos ya están registrados. El primero es «${nombre}» (CI ${doc}) en ${primero.carrera}.`;
 }
 
 function prepararPayloadRegistro(

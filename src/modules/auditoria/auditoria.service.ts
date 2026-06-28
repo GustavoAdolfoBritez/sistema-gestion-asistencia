@@ -293,15 +293,19 @@ async function construirDescripcionesRecursos(eventos: EventoAuditoria[]): Promi
     // Actas generadas
     const actaIds = toBigIntArray(porTipo.acta_generada);
     if (actaIds.length) {
-        const { rows } = await pool.query<{ id: string; tipo_acta: string; curso_id: number }>(
-            `SELECT id::text, tipo_acta, curso_id
-             FROM actas_generadas
-             WHERE id = ANY($1::bigint[])`,
+        const { rows } = await pool.query<{ id: string; tipo_acta: string; curso_id: number; materia: string | null }>(
+            `SELECT ag.id::text, ag.tipo_acta, ag.curso_id, m.nombre AS materia
+             FROM actas_generadas ag
+             LEFT JOIN cursos c ON c.id = ag.curso_id
+             LEFT JOIN modulos_academicos mo ON mo.id = c.modulo_id
+             LEFT JOIN materias m ON m.id = mo.materia_id
+             WHERE ag.id = ANY($1::bigint[])`,
             [actaIds]
         );
         for (const row of rows) {
-            const etiqueta = `Acta #${row.id} (${row.tipo_acta}, curso ${row.curso_id})`;
-            map.set(buildRecursoKey('acta_generada', String(row.id)), etiqueta);
+            const tipo = row.tipo_acta.replace(/_/g, ' ');
+            const materia = row.materia ? ` · ${row.materia}` : ` · curso ${row.curso_id}`;
+            map.set(buildRecursoKey('acta_generada', String(row.id)), `Acta #${row.id}: ${tipo}${materia}`);
         }
     }
 
@@ -365,6 +369,7 @@ async function construirDescripcionesRecursos(eventos: EventoAuditoria[]): Promi
 
     // Matrículas
     const matriculaIds = toIntArray(porTipo.matricula);
+    const matriculaAlumnoUuids = [...(porTipo.matricula ?? [])].filter((id) => !/^\d+$/.test(id));
     if (matriculaIds.length) {
         const { rows } = await pool.query<{
             id: number;
@@ -393,6 +398,37 @@ async function construirDescripcionesRecursos(eventos: EventoAuditoria[]): Promi
             map.set(
                 buildRecursoKey('matricula', String(row.id)),
                 `Matrícula #${row.id}: ${nom}${ci}${mat} (curso ${row.curso_id})`
+            );
+        }
+    }
+    // Matrículas referenciadas por alumno_id (UUID)
+    if (matriculaAlumnoUuids.length) {
+        const { rows } = await pool.query<{
+            alumno_id: string;
+            alumno: string | null;
+            numero_documento: string | null;
+            materia: string | null;
+        }>(
+            `SELECT DISTINCT ON (al.id)
+                    al.id AS alumno_id,
+                    NULLIF(trim(concat_ws(', ', NULLIF(trim(al.apellidos), ''), NULLIF(trim(al.nombres), ''))), '') AS alumno,
+                    al.numero_documento,
+                    m.nombre AS materia
+             FROM matriculas mat
+             JOIN alumnos al ON al.id = mat.alumno_id
+             JOIN cursos c ON c.id = mat.curso_id
+             JOIN modulos_academicos mo ON mo.id = c.modulo_id
+             JOIN materias m ON m.id = mo.materia_id
+             WHERE al.id = ANY($1::uuid[])`,
+            [matriculaAlumnoUuids]
+        );
+        for (const row of rows) {
+            const nom = row.alumno || 'Alumno';
+            const ci = row.numero_documento ? ` CI ${row.numero_documento}` : '';
+            const mat = row.materia ? ` · ${row.materia}` : '';
+            map.set(
+                buildRecursoKey('matricula', row.alumno_id),
+                `Alumno desmatriculado: ${nom}${ci}${mat}`
             );
         }
     }
@@ -500,6 +536,30 @@ async function construirDescripcionesRecursos(eventos: EventoAuditoria[]): Promi
         );
         for (const row of rows) {
             map.set(buildRecursoKey('facultad', String(row.id)), `Facultad: ${row.nombre}`);
+        }
+    }
+
+    // Materias
+    const materiaIds = toIntArray(porTipo.materia);
+    if (materiaIds.length) {
+        const { rows } = await pool.query<{ id: number; nombre: string; codigo: string }>(
+            `SELECT id, nombre, codigo FROM materias WHERE id = ANY($1::int[])`,
+            [materiaIds]
+        );
+        for (const row of rows) {
+            map.set(buildRecursoKey('materia', String(row.id)), `Materia: ${row.nombre} (${row.codigo})`);
+        }
+    }
+
+    // Planes de estudio
+    const planIds = toIntArray(porTipo.plan);
+    if (planIds.length) {
+        const { rows } = await pool.query<{ id: number; nombre: string }>(
+            `SELECT id, nombre FROM planes_estudio WHERE id = ANY($1::int[])`,
+            [planIds]
+        );
+        for (const row of rows) {
+            map.set(buildRecursoKey('plan', String(row.id)), `Plan: ${row.nombre}`);
         }
     }
 

@@ -184,7 +184,8 @@ export function PromocionSemestrePage({ onLogout }: Props) {
         cohorte_anio: r.cohorte_anio ?? null,
       }));
       setLista(rows);
-      setIdsIncluidos(new Set(rows.map((r) => r.id)));
+      // Excluir automaticamente a los promocionados, igual que en facultad
+      setIdsIncluidos(new Set(rows.filter((r) => !r.promocionado_en).map((r) => r.id)));
       // Colapsar grupos si hay mas de uno
       const claves = new Set(rows.map((r) => claveCohorte(r)));
       setGruposColapsados(claves.size > 1 ? new Set([...claves].map(String)) : new Set());
