@@ -2677,7 +2677,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
 
             {subView === 'cronograma' && cursoId ? (
               <div className="min-w-0">
-                <CronogramaDocenteTab cursoId={cursoId!} />
+                <CronogramaDocenteTab cursoId={Number(cursoId)} />
               </div>
             ) : null}
 
