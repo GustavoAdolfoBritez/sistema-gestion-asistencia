@@ -472,12 +472,6 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
     resumenGeneral.alcance_visual === undefined;
 
   const displayName = useMemo(() => {
-    if (!currentUser) return 'Usuario';
-    const full = `${currentUser.nombres ?? ''} ${currentUser.apellidos ?? ''}`.trim();
-    return full || currentUser.usuario || currentUser.email || 'Usuario';
-  }, [currentUser?.nombres, currentUser?.apellidos, currentUser?.usuario, currentUser?.email]);
-
-  const primerNombre = displayName.split(' ')[0];
 
   const abrirBandejaJustificacionesPendientes = useCallback(() => {
     setJustEstado('pendiente');

@@ -32,7 +32,7 @@ type CronogramaData = {
 
 function formatDateRange(inicio: string, fin: string): string {
   const parse = (d: string) => {
-    const [y, m, day] = d.split('-').map(Number);
+    const [, m, day] = d.split('-').map(Number);
     return { d: day, m };
   };
   const i = parse(inicio);

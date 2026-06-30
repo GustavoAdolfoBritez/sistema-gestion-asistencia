@@ -34,7 +34,7 @@ type CronogramaDocenteData = {
 
 function formatDateRange(inicio: string, fin: string): string {
   const parse = (d: string) => {
-    const [y, m, day] = d.split('-').map(Number);
+    const [, m, day] = d.split('-').map(Number);
     return { d: day, m };
   };
   const i = parse(inicio);
@@ -146,7 +146,7 @@ export default function CronogramaDocenteTab({ cursoId }: CronogramaDocenteTabPr
 
   const totalHoras = useMemo(() => (data?.semanas ?? []).reduce((acc, s) => acc + (Number(s.horas) || 0), 0), [data]);
 
-  const SignBadge = ({ firmado, firmado_en }: { firmado: boolean; firmado_en: string | null }) => {
+  const SignBadge = ({ firmado, firmado_en: _en }: { firmado: boolean; firmado_en: string | null }) => {
     if (firmado) {
       return (
         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
@@ -399,7 +399,7 @@ export default function CronogramaDocenteTab({ cursoId }: CronogramaDocenteTabPr
         title="Firmar"
         description={`¿Confirmás la firma digital de esta ${showSignConfirm?.type === 'semana' ? 'semana' : 'evaluación'}? La acción quedará registrada en la auditoría del sistema.`}
         confirmLabel={signingId ? 'Firmando...' : 'Sí, firmar'}
-        variant="primary"
+        variant="default"
         loading={signingId !== null}
         onCancel={() => setShowSignConfirm(null)}
         onConfirm={() => void handleFirmar()}
@@ -410,7 +410,7 @@ export default function CronogramaDocenteTab({ cursoId }: CronogramaDocenteTabPr
         title="Firmar todo el cronograma"
         description="¿Confirmás la firma digital de todas las semanas y evaluaciones pendientes? Esta acción quedará registrada en la auditoría del sistema."
         confirmLabel={signingId === -1 ? 'Firmando...' : 'Sí, firmar todo'}
-        variant="primary"
+        variant="default"
         loading={signingId === -1}
         onCancel={() => setShowSignAllConfirm(false)}
         onConfirm={() => void handleFirmarTodo()}
