@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiFetch, isSessionExpiredError, generarYAbrirPdf } from '../utils/api';
 import { toast } from '../utils/toast';
 
