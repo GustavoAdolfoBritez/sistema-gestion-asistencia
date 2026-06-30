@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiFetch, isSessionExpiredError, generarYAbrirPdf } from '../utils/api';
 import { toast } from '../utils/toast';
 
@@ -107,14 +107,17 @@ export default function CronogramaCatedra({ cursoId, fechaInicio, fechaFin }: Cr
   const [downloading, setDownloading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [readOnly, setReadOnly] = useState(false);
 
   const loadCronograma = useCallback(async () => {
     const data = await apiFetch<CronogramaData>(`/academico/cursos/${cursoId}/cronograma`);
     if (data.semanas.length > 0) {
       setSemanas(data.semanas);
+      setReadOnly(true);
     } else {
       setSemanas(generateWeeks(fechaInicio, fechaFin));
       setDirty(true);
+      setReadOnly(false);
     }
     const parcial = data.evaluaciones.find((e) => e.tipo === 'parcial');
     const final = data.evaluaciones.find((e) => e.tipo === 'final');
@@ -143,6 +146,7 @@ export default function CronogramaCatedra({ cursoId, fechaInicio, fechaFin }: Cr
     try {
       await loadCronograma();
       setDirty(false);
+      setReadOnly(true);
       toast.success('Cronograma actualizado');
     } catch (err) {
       if (isSessionExpiredError(err)) return;
@@ -183,6 +187,7 @@ export default function CronogramaCatedra({ cursoId, fechaInicio, fechaFin }: Cr
       if (p) setEvaluacionParcial(p);
       if (f) setEvaluacionFinal(f);
       setDirty(false);
+      setReadOnly(true);
       toast.success('Cronograma guardado');
     } catch (err) {
       if (isSessionExpiredError(err)) return;
@@ -232,6 +237,17 @@ export default function CronogramaCatedra({ cursoId, fechaInicio, fechaFin }: Cr
     setDirty(true);
   };
 
+  useEffect(() => {
+    if (loading || refreshing) return;
+    const timer = setTimeout(() => {
+      document.querySelectorAll<HTMLTextAreaElement>('textarea[data-autosize]').forEach((el) => {
+        el.style.height = 'auto';
+        el.style.height = el.scrollHeight + 'px';
+      });
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [semanas]);
+
   if (loading) {
     return (
       <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#132a52]">
@@ -244,7 +260,7 @@ export default function CronogramaCatedra({ cursoId, fechaInicio, fechaFin }: Cr
   }
 
   const headerCell = 'px-2 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 text-center';
-  const inputBase = 'w-full rounded border bg-white px-2 py-1 text-xs text-black placeholder:text-slate-400 focus:border-primary focus:outline-none dark:bg-[#0b2147] dark:border-slate-700 dark:text-[#e7eef9] dark:placeholder:text-slate-500';
+  const inputBase = 'w-full rounded border bg-white px-2 py-1 text-sm text-black placeholder:text-slate-400 focus:border-primary focus:outline-none dark:bg-[#0b2147] dark:border-slate-700 dark:text-[#e7eef9] dark:placeholder:text-slate-500';
 
   return (
     <div className="min-w-0 rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-[#132a52]">
@@ -259,20 +275,33 @@ export default function CronogramaCatedra({ cursoId, fechaInicio, fechaFin }: Cr
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {dirty && (
-            <span className="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
-              Sin guardar
-            </span>
+          {readOnly ? (
+            <button
+              type="button"
+              className="btn-modern btn-modern-primary btn-modern-sm shrink-0"
+              onClick={() => setReadOnly(false)}
+            >
+              <span className="material-symbols-outlined text-[16px]">edit</span>
+              Editar
+            </button>
+          ) : (
+            <>
+              {dirty && (
+                <span className="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
+                  Sin guardar
+                </span>
+              )}
+              <button
+                type="button"
+                className="btn-modern btn-modern-primary btn-modern-sm shrink-0"
+                onClick={handleSave}
+                disabled={saving || !dirty}
+              >
+                {saving ? 'Guardando...' : 'Guardar'}
+              </button>
+            </>
           )}
-          <button
-            type="button"
-            className="btn-modern btn-modern-primary btn-modern-sm shrink-0"
-            onClick={handleSave}
-            disabled={saving || !dirty}
-          >
-            {saving ? 'Guardando...' : 'Guardar'}
-          </button>
           <button
             type="button"
             className="btn-modern btn-modern-ghost btn-modern-sm shrink-0"
@@ -303,7 +332,7 @@ export default function CronogramaCatedra({ cursoId, fechaInicio, fechaFin }: Cr
               <th className={`${headerCell} w-[20%]`}>Fecha</th>
               <th className={`${headerCell} w-[28%]`}>Contenidos</th>
               <th className={`${headerCell} w-[28%]`}>Actividades</th>
-              <th className={`${headerCell} w-[8%] text-right`}>Horas</th>
+              <th className={`${headerCell} w-[8%]`}>Horas</th>
               <th className={`${headerCell} w-[16%]`}>Firma</th>
             </tr>
           </thead>
@@ -321,9 +350,9 @@ export default function CronogramaCatedra({ cursoId, fechaInicio, fechaFin }: Cr
                 const isLastRow = rowIdx === maxRows - 1;
 
                 return (
-                  <tr key={`${sem.semana_numero}-${rowIdx}`} className={`${semanaBg} ${isLastRow ? 'border-b border-slate-200 dark:border-slate-700/60' : ''}`}>
+                  <tr key={`${sem.semana_numero}-${rowIdx}`} className={`${semanaBg} ${isLastRow ? 'border-b-2 border-slate-300 dark:border-slate-600' : ''}`}>
                     {isFirst && (
-                      <td className={`px-2 py-2 align-top text-[11px] font-semibold text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700/60 ${isEven ? 'bg-slate-50 dark:bg-slate-800/40' : 'bg-slate-100 dark:bg-slate-800/60'}`} rowSpan={maxRows}>
+                      <td className={`px-2 py-2 align-top text-sm font-semibold text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700/60 ${isEven ? 'bg-slate-50 dark:bg-slate-800/40' : 'bg-slate-100 dark:bg-slate-800/60'}`} rowSpan={maxRows}>
                         <div>Semana {sem.semana_numero}</div>
                         <div className="font-normal text-slate-500 dark:text-slate-400 mt-0.5">
                           {formatDateRange(sem.fecha_inicio, sem.fecha_fin)}
@@ -334,15 +363,20 @@ export default function CronogramaCatedra({ cursoId, fechaInicio, fechaFin }: Cr
                       <div className="flex items-start gap-0.5">
                         {refreshing ? (
                           <div className="animate-pulse rounded bg-slate-200 dark:bg-slate-700 h-5 w-full" />
+                        ) : readOnly ? (
+                          <span className="text-slate-700 dark:text-slate-300 text-sm whitespace-pre-wrap">{contenido || '—'}</span>
                         ) : (
-                          <input
-                            className={inputBase}
+                          <textarea
+                            className={inputBase + ' resize-none overflow-hidden'}
+                            data-autosize
                             value={contenido}
                             onChange={(e) => updateContenidoActividad(semIdx, rowIdx, 'contenidos', e.target.value)}
+                            onInput={(e) => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }}
                             placeholder="Tema..."
+                            rows={1}
                           />
                         )}
-                        {!refreshing && isLastRow && (
+                        {!refreshing && !readOnly && isLastRow && (
                           <>
                             <button type="button" className="mt-0.5 shrink-0 text-slate-400 hover:text-primary dark:hover:text-primary" onClick={() => addContenidoActividad(semIdx, 'contenidos')} title="Agregar contenido">
                               <span className="material-symbols-outlined text-[14px]">add</span>
@@ -360,15 +394,20 @@ export default function CronogramaCatedra({ cursoId, fechaInicio, fechaFin }: Cr
                       <div className="flex items-start gap-0.5">
                         {refreshing ? (
                           <div className="animate-pulse rounded bg-slate-200 dark:bg-slate-700 h-5 w-full" />
+                        ) : readOnly ? (
+                          <span className="text-slate-700 dark:text-slate-300 text-sm whitespace-pre-wrap">{actividad || '—'}</span>
                         ) : (
-                          <input
-                            className={inputBase}
+                          <textarea
+                            className={inputBase + ' resize-none overflow-hidden'}
+                            data-autosize
                             value={actividad}
                             onChange={(e) => updateContenidoActividad(semIdx, rowIdx, 'actividades', e.target.value)}
+                            onInput={(e) => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }}
                             placeholder="Actividad..."
+                            rows={1}
                           />
                         )}
-                        {!refreshing && isLastRow && (
+                        {!refreshing && !readOnly && isLastRow && (
                           <>
                             <button type="button" className="mt-0.5 shrink-0 text-slate-400 hover:text-primary dark:hover:text-primary" onClick={() => addContenidoActividad(semIdx, 'actividades')} title="Agregar actividad">
                               <span className="material-symbols-outlined text-[14px]">add</span>
@@ -386,6 +425,8 @@ export default function CronogramaCatedra({ cursoId, fechaInicio, fechaFin }: Cr
                       <td className="px-2 py-2 align-top text-center border-x border-slate-100 dark:border-slate-800/60" rowSpan={maxRows}>
                         {refreshing ? (
                           <div className="animate-pulse rounded bg-slate-200 dark:bg-slate-700 h-5 w-10 mx-auto" />
+                        ) : readOnly ? (
+                          <span className="tabular-nums font-medium text-slate-700 dark:text-slate-300">{sem.horas || 0}</span>
                         ) : (
                           <input
                             type="number"
@@ -420,7 +461,7 @@ export default function CronogramaCatedra({ cursoId, fechaInicio, fechaFin }: Cr
 
             {/* Evaluación Parcial */}
             <tr className="border-t-2 border-slate-300 dark:border-slate-600 bg-amber-50/40 dark:bg-amber-950/20">
-              <td className="px-3 py-2.5 align-top font-semibold text-[11px] uppercase tracking-wide text-amber-800 dark:text-amber-300 border-r border-amber-200 dark:border-amber-900/40">
+              <td className="px-3 py-2.5 align-top font-semibold text-sm uppercase tracking-wide text-amber-800 dark:text-amber-300 border-r border-amber-200 dark:border-amber-900/40">
                 Evaluación parcial
               </td>
               <td className="px-3 py-2 align-top" colSpan={2}>
@@ -428,6 +469,11 @@ export default function CronogramaCatedra({ cursoId, fechaInicio, fechaFin }: Cr
                   <div className="space-y-2">
                     <div className="animate-pulse rounded bg-slate-200 dark:bg-slate-700 h-5 w-32" />
                     <div className="animate-pulse rounded bg-slate-200 dark:bg-slate-700 h-5 w-48" />
+                  </div>
+                ) : readOnly ? (
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div><span className="text-[10px] text-slate-400">Fecha: </span><span className="text-slate-700 dark:text-slate-300">{evaluacionParcial.fecha ? formatDateShort(evaluacionParcial.fecha) : '—'}</span></div>
+                    <div><span className="text-[10px] text-slate-400">Prueba: </span><span className="text-slate-700 dark:text-slate-300">{evaluacionParcial.alcance_prueba || '—'}</span></div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-2">
@@ -464,7 +510,7 @@ export default function CronogramaCatedra({ cursoId, fechaInicio, fechaFin }: Cr
 
             {/* Evaluación Final */}
             <tr className="border-t border-amber-200 dark:border-amber-900/40 bg-rose-50/40 dark:bg-rose-950/20">
-              <td className="px-3 py-2.5 align-top font-semibold text-[11px] uppercase tracking-wide text-rose-800 dark:text-rose-300 border-r border-rose-200 dark:border-rose-900/40">
+              <td className="px-3 py-2.5 align-top font-semibold text-sm uppercase tracking-wide text-rose-800 dark:text-rose-300 border-r border-rose-200 dark:border-rose-900/40">
                 Evaluación final
               </td>
               <td className="px-3 py-2 align-top" colSpan={2}>
@@ -472,6 +518,11 @@ export default function CronogramaCatedra({ cursoId, fechaInicio, fechaFin }: Cr
                   <div className="space-y-2">
                     <div className="animate-pulse rounded bg-slate-200 dark:bg-slate-700 h-5 w-32" />
                     <div className="animate-pulse rounded bg-slate-200 dark:bg-slate-700 h-5 w-48" />
+                  </div>
+                ) : readOnly ? (
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div><span className="text-[10px] text-slate-400">Fecha: </span><span className="text-slate-700 dark:text-slate-300">{evaluacionFinal.fecha ? formatDateShort(evaluacionFinal.fecha) : '—'}</span></div>
+                    <div><span className="text-[10px] text-slate-400">Prueba: </span><span className="text-slate-700 dark:text-slate-300">{evaluacionFinal.alcance_prueba || '—'}</span></div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-2">
@@ -508,7 +559,7 @@ export default function CronogramaCatedra({ cursoId, fechaInicio, fechaFin }: Cr
 
             {/* Total de Horas */}
             <tr className="border-t-2 border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/40">
-              <td className="px-3 py-2.5 align-top font-semibold text-[11px] uppercase tracking-wide text-slate-700 dark:text-slate-200 border-r border-slate-200 dark:border-slate-700" colSpan={4}>
+              <td className="px-3 py-2.5 align-top font-semibold text-sm uppercase tracking-wide text-slate-700 dark:text-slate-200 border-r border-slate-200 dark:border-slate-700" colSpan={4}>
                 Total de horas
               </td>
               <td className="px-2 py-2.5 align-top text-center font-bold text-base tabular-nums text-primary">

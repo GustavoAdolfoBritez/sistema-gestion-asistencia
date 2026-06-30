@@ -252,7 +252,7 @@ export default function CronogramaDocenteTab({ cursoId }: CronogramaDocenteTabPr
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-[#132a52]">
-        <table className="w-full min-w-[50rem] text-xs">
+        <table className="w-full min-w-[50rem] text-sm">
           <thead>
             <tr>
               <th className={`${headerCell} w-[18%]`}>Fecha</th>
@@ -296,7 +296,7 @@ export default function CronogramaDocenteTab({ cursoId }: CronogramaDocenteTabPr
                 return (
                   <tr key={`${sem.semana_numero}-${rowIdx}`} className={`${semanaBg} ${isLastRow ? 'border-b border-slate-200 dark:border-slate-700/60' : ''}`}>
                     {isFirst && (
-                      <td className={`px-2 py-2 align-top text-[11px] font-semibold text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700/60 ${isEven ? 'bg-slate-50 dark:bg-slate-800/40' : 'bg-slate-100 dark:bg-slate-800/60'}`} rowSpan={maxRows}>
+                      <td className={`px-2 py-2 align-top text-sm font-semibold text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700/60 ${isEven ? 'bg-slate-50 dark:bg-slate-800/40' : 'bg-slate-100 dark:bg-slate-800/60'}`} rowSpan={maxRows}>
                         <div>Semana {sem.semana_numero}</div>
                         <div className="font-normal text-slate-500 dark:text-slate-400 mt-0.5">
                           {formatDateRange(sem.fecha_inicio, sem.fecha_fin)}
@@ -338,7 +338,7 @@ export default function CronogramaDocenteTab({ cursoId }: CronogramaDocenteTabPr
               const isParcial = evalData.tipo === 'parcial';
               return (
                 <tr key={evalData.id ?? evalData.tipo} className={`border-t-2 border-slate-300 dark:border-slate-600 ${isParcial ? 'bg-amber-50/40 dark:bg-amber-950/20' : 'bg-rose-50/40 dark:bg-rose-950/20'}`}>
-                  <td className={`px-3 py-2.5 align-top font-semibold text-[11px] uppercase tracking-wide ${isParcial ? 'text-amber-800 dark:text-amber-300 border-r border-amber-200 dark:border-amber-900/40' : 'text-rose-800 dark:text-rose-300 border-r border-rose-200 dark:border-rose-900/40'}`}>
+                  <td className={`px-3 py-2.5 align-top font-semibold text-sm uppercase tracking-wide ${isParcial ? 'text-amber-800 dark:text-amber-300 border-r border-amber-200 dark:border-amber-900/40' : 'text-rose-800 dark:text-rose-300 border-r border-rose-200 dark:border-rose-900/40'}`}>
                     Evaluación {evalData.tipo}
                   </td>
                   <td className="px-3 py-2 align-top" colSpan={2}>
@@ -382,7 +382,7 @@ export default function CronogramaDocenteTab({ cursoId }: CronogramaDocenteTabPr
             })}
 
             <tr className="border-t-2 border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/40">
-              <td className="px-3 py-2.5 align-top font-semibold text-[11px] uppercase tracking-wide text-slate-700 dark:text-slate-200 border-r border-slate-200 dark:border-slate-700" colSpan={4}>
+              <td className="px-3 py-2.5 align-top font-semibold text-sm uppercase tracking-wide text-slate-700 dark:text-slate-200 border-r border-slate-200 dark:border-slate-700" colSpan={4}>
                 Total de horas
               </td>
               <td className="px-2 py-2.5 align-top text-center font-bold text-base tabular-nums text-primary">
