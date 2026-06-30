@@ -131,7 +131,7 @@ export async function generarListadoUsuariosPdf(data: ExportUsuariosPdfData): Pr
             bufferPages: true,
             info: {
                 Title: data.titulo,
-                Author: 'Sistema de control de asistencia',
+                Author: 'Sistema de Gestión de Asistencia Académica',
             },
         }
     );

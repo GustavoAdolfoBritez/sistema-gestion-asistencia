@@ -1321,7 +1321,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                       </table>
                     </div>
                     {batches.length > 0 && !batchesLoading ? (
-                      <div className="importaciones-historial-paginacion app-mobile-bottom-bar app-mobile-pagination-footer flex shrink-0 flex-col gap-3 border-t border-slate-200 px-4 py-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="importaciones-historial-paginacion app-mobile-bottom-bar app-mobile-pagination-footer flex shrink-0 flex-col gap-3 border-t border-slate-200 px-4 py-3 mb-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
                         <p className="text-xs text-slate-500 dark:text-slate-400">
                           Mostrando {historialPaginacion.cantidadVisible} de {historialPaginacion.total} registros
                         </p>

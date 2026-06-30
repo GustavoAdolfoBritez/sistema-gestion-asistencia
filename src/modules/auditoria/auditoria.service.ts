@@ -349,12 +349,15 @@ async function construirDescripcionesRecursos(eventos: EventoAuditoria[]): Promi
     // Sesiones de clase
     const sesionClaseIds = toIntArray(porTipo.sesion_clase);
     if (sesionClaseIds.length) {
-        const { rows } = await pool.query<{ id: number; fecha: string; curso_id: number; materia: string }>(
-            `SELECT sc.id, sc.fecha::text AS fecha, sc.curso_id, m.nombre AS materia
+        const { rows } = await pool.query<{ id: number; fecha: string; curso_id: number; materia: string; docente: string }>(
+            `SELECT sc.id, sc.fecha::text AS fecha, sc.curso_id, m.nombre AS materia,
+                    u.nombres || ' ' || u.apellidos AS docente
              FROM sesiones_clase sc
              JOIN cursos c ON c.id = sc.curso_id
              JOIN modulos_academicos mo ON mo.id = c.modulo_id
              JOIN materias m ON m.id = mo.materia_id
+             JOIN docentes d ON d.id = c.docente_id
+             JOIN usuarios u ON u.id = d.usuario_id
              WHERE sc.id = ANY($1::int[])`,
             [sesionClaseIds]
         );
@@ -362,7 +365,7 @@ async function construirDescripcionesRecursos(eventos: EventoAuditoria[]): Promi
             const fechaTxt = String(row.fecha).slice(0, 10);
             map.set(
                 buildRecursoKey('sesion_clase', String(row.id)),
-                `Sesión clase #${row.id}: ${row.materia} · curso ${row.curso_id} · ${fechaTxt}`
+                `Sesión clase #${row.id}: ${row.materia} · ${row.docente} · ${fechaTxt}`
             );
         }
     }
@@ -436,18 +439,27 @@ async function construirDescripcionesRecursos(eventos: EventoAuditoria[]): Promi
     // Asistencias
     const asistenciaIds = toBigIntArray(porTipo.asistencia);
     if (asistenciaIds.length) {
-        const { rows } = await pool.query<{ id: string; sesion_id: number; matricula_id: number; fecha: string }>(
-            `SELECT a.id::text, a.sesion_id, a.matricula_id, sc.fecha::text AS fecha
+        const { rows } = await pool.query<{ id: string; sesion_id: number; fecha: string; alumno: string | null; materia: string | null }>(
+            `SELECT a.id::text, a.sesion_id, sc.fecha::text AS fecha,
+                    NULLIF(trim(concat_ws(', ', NULLIF(trim(al.apellidos), ''), NULLIF(trim(al.nombres), ''))), '') AS alumno,
+                    m.nombre AS materia
              FROM asistencias a
              JOIN sesiones_clase sc ON sc.id = a.sesion_id
+             JOIN matriculas mat ON mat.id = a.matricula_id
+             JOIN alumnos al ON al.id = mat.alumno_id
+             JOIN cursos c ON c.id = sc.curso_id
+             JOIN modulos_academicos mo ON mo.id = c.modulo_id
+             JOIN materias m ON m.id = mo.materia_id
              WHERE a.id = ANY($1::bigint[])`,
             [asistenciaIds]
         );
         for (const row of rows) {
             const fechaTxt = String(row.fecha).slice(0, 10);
+            const nombre = row.alumno || 'Alumno';
+            const materia = row.materia ? ` · ${row.materia}` : '';
             map.set(
                 buildRecursoKey('asistencia', row.id),
-                `Asistencia #${row.id}: sesión ${row.sesion_id} (${fechaTxt}), matrícula ${row.matricula_id}`
+                `Asistencia #${row.id}: ${nombre}${materia} · sesión ${row.sesion_id} (${fechaTxt})`
             );
         }
     }
@@ -455,17 +467,26 @@ async function construirDescripcionesRecursos(eventos: EventoAuditoria[]): Promi
     // Justificaciones
     const justificacionIds = toBigIntArray(porTipo.justificacion);
     if (justificacionIds.length) {
-        const { rows } = await pool.query<{ id: string; estado_revision: string; matricula_id: number }>(
-            `SELECT j.id::text, j.estado_revision, a.matricula_id
+        const { rows } = await pool.query<{ id: string; estado_revision: string; alumno: string | null; materia: string | null }>(
+            `SELECT j.id::text, j.estado_revision,
+                    NULLIF(trim(concat_ws(', ', NULLIF(trim(al.apellidos), ''), NULLIF(trim(al.nombres), ''))), '') AS alumno,
+                    m.nombre AS materia
              FROM justificaciones j
              JOIN asistencias a ON a.id = j.asistencia_id
+             JOIN matriculas mat ON mat.id = a.matricula_id
+             JOIN alumnos al ON al.id = mat.alumno_id
+             JOIN cursos c ON c.id = mat.curso_id
+             JOIN modulos_academicos mo ON mo.id = c.modulo_id
+             JOIN materias m ON m.id = mo.materia_id
              WHERE j.id = ANY($1::bigint[])`,
             [justificacionIds]
         );
         for (const row of rows) {
+            const nombre = row.alumno || 'Alumno';
+            const materia = row.materia ? ` · ${row.materia}` : '';
             map.set(
                 buildRecursoKey('justificacion', row.id),
-                `Justificación #${row.id}: matrícula ${row.matricula_id} · ${row.estado_revision}`
+                `Justificación #${row.id}: ${nombre}${materia} · ${row.estado_revision}`
             );
         }
     }
@@ -562,6 +583,81 @@ async function construirDescripcionesRecursos(eventos: EventoAuditoria[]): Promi
         );
         for (const row of rows) {
             map.set(buildRecursoKey('plan', String(row.id)), `Plan: ${row.nombre}`);
+        }
+    }
+
+    const cronogramaSemanaIds = toIntArray(porTipo.curso_cronograma_semanas);
+    if (cronogramaSemanaIds.length) {
+        const { rows } = await pool.query<{ id: number; semana_numero: number; materia: string; docente: string }>(
+            `SELECT cs.id, cs.semana_numero, m.nombre AS materia,
+                    u.nombres || ' ' || u.apellidos AS docente
+             FROM curso_cronograma_semanas cs
+             JOIN cursos c ON c.id = cs.curso_id
+             JOIN modulos_academicos ma ON ma.id = c.modulo_id
+             JOIN materias m ON m.id = ma.materia_id
+             JOIN docentes d ON d.id = c.docente_id
+             JOIN usuarios u ON u.id = d.usuario_id
+             WHERE cs.id = ANY($1::int[])`,
+            [cronogramaSemanaIds]
+        );
+        for (const row of rows) {
+            map.set(buildRecursoKey('curso_cronograma_semanas', String(row.id)),
+                `Cronograma: Semana ${row.semana_numero} · ${row.materia} · ${row.docente}`);
+        }
+    }
+
+    const cronogramaEvalIds = toIntArray(porTipo.curso_evaluaciones);
+    if (cronogramaEvalIds.length) {
+        const { rows } = await pool.query<{ id: number; tipo: string; materia: string; docente: string }>(
+            `SELECT ce.id, ce.tipo, m.nombre AS materia,
+                    u.nombres || ' ' || u.apellidos AS docente
+             FROM curso_evaluaciones ce
+             JOIN cursos c ON c.id = ce.curso_id
+             JOIN modulos_academicos ma ON ma.id = c.modulo_id
+             JOIN materias m ON m.id = ma.materia_id
+             JOIN docentes d ON d.id = c.docente_id
+             JOIN usuarios u ON u.id = d.usuario_id
+             WHERE ce.id = ANY($1::int[])`,
+            [cronogramaEvalIds]
+        );
+        for (const row of rows) {
+            const tipoLabel = row.tipo === 'parcial' ? 'Parcial' : 'Final';
+            map.set(buildRecursoKey('curso_evaluaciones', String(row.id)),
+                `Cronograma: Eval. ${tipoLabel} · ${row.materia} · ${row.docente}`);
+        }
+    }
+
+    // Lote de importación (descartado o en proceso)
+    const loteImportacionIds = toBigIntArray(porTipo.lote_importacion);
+    if (loteImportacionIds.length) {
+        const { rows } = await pool.query<{ id: string; descripcion: string | null; estado: string; carrera: string | null }>(
+            `SELECT li.id::text, li.descripcion, li.estado, cr.nombre AS carrera
+             FROM lotes_importacion li
+             LEFT JOIN carreras cr ON cr.id = li.destino_carrera_id
+             WHERE li.id = ANY($1::bigint[])`,
+            [loteImportacionIds]
+        );
+        for (const row of rows) {
+            const desc = row.descripcion ? ` · ${row.descripcion.slice(0, 80)}` : '';
+            const carrera = row.carrera ? ` · ${row.carrera}` : '';
+            map.set(
+                buildRecursoKey('lote_importacion', row.id),
+                `Lote importación #${row.id}: ${row.estado}${carrera}${desc}`
+            );
+        }
+    }
+
+    // Reportes PDF (genéricos)
+    const pdfLabels: Record<string, string> = {
+        reporte_usuarios: 'Exportación de Usuarios',
+        reporte_auditoria: 'Exportación de Auditoría',
+        reporte_ausentismo: 'Estadísticas de Ausentismo',
+        reporte_consolidado: 'Consolidado de Inhabilitados',
+    };
+    for (const [tipo, label] of Object.entries(pdfLabels)) {
+        const ids = Array.from(porTipo[tipo] ?? []);
+        for (const id of ids) {
+            map.set(buildRecursoKey(tipo, id), `${label}${id ? ` #${id}` : ''}`);
         }
     }
 
@@ -876,6 +972,23 @@ export async function construirExportAuditoriaPdfBuffer(
         return `${item.recurso_tipo ?? '-'} ${recursoId}`.trim();
     };
 
+    const describirAccion = (accion: string): string => {
+        const mapa: Record<string, string> = {
+            crear_acta: 'Crear Acta (PDF Legal/Habilitados)',
+            generar_informe_alumno_pdf: 'Generar Informe Alumno PDF',
+            generar_consolidado_riesgo_pdf: 'Generar Consolidado Riesgo PDF',
+            generar_estadisticas_ausentismo_pdf: 'Generar Estadísticas Ausentismo PDF',
+            promocionar_semestre_curricular: 'Promoción semestre curricular (por carrera)',
+            promocionar_semestre_curricular_masivo_facultad: 'Promoción semestre curricular (masiva por facultad)',
+            actualizar_scopes_usuario: 'Actualizar Alcance de Usuario',
+            reset_password_usuario: 'Restablecer Contraseña de Usuario',
+        };
+        return mapa[accion] ?? accion
+            .split('_')
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(' ');
+    };
+
     const buffer = await generarAuditoriaEventosPdf({
         titulo: 'REPORTE DE AUDITORÍA DEL SISTEMA',
         filtros: filtrosResumen,
@@ -888,7 +1001,7 @@ export async function construirExportAuditoriaPdfBuffer(
             fecha_hora: item.fecha_hora,
             actor: describirActor(item),
             modulo: item.modulo,
-            accion: item.accion,
+            accion: describirAccion(item.accion),
             recurso: describirRecurso(item),
             resultado: item.resultado,
         })),

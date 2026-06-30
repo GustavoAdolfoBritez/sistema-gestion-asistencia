@@ -11,6 +11,7 @@ import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { EditItemDialog } from '../components/ui/edit-item-dialog';
 import type { EditFormField } from '../components/ui/edit-item-dialog';
 import { apiFetch } from '../utils/api';
+import CronogramaCatedra from '../components/CronogramaCatedra';
 
 type Modulo = {
   id: number;
@@ -442,6 +443,8 @@ export function AcademicoAdminPage({ onLogout }: Props) {
   const [cursosPagina, setCursosPagina] = useState(0);
 
   const PAGINA_TAMANO = 4;
+  const PLANILLA_PAGE_SIZE = 5;
+  const [planillaPage, setPlanillaPage] = useState(0);
 
   const alcanceVisualAcademico = useMemo(
     () => deriveAlcanceVisual(alcance),
@@ -881,6 +884,20 @@ export function AcademicoAdminPage({ onLogout }: Props) {
     [selectedCursoId, planillaMap]
   );
 
+  const moduloDelCursoSeleccionado = useMemo(() => {
+    if (!cursoSeleccionado) return null;
+    return modulos.find((m) => m.id === cursoSeleccionado.modulo_id) ?? null;
+  }, [cursoSeleccionado, modulos]);
+
+  const planillaPageCount = useMemo(
+    () => Math.max(1, Math.ceil(planillaSeleccionada.length / PLANILLA_PAGE_SIZE)),
+    [planillaSeleccionada.length]
+  );
+  const planillaMobileItems = useMemo(
+    () => planillaSeleccionada.slice(planillaPage * PLANILLA_PAGE_SIZE, (planillaPage + 1) * PLANILLA_PAGE_SIZE),
+    [planillaSeleccionada, planillaPage]
+  );
+
   useEffect(() => {
     if (selectedCursoId == null) return;
     let cancelled = false;
@@ -1002,6 +1019,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
 
   const handleSelectCurso = async (cursoId: number) => {
     setSelectedCursoId(cursoId);
+    setPlanillaPage(0);
     setAlumnoSearch('');
     setAlumnoSearchOpen(false);
     setCopiarDesdeCursoId('');
@@ -2721,9 +2739,10 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                               })}
                               triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-sm text-black focus:border-primary focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
                             />
+                            <div className="flex items-center gap-2">
                             <button
                               type="button"
-                              className="btn-modern btn-modern-sm btn-modern-primary btn-mobile-cta shrink-0 lg:w-auto"
+                              className="btn-modern btn-modern-sm btn-modern-primary btn-mobile-cta shrink-0 lg:w-auto max-lg:max-w-[260px]"
                               disabled={sinPlanillasCompatibles || !loteSeleccionado || loteImportLoading}
                               onClick={() =>
                                 loteSeleccionado &&
@@ -2768,6 +2787,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                             >
                               <span className="material-symbols-outlined text-[18px]">delete</span>
                             </button>
+                            </div>
                           </div>
                         </div>
                       );
@@ -2819,22 +2839,15 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                     ) : (
                       <>
                         <ul className="divide-y divide-slate-200 dark:divide-slate-800 md:hidden">
-                          {planillaSeleccionada.map((m, idx) => (
+                          {planillaMobileItems.map((m, idx) => (
                             <li
                               key={m.id}
                               className="flex flex-col gap-2 bg-white px-4 py-3 dark:bg-transparent"
                             >
-                              <div className="flex items-start justify-between gap-2 max-lg:flex-col max-lg:gap-2.5">
+                              <div className="flex items-start gap-2">
                                 <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                                  #{idx + 1}
+                                  #{planillaPage * PLANILLA_PAGE_SIZE + idx + 1}
                                 </span>
-                                <button
-                                  type="button"
-                                  className="btn-modern btn-modern-xs btn-modern-danger btn-mobile-cta shrink-0 lg:w-auto"
-                                  onClick={() => handleDesmatricularAlumno(cursoSeleccionado.id, m)}
-                                >
-                                  Quitar
-                                </button>
                               </div>
                               <p className="text-[15px] font-medium leading-snug break-words text-black dark:text-[#e7eef9]">
                                 {m.nombre_completo}
@@ -2851,9 +2864,36 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                                   {m.estado_academico}
                                 </span>
                               </div>
+                              <div className="flex justify-end">
+                                <button
+                                  type="button"
+                                  className="text-[11px] text-red-600 hover:text-red-700 font-medium dark:text-red-400 dark:hover:text-red-300"
+                                  onClick={() => handleDesmatricularAlumno(cursoSeleccionado.id, m)}
+                                >
+                                  Quitar
+                                </button>
+                              </div>
                             </li>
                           ))}
                         </ul>
+                        {planillaPageCount > 1 && (
+                          <div className="md:hidden flex items-center justify-center gap-1 py-2 border-t border-slate-200 dark:border-slate-800">
+                            <button type="button" onClick={() => setPlanillaPage((p) => p - 1)} disabled={planillaPage === 0}
+                              className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 disabled:opacity-30">
+                              ←
+                            </button>
+                            {Array.from({ length: planillaPageCount }, (_, n) => (
+                              <button key={n} type="button" onClick={() => setPlanillaPage(n)}
+                                className={`px-2 py-1 text-xs rounded border ${n === planillaPage ? 'bg-primary text-white border-primary' : 'border-slate-300 dark:border-slate-700'}`}>
+                                {n + 1}
+                              </button>
+                            ))}
+                            <button type="button" onClick={() => setPlanillaPage((p) => p + 1)} disabled={planillaPage >= planillaPageCount - 1}
+                              className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 disabled:opacity-30">
+                              →
+                            </button>
+                          </div>
+                        )}
                         <div className="scroll-region hidden h-[min(28rem,55vh)] lg:block">
                           <table className="w-full min-w-[32rem] border-collapse text-sm">
                             <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-[#0d1b2e]">
@@ -2904,6 +2944,14 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                 </div>
               )}
             </div>
+
+            {cursoSeleccionado && moduloDelCursoSeleccionado && (
+              <CronogramaCatedra
+                cursoId={cursoSeleccionado.id}
+                fechaInicio={moduloDelCursoSeleccionado.fecha_inicio.slice(0, 10)}
+                fechaFin={moduloDelCursoSeleccionado.fecha_fin.slice(0, 10)}
+              />
+            )}
             </div>
             </div>
 

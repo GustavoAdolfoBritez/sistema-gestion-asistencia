@@ -18,8 +18,11 @@ import {
     listarAusenciasCurso,
     listarAlumnosCurso,
     marcarTodosPresentesSesionDocente,
-    obtenerAsistenciaSesionMatricula,
-    obtenerEstadoJustificacionAuditoria
+    obtenerEstadoJustificacionAuditoria,
+    obtenerCronogramaParaDocente,
+    firmarSemanaCronograma,
+    firmarEvaluacionCronograma,
+    firmarTodoCronograma
 } from './asistencias.service';
 import { autenticarConPoliticaAlcance, autorizarRoles } from '../../middlewares/auth.middleware';
 import {
@@ -297,7 +300,6 @@ router.post(
 
             const sesionNum = Number(sesionId);
             const matriculaNum = Number(matriculaId);
-            const antes = await obtenerAsistenciaSesionMatricula(sesionNum, matriculaNum);
 
             const contexto = obtenerContexto(req);
             const asistencia = await registrarAsistenciaDocente(
@@ -310,22 +312,6 @@ router.post(
                 },
                 contexto
             );
-
-            await registrarEventoAuditoriaSegura({
-                modulo: 'asistencias',
-                accion: 'registrar_asistencia',
-                recursoTipo: 'asistencia',
-                recursoId: asistencia.id,
-                detalle: {
-                    sesionId: sesionNum,
-                    matriculaId: matriculaNum,
-                    estado,
-                    justificada: justificada ?? false
-                },
-                antes,
-                despues: asistencia,
-                contexto: contextoAuditoria
-            });
 
             res.json(asistencia);
         } catch (error) {
@@ -649,6 +635,107 @@ router.post(
             const url = await subirJustificativoPdf(req.file.buffer, req.file.originalname);
             res.json({ url, filename: req.file.originalname });
         } catch (error) {
+            next(error);
+        }
+    }
+);
+
+// ─── Cronograma de Cátedra (vista docente) ────────────────────────────
+
+router.get(
+    '/asistencias/cronograma/:cursoId',
+    ...autenticarConPoliticaAlcance,
+    autorizarRoles(...ROLES_CONSULTA_ASISTENCIAS),
+    async (req, res, next) => {
+        try {
+            const cursoId = Number(req.params.cursoId);
+            if (!cursoId) return res.status(400).json({ mensaje: 'cursoId inválido' });
+            const contexto = obtenerContexto(req);
+            const cronograma = await obtenerCronogramaParaDocente(cursoId, contexto);
+            res.json(cronograma);
+        } catch (error) {
+            if (error instanceof Error) return res.status(400).json({ mensaje: error.message });
+            next(error);
+        }
+    }
+);
+
+router.post(
+    '/asistencias/cronograma/semanas/:semanaId/firmar',
+    ...autenticarConPoliticaAlcance,
+    autorizarRoles(...ROLES_OPERADORES_ASISTENCIAS),
+    async (req, res, next) => {
+        try {
+            const contextoAuditoria = construirContextoAuditoria(req);
+            const semanaId = Number(req.params.semanaId);
+            if (!semanaId) return res.status(400).json({ mensaje: 'semanaId inválido' });
+            const contexto = obtenerContexto(req);
+            const resultado = await firmarSemanaCronograma(semanaId, contexto);
+            await registrarEventoAuditoriaSegura({
+                modulo: 'asistencias',
+                accion: 'firmar_semana_cronograma',
+                recursoTipo: 'curso_cronograma_semanas',
+                recursoId: semanaId,
+                detalle: { semanaId, firmado_en: resultado.firmado_en },
+                contexto: contextoAuditoria,
+            });
+            res.json(resultado);
+        } catch (error) {
+            if (error instanceof Error) return res.status(400).json({ mensaje: error.message });
+            next(error);
+        }
+    }
+);
+
+router.post(
+    '/asistencias/cronograma/evaluaciones/:evaluacionId/firmar',
+    ...autenticarConPoliticaAlcance,
+    autorizarRoles(...ROLES_OPERADORES_ASISTENCIAS),
+    async (req, res, next) => {
+        try {
+            const contextoAuditoria = construirContextoAuditoria(req);
+            const evaluacionId = Number(req.params.evaluacionId);
+            if (!evaluacionId) return res.status(400).json({ mensaje: 'evaluacionId inválido' });
+            const contexto = obtenerContexto(req);
+            const resultado = await firmarEvaluacionCronograma(evaluacionId, contexto);
+            await registrarEventoAuditoriaSegura({
+                modulo: 'asistencias',
+                accion: 'firmar_evaluacion_cronograma',
+                recursoTipo: 'curso_evaluaciones',
+                recursoId: evaluacionId,
+                detalle: { evaluacionId, firmado_en: resultado.firmado_en },
+                contexto: contextoAuditoria,
+            });
+            res.json(resultado);
+        } catch (error) {
+            if (error instanceof Error) return res.status(400).json({ mensaje: error.message });
+            next(error);
+        }
+    }
+);
+
+router.post(
+    '/asistencias/cronograma/:cursoId/firmar-todo',
+    ...autenticarConPoliticaAlcance,
+    autorizarRoles(...ROLES_OPERADORES_ASISTENCIAS),
+    async (req, res, next) => {
+        try {
+            const contextoAuditoria = construirContextoAuditoria(req);
+            const cursoId = Number(req.params.cursoId);
+            if (!cursoId) return res.status(400).json({ mensaje: 'cursoId inválido' });
+            const contexto = obtenerContexto(req);
+            const resultado = await firmarTodoCronograma(cursoId, contexto);
+            await registrarEventoAuditoriaSegura({
+                modulo: 'asistencias',
+                accion: 'firmar_todo_cronograma',
+                recursoTipo: 'curso',
+                recursoId: cursoId,
+                detalle: { cursoId, firmados: resultado.firmados, total: resultado.total },
+                contexto: contextoAuditoria,
+            });
+            res.json(resultado);
+        } catch (error) {
+            if (error instanceof Error) return res.status(400).json({ mensaje: error.message });
             next(error);
         }
     }

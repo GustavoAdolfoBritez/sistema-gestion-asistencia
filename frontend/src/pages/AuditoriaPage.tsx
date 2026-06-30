@@ -213,6 +213,8 @@ function etiquetaAccion(valor: string): string {
   if (valor === 'generar_estadisticas_ausentismo_pdf') return 'Generar Estadísticas Ausentismo PDF';
   if (valor === 'promocionar_semestre_curricular') return 'Promoción semestre curricular (por carrera)';
   if (valor === 'promocionar_semestre_curricular_masivo_facultad') return 'Promoción semestre curricular (masiva por facultad)';
+  if (valor === 'actualizar_scopes_usuario') return 'Actualizar Alcance de Usuario';
+  if (valor === 'reset_password_usuario') return 'Restablecer Contraseña de Usuario';
   return formatearEtiqueta(valor);
 }
 
@@ -1140,16 +1142,6 @@ export function AuditoriaPage({ onLogout }: Props) {
                 <div className="btn-mobile-stack flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap lg:flex-row lg:items-center">
                   <button
                     type="button"
-                    onClick={() => {
-                      setPagina(1);
-                      void cargarEventos(1);
-                    }}
-                    className="btn-modern btn-modern-primary btn-mobile-cta w-full sm:w-auto"
-                  >
-                    {loading ? 'Cargando...' : 'Aplicar filtros'}
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => void cargarEventos()}
                     disabled={loading || exportandoPdf}
                     className="btn-modern btn-modern-ghost btn-mobile-cta inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-600 bg-slate-900 text-sm text-slate-200 hover:bg-slate-800 sm:w-auto"
@@ -1172,7 +1164,7 @@ export function AuditoriaPage({ onLogout }: Props) {
                     }}
                     className="btn-modern btn-modern-ghost btn-mobile-cta w-full rounded-lg border border-slate-600 bg-slate-900 text-sm text-slate-200 hover:bg-slate-800 sm:w-auto"
                   >
-                    Limpiar
+                    Limpiar filtros
                   </button>
                   <button
                     type="button"
@@ -1307,7 +1299,18 @@ export function AuditoriaPage({ onLogout }: Props) {
                       <table className="auditoria-tabla-eventos w-full table-fixed text-sm">
                         <AuditoriaTablaColgroup />
                         <tbody className="auditoria-tabla-eventos-body">
-                          {eventos.map((evento) => (
+                          {loading
+                            ? Array.from({ length: filasPorPagina }, (_, i) => (
+                                <tr key={`skel-${i}`} className="auditoria-fila-evento border-t border-slate-800">
+                                  <td className="px-2 py-2"><div className="animate-pulse rounded bg-slate-700 h-4 w-28" /></td>
+                                  <td className="px-2 py-2"><div className="animate-pulse rounded bg-slate-700 h-4 w-24" /></td>
+                                  <td className="px-2 py-2"><div className="animate-pulse rounded bg-slate-700 h-4 w-20" /></td>
+                                  <td className="px-2 py-2"><div className="animate-pulse rounded bg-slate-700 h-4 w-32" /></td>
+                                  <td className="px-2 py-2"><div className="animate-pulse rounded bg-slate-700 h-4 w-40" /></td>
+                                  <td className="px-2 py-2"><div className="animate-pulse rounded bg-slate-700 h-4 w-16" /></td>
+                                </tr>
+                              ))
+                            : eventos.map((evento) => (
                             <tr
                               key={evento.id}
                               onClick={() => setSeleccionado(evento)}

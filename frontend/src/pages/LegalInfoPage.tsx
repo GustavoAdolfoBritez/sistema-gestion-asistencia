@@ -144,7 +144,7 @@ export function LegalInfoPage({ page, onBack }: LegalInfoPageProps) {
         ) : null}
 
         <footer className="mt-8 border-t border-white/15 pt-4 text-xs text-[#96abc4] max-lg:mt-6 max-lg:pt-3 max-lg:text-center max-lg:text-[10px] max-lg:leading-snug">
-          <span className="max-lg:hidden">© {currentYear} Sistema de Control de Asistencia - Proyecto de Tesis UNG.</span>
+          <span className="max-lg:hidden">© {currentYear} Sistema de Gestión de Asistencia Académica - Proyecto de Tesis UNG.</span>
           <span className="hidden max-lg:inline">
             © {currentYear} Sistema de Gestion de Asistencia Academica
             <br />— Proyecto de Tesis UNG.

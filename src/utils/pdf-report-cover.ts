@@ -6,7 +6,7 @@
 import PDFKit from 'pdfkit';
 import { PDF_BRAND, drawStackedLabelValue } from './pdf-kit-brand';
 
-const SUBTITLE = 'Sistema de control de asistencia académica';
+const SUBTITLE = 'Sistema de Gestión de Asistencia Académica';
 
 type DocWithTextMeasure = PDFKit.PDFDocument & {
   heightOfString(text: string, options?: { width?: number; lineGap?: number }): number;

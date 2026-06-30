@@ -682,11 +682,29 @@ router.post('/academico/cursos/:cursoId/matriculas/desde-lote', async (req, res,
             return res.status(400).json({ mensaje: 'cursoId y loteId son obligatorios' });
         }
         const resultado = await matricularDesdeLote(cursoId, Number(loteId));
+
+        let descLote = `Lote #${loteId}`;
+        try {
+            const { rows: loteRows } = await pool.query<{ descripcion: string | null }>(
+                `SELECT descripcion FROM lotes_importacion WHERE id = $1`, [loteId]
+            );
+            if (loteRows[0]?.descripcion) {
+                const d = loteRows[0].descripcion;
+                const semMatch = d.match(/(\d{1,2})\s*°?\s*semestre/i);
+                const anioMatch = d.match(/año\s*(de\s*)?ingreso\s*[:.]?\s*(\d{4})/i);
+                const partes: string[] = [];
+                if (semMatch) partes.push(`${semMatch[1]}° Semestre`);
+                if (anioMatch) partes.push(`Ingreso ${anioMatch[2]}`);
+                if (partes.length) descLote = `Lote ${partes.join(' · ')}`;
+            }
+        } catch { /* fallback al ID numérico */ }
+
         await registrarEventoAuditoriaSegura({
             modulo: 'academico',
             accion: 'matricular_desde_lote',
-            recursoTipo: 'matricula',
+            recursoTipo: 'curso',
             recursoId: cursoId,
+            recursoResumen: `Asignación masiva · ${descLote} · ${resultado.insertados} inscripciones`,
             detalle: { cursoId, loteId: Number(loteId), insertados: resultado.insertados, saltados: resultado.saltados },
             contexto: contextoAuditoria
         });
@@ -904,6 +922,80 @@ router.post('/academico/promocion-semestre-curricular/ejecutar-facultad', async 
         });
         res.json(resultado);
     } catch (error) {
+        if (error instanceof ForbiddenScopeError) {
+            return res.status(403).json({ mensaje: error.message });
+        }
+        if (error instanceof Error) {
+            return res.status(400).json({ mensaje: error.message });
+        }
+        next(error);
+    }
+});
+
+// ─── Cronograma de Cátedra ────────────────────────────────────────────
+
+import { cronogramaPayloadSchema } from './cronograma.schema';
+import { obtenerCronogramaCurso, guardarCronogramaCurso } from './cronograma.service';
+
+router.get('/academico/cursos/:cursoId/cronograma', async (req, res, next) => {
+    try {
+        const cursoId = Number(req.params.cursoId);
+        if (!cursoId) return res.status(400).json({ mensaje: 'cursoId inválido' });
+        const cronograma = await obtenerCronogramaCurso(cursoId);
+        res.json(cronograma);
+    } catch (error) {
+        if (error instanceof Error) return res.status(400).json({ mensaje: error.message });
+        next(error);
+    }
+});
+
+router.put('/academico/cursos/:cursoId/cronograma', async (req, res, next) => {
+    try {
+        const contextoAuditoria = construirContextoAuditoria(req);
+        const usuarioId = req.usuario?.usuarioId;
+        const roles = req.usuario?.roles ?? [];
+        const cursoId = Number(req.params.cursoId);
+        if (!cursoId) return res.status(400).json({ mensaje: 'cursoId inválido' });
+
+        if (usuarioId) {
+            const alcance = await resolverAlcanceMatriculasFacultad(usuarioId, roles);
+            await assertCursoEnAlcance(cursoId, alcance);
+        }
+
+        const parsed = cronogramaPayloadSchema.safeParse(req.body);
+        if (!parsed.success) {
+            const mensajes = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
+            return res.status(400).json({ mensaje: mensajes });
+        }
+
+        const { rows: moduloRows } = await pool.query(
+            `SELECT ma.fecha_inicio, ma.fecha_fin
+             FROM cursos c
+             JOIN modulos_academicos ma ON ma.id = c.modulo_id
+             WHERE c.id = $1`,
+            [cursoId]
+        );
+        if (!moduloRows[0]) {
+            return res.status(400).json({ mensaje: 'Curso no encontrado' });
+        }
+
+        const cronograma = await guardarCronogramaCurso(cursoId, parsed.data);
+
+        await registrarEventoAuditoriaSegura({
+            modulo: 'academico',
+            accion: 'actualizar_cronograma',
+            recursoTipo: 'curso',
+            recursoId: cursoId,
+            detalle: {
+                semanas: parsed.data.semanas.length,
+                horasTotales: parsed.data.semanas.reduce((acc, s) => acc + s.horas, 0),
+                tieneParcial: Boolean(parsed.data.evaluacion_parcial?.fecha),
+                tieneFinal: Boolean(parsed.data.evaluacion_final?.fecha),
+            },
+            contexto: contextoAuditoria,
+        });
+        res.json(cronograma);
+    } catch (error: any) {
         if (error instanceof ForbiddenScopeError) {
             return res.status(403).json({ mensaje: error.message });
         }

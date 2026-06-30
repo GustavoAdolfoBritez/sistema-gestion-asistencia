@@ -15,6 +15,9 @@ import {
 } from '../../services/actas-generadas.service';
 import { construirExportAuditoriaPdfBuffer, type FiltroEventosAuditoria } from '../auditoria/auditoria.service';
 import { construirExportUsuariosPdfBuffer, type UsuarioFiltro } from '../usuarios/usuarios.service';
+import { generateCronogramaBody, type CronogramaPdfData } from './reportes.cronograma.pdf';
+import { generarNombrePdfElegante as generarNombrePdf } from './reportes.utils';
+import { renderPdfDocumentToBuffer } from '../../utils/pdf-buffer';
 
 export interface PdfGeneradoConActa {
     acta: ActaGeneradaRow;
@@ -2046,4 +2049,130 @@ export async function regenerarPdfActaGenerada(
     }
 
     throw new Error(`Tipo de acta no regenerable: ${acta.tipo_acta}`);
+}
+
+export async function buildCronogramaPdfBuffer(
+    cursoId: number,
+    alcance: AlcanceMatriculasFacultad,
+): Promise<{ buffer: Buffer; fileName: string }> {
+    await assertCursoEnAlcance(cursoId, alcance);
+
+    const { rows: metaRows } = await pool.query(
+        `SELECT
+            f.nombre AS facultad,
+            cr.nombre AS carrera,
+            cr.id AS carrera_id,
+            m.nombre AS materia,
+            m.semestre AS semestre_materia,
+            ma.anio,
+            ma.mes,
+            CONCAT(u.nombres, ' ', u.apellidos) AS docente,
+            c.aula,
+            c.horario_inicio,
+            c.horario_fin
+         FROM cursos c
+         JOIN modulos_academicos ma ON ma.id = c.modulo_id
+         JOIN materias m ON m.id = ma.materia_id
+         JOIN planes_estudio p ON p.id = m.plan_id
+         JOIN carreras cr ON cr.id = p.carrera_id
+         JOIN facultades f ON f.id = cr.facultad_id
+         JOIN docentes d ON d.id = c.docente_id
+         JOIN usuarios u ON u.id = d.usuario_id
+         WHERE c.id = $1`,
+        [cursoId]
+    );
+    if (!metaRows[0]) throw new Error('Curso no encontrado');
+
+    const meta = metaRows[0];
+    const semestreAcademico = `${meta.semestre_materia}°`;
+
+    const turno = meta.horario_inicio && meta.horario_fin
+        ? `${String(meta.horario_inicio).slice(0, 5)} - ${String(meta.horario_fin).slice(0, 5)}`
+        : '';
+
+    const { rows: jefeRows } = await pool.query(
+        `SELECT CONCAT(u.nombres, ' ', u.apellidos) AS jefe_carrera
+         FROM usuarios u
+         JOIN usuarios_roles ur ON ur.usuario_id = u.id
+         JOIN roles r ON r.id = ur.rol_id
+         LEFT JOIN usuario_scopes us ON us.usuario_id = u.id
+         WHERE r.nombre = 'Jefe de Carrera'
+           AND (us.carrera_id = $1 OR us.carrera_id IS NULL)
+           AND u.estado = 'activo'
+         ORDER BY us.carrera_id DESC
+         LIMIT 1`,
+        [meta.carrera_id]
+    );
+    const jefeCarrera = jefeRows[0]?.jefe_carrera ?? '';
+
+    const { rows: semanas } = await pool.query(
+        `SELECT semana_numero, fecha_inicio, fecha_fin, contenidos, actividades, horas
+         FROM curso_cronograma_semanas
+         WHERE curso_id = $1
+         ORDER BY semana_numero ASC`,
+        [cursoId]
+    );
+
+    const { rows: evalRows } = await pool.query(
+        `SELECT tipo, fecha, alcance_prueba FROM curso_evaluaciones WHERE curso_id = $1 ORDER BY CASE tipo WHEN 'parcial' THEN 1 WHEN 'final' THEN 2 ELSE 3 END`,
+        [cursoId]
+    );
+    const parcial = evalRows.find((e) => e.tipo === 'parcial');
+    const final = evalRows.find((e) => e.tipo === 'final');
+
+    const data: CronogramaPdfData = {
+        facultad: meta.facultad,
+        carrera: meta.carrera,
+        materia: meta.materia,
+        semestreAcademico,
+        docente: meta.docente,
+        seccion: meta.aula ?? '',
+        turno,
+        jefatura: jefeCarrera,
+        semanas: semanas.map((s) => {
+            const contenidos: string[] = s.contenidos ?? [];
+            const actividades: string[] = s.actividades ?? [];
+            const maxLen = Math.max(contenidos.length, actividades.length, 1);
+            const items = Array.from({ length: maxLen }, (_, i) => ({
+                contenido: contenidos[i] ?? '',
+                actividad: actividades[i] ?? '',
+            }));
+            const ini = s.fecha_inicio instanceof Date ? s.fecha_inicio.toISOString().slice(0, 10) : String(s.fecha_inicio).slice(0, 10);
+            const fin = s.fecha_fin instanceof Date ? s.fecha_fin.toISOString().slice(0, 10) : String(s.fecha_fin).slice(0, 10);
+            const [, mi, di] = ini.split('-');
+            const [, mf, df] = fin.split('-');
+            return {
+                nombre: `Semana ${s.semana_numero}\n${parseInt(di)} al ${parseInt(df)}/${mf}/${ini.slice(0, 4)}`,
+                horas: Number(s.horas) || 0,
+                items,
+            };
+        }),
+        evaluacionParcial: {
+            fecha: parcial?.fecha instanceof Date ? parcial.fecha.toISOString().slice(0, 10) : (parcial?.fecha ? String(parcial.fecha).slice(0, 10) : null),
+            alcance: parcial?.alcance_prueba ?? null,
+        },
+        evaluacionFinal: {
+            fecha: final?.fecha instanceof Date ? final.fecha.toISOString().slice(0, 10) : (final?.fecha ? String(final.fecha).slice(0, 10) : null),
+            alcance: final?.alcance_prueba ?? null,
+        },
+    };
+
+    const buffer = await renderPdfDocumentToBuffer((doc) => {
+        doc.y = 40;
+        generateCronogramaBody(doc, data);
+    }, {
+        size: 'A4',
+        layout: 'landscape',
+        margin: 0,
+        bufferPages: true,
+        info: { Title: 'Registro de Catedra', Author: 'Sistema de Gestión de Asistencia Académica' },
+    });
+    const fileName = generarNombrePdf({
+        titulo: 'Registro de Catedra',
+        facultad: meta.facultad,
+        carrera: meta.carrera,
+        materia: meta.materia,
+    });
+
+    return { buffer, fileName };
 }

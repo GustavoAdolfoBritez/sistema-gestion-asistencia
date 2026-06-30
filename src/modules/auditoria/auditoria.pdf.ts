@@ -180,7 +180,7 @@ export async function generarAuditoriaEventosPdf(data: ExportAuditoriaPdfData): 
       bufferPages: true,
       info: {
         Title: data.titulo,
-        Author: 'Sistema de control de asistencia',
+        Author: 'Sistema de Gestión de Asistencia Académica',
       },
     }
   );

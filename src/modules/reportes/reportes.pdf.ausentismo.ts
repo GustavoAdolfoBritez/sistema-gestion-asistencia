@@ -158,7 +158,7 @@ export async function generarPdfAusentismoFacultadCarrera(data: AusentismoPdfDat
       bufferPages: true,
       info: {
         Title: `Ausentismo por facultad/carrera ${data.periodo}`,
-        Author: 'Sistema de control de asistencia',
+        Author: 'Sistema de Gestión de Asistencia Académica',
       },
     }
   );

@@ -468,11 +468,236 @@ export async function obtenerHabilitados(cursoId: number) {
          FROM vw_habilitados_examen v
          JOIN matriculas mat ON mat.id = v.matricula_id
          JOIN alumnos al ON al.id = mat.alumno_id
-         WHERE v.curso_id = $1
+         WHERE mat.curso_id = $1
          ORDER BY ${SQL_ORDEN_MATRICULA_PLANILLA}`,
         [cursoId]
     );
     return rows;
+}
+
+export interface CronogramaDocenteData {
+    semanas: Array<{
+        id: number;
+        semana_numero: number;
+        fecha_inicio: string;
+        fecha_fin: string;
+        contenidos: string[];
+        actividades: string[];
+        horas: number;
+        firmado: boolean;
+        firmado_en: string | null;
+        firmado_por: string | null;
+    }>;
+    evaluaciones: Array<{
+        id: number;
+        tipo: 'parcial' | 'final';
+        fecha: string | null;
+        alcance_prueba: string | null;
+        firmado: boolean;
+        firmado_en: string | null;
+        firmado_por: string | null;
+    }>;
+    todas_firmadas: boolean;
+}
+
+export async function obtenerCronogramaParaDocente(cursoId: number, contexto: GestionContexto): Promise<CronogramaDocenteData> {
+    await asegurarPermisoCurso(cursoId, contexto);
+
+    const { rows: semanas } = await pool.query(
+        `SELECT s.id, s.semana_numero, s.fecha_inicio, s.fecha_fin, s.contenidos, s.actividades, s.horas,
+                s.firmado_en, COALESCE(u.nombres || ' ' || u.apellidos, NULL) AS firmado_por
+         FROM curso_cronograma_semanas s
+         LEFT JOIN docentes d ON d.id = s.firmado_por
+         LEFT JOIN usuarios u ON u.id = d.usuario_id
+         WHERE s.curso_id = $1
+         ORDER BY s.semana_numero ASC`,
+        [cursoId]
+    );
+
+    const { rows: evaluaciones } = await pool.query(
+        `SELECT e.id, e.tipo, e.fecha, e.alcance_prueba,
+                e.firmado_en, COALESCE(u.nombres || ' ' || u.apellidos, NULL) AS firmado_por
+         FROM curso_evaluaciones e
+         LEFT JOIN docentes d ON d.id = e.firmado_por
+         LEFT JOIN usuarios u ON u.id = d.usuario_id
+         WHERE e.curso_id = $1
+         ORDER BY CASE e.tipo WHEN 'parcial' THEN 1 WHEN 'final' THEN 2 ELSE 3 END`,
+        [cursoId]
+    );
+
+    const semanasMapped = semanas.map((s) => ({
+        id: s.id,
+        semana_numero: s.semana_numero,
+        fecha_inicio: s.fecha_inicio instanceof Date
+            ? s.fecha_inicio.toISOString().slice(0, 10)
+            : String(s.fecha_inicio).slice(0, 10),
+        fecha_fin: s.fecha_fin instanceof Date
+            ? s.fecha_fin.toISOString().slice(0, 10)
+            : String(s.fecha_fin).slice(0, 10),
+        contenidos: s.contenidos ?? [],
+        actividades: s.actividades ?? [],
+        horas: Number(s.horas) || 0,
+        firmado: Boolean(s.firmado_en),
+        firmado_en: s.firmado_en instanceof Date
+            ? s.firmado_en.toISOString()
+            : (s.firmado_en ? String(s.firmado_en) : null),
+        firmado_por: s.firmado_por ?? null,
+    }));
+
+    const evaluacionesMapped = evaluaciones.map((e) => ({
+        id: e.id,
+        tipo: e.tipo,
+        fecha: e.fecha instanceof Date
+            ? e.fecha.toISOString().slice(0, 10)
+            : (e.fecha ? String(e.fecha).slice(0, 10) : null),
+        alcance_prueba: e.alcance_prueba ?? null,
+        firmado: Boolean(e.firmado_en),
+        firmado_en: e.firmado_en instanceof Date
+            ? e.firmado_en.toISOString()
+            : (e.firmado_en ? String(e.firmado_en) : null),
+        firmado_por: e.firmado_por ?? null,
+    }));
+
+    const todasFirmadas =
+        semanasMapped.length > 0 &&
+        semanasMapped.every((s) => s.firmado) &&
+        evaluacionesMapped.every((e) => e.firmado);
+
+    return {
+        semanas: semanasMapped,
+        evaluaciones: evaluacionesMapped,
+        todas_firmadas: todasFirmadas,
+    };
+}
+
+export async function firmarSemanaCronograma(
+    semanaId: number,
+    contexto: GestionContexto
+): Promise<{ firmado: boolean; firmado_en: string; docente_nombre: string }> {
+    const docenteId = await obtenerDocenteId(contexto);
+
+    const { rows: semRows } = await pool.query(
+        `SELECT s.id, s.curso_id, s.firmado_en
+         FROM curso_cronograma_semanas s
+         JOIN cursos c ON c.id = s.curso_id
+         JOIN docentes d ON d.id = c.docente_id
+         WHERE s.id = $1 AND d.usuario_id = $2`,
+        [semanaId, contexto.usuarioId]
+    );
+    if (!semRows[0]) {
+        throw new Error('Semana no encontrada o no tenés permisos sobre este curso');
+    }
+    if (semRows[0].firmado_en) {
+        throw new Error('Esta semana ya fue firmada');
+    }
+
+    const { rows: updated } = await pool.query(
+        `UPDATE curso_cronograma_semanas
+         SET firmado_por = $1, firmado_en = NOW()
+         WHERE id = $2 AND firmado_en IS NULL
+         RETURNING firmado_en`,
+        [docenteId, semanaId]
+    );
+    if (!updated[0]) {
+        throw new Error('No se pudo firmar la semana (posiblemente ya fue firmada)');
+    }
+
+    const firmadoEn = updated[0].firmado_en instanceof Date
+        ? updated[0].firmado_en.toISOString()
+        : String(updated[0].firmado_en);
+
+    return { firmado: true, firmado_en: firmadoEn, docente_nombre: contexto.usuarioId };
+}
+
+export async function firmarEvaluacionCronograma(
+    evaluacionId: number,
+    contexto: GestionContexto
+): Promise<{ firmado: boolean; firmado_en: string; docente_nombre: string }> {
+    const docenteId = await obtenerDocenteId(contexto);
+
+    const { rows: evalRows } = await pool.query(
+        `SELECT e.id, e.curso_id, e.firmado_en
+         FROM curso_evaluaciones e
+         JOIN cursos c ON c.id = e.curso_id
+         JOIN docentes d ON d.id = c.docente_id
+         WHERE e.id = $1 AND d.usuario_id = $2`,
+        [evaluacionId, contexto.usuarioId]
+    );
+    if (!evalRows[0]) {
+        throw new Error('Evaluación no encontrada o no tenés permisos sobre este curso');
+    }
+    if (evalRows[0].firmado_en) {
+        throw new Error('Esta evaluación ya fue firmada');
+    }
+
+    const { rows: updated } = await pool.query(
+        `UPDATE curso_evaluaciones
+         SET firmado_por = $1, firmado_en = NOW()
+         WHERE id = $2 AND firmado_en IS NULL
+         RETURNING firmado_en`,
+        [docenteId, evaluacionId]
+    );
+    if (!updated[0]) {
+        throw new Error('No se pudo firmar la evaluación (posiblemente ya fue firmada)');
+    }
+
+    const firmadoEn = updated[0].firmado_en instanceof Date
+        ? updated[0].firmado_en.toISOString()
+        : String(updated[0].firmado_en);
+
+    return { firmado: true, firmado_en: firmadoEn, docente_nombre: contexto.usuarioId };
+}
+
+async function obtenerDocenteId(contexto: GestionContexto): Promise<string> {
+    const { rows: docRows } = await pool.query(
+        `SELECT d.id, u.nombres, u.apellidos
+         FROM docentes d
+         JOIN usuarios u ON u.id = d.usuario_id
+         WHERE d.usuario_id = $1`,
+        [contexto.usuarioId]
+    );
+    if (!docRows[0]) {
+        throw new Error('No se encontró un perfil de docente vinculado a tu usuario');
+    }
+    return docRows[0].id;
+}
+
+export async function firmarTodoCronograma(
+    cursoId: number,
+    contexto: GestionContexto
+): Promise<{ firmados: number; total: number }> {
+    await asegurarPermisoCurso(cursoId, contexto);
+    const docenteId = await obtenerDocenteId(contexto);
+
+    const { rows: pendientesSemanas } = await pool.query(
+        `SELECT id FROM curso_cronograma_semanas
+         WHERE curso_id = $1 AND firmado_en IS NULL`,
+        [cursoId]
+    );
+    const { rows: pendientesEval } = await pool.query(
+        `SELECT id FROM curso_evaluaciones
+         WHERE curso_id = $1 AND firmado_en IS NULL`,
+        [cursoId]
+    );
+
+    let firmados = 0;
+
+    for (const s of pendientesSemanas) {
+        await pool.query(
+            `UPDATE curso_cronograma_semanas SET firmado_por = $1, firmado_en = NOW() WHERE id = $2 AND firmado_en IS NULL`,
+            [docenteId, s.id]
+        );
+        firmados++;
+    }
+    for (const e of pendientesEval) {
+        await pool.query(
+            `UPDATE curso_evaluaciones SET firmado_por = $1, firmado_en = NOW() WHERE id = $2 AND firmado_en IS NULL`,
+            [docenteId, e.id]
+        );
+        firmados++;
+    }
+
+    return { firmados, total: pendientesSemanas.length + pendientesEval.length };
 }
 
 export async function registrarAsistenciaDocente(

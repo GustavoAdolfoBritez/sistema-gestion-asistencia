@@ -171,7 +171,7 @@ export async function generarActaHabilitadosPdf(data: ActaHabilitadosData): Prom
       bufferPages: true,
       info: {
         Title: `Acta habilitados - ${data.materia}`,
-        Author: 'Sistema de control de asistencia',
+        Author: 'Sistema de Gestión de Asistencia Académica',
       },
     }
   );

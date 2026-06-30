@@ -147,8 +147,8 @@ type AlcanceVisualPanel = 'institucional' | 'facultad' | 'carrera';
 
 function getGreeting(): string {
   const h = new Date().getHours();
-  if (h < 12) return 'Buenos días';
-  if (h < 19) return 'Buenas tardes';
+  if (h >= 6 && h < 12) return 'Buenos días';
+  if (h >= 12 && h < 20) return 'Buenas tardes';
   return 'Buenas noches';
 }
 
@@ -505,7 +505,7 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
               </button>
               <span className="material-symbols-outlined shrink-0 text-[#6b8bc3]">dashboard</span>
               <div className="min-w-0">
-                <p className="text-xs uppercase text-slate-400 truncate">{getGreeting()}, {primerNombre}</p>
+                <p className="text-xs uppercase text-slate-400 truncate">{getGreeting()}, {displayName}</p>
                 <h1 className="text-xl font-semibold truncate">Panel de control</h1>
               </div>
             </div>

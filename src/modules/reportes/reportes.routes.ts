@@ -19,6 +19,7 @@ import {
     listarAusentismoAgregadoFacultadCarrera,
     validarCarreraEnAlcanceFacultades,
     regenerarPdfActaGenerada,
+    buildCronogramaPdfBuffer,
 } from './reportes.service';
 import { enviarPdfBuffer } from '../../utils/pdf-response';
 import { autenticarConPoliticaAlcance, autorizarRoles, normalizarRolComparacion, normalizarRolesDesdePayload } from '../../middlewares/auth.middleware';
@@ -839,6 +840,30 @@ router.post('/reportes/cierre-mensual', autorizarRoles(...ROLES_CIERRE_MENSUAL_E
 
         res.json(resultado);
     } catch (error) {
+        if (error instanceof ForbiddenScopeError) {
+            return res.status(403).json({ mensaje: error.message });
+        }
+        if (error instanceof Error) {
+            return res.status(400).json({ mensaje: error.message });
+        }
+        next(error);
+    }
+});
+
+router.post('/reportes/cursos/:cursoId/cronograma-pdf', async (req, res, next) => {
+    try {
+        const usuarioId = req.usuario?.usuarioId;
+        const roles = req.usuario?.roles ?? [];
+        const cursoId = Number(req.params.cursoId);
+        if (!cursoId) return res.status(400).json({ mensaje: 'cursoId inválido' });
+        if (!usuarioId) return res.status(401).json({ mensaje: 'No autenticado' });
+
+        const alcance = req.alcanceMatriculas as import('../../utils/alumnos-scope').AlcanceMatriculasFacultad | undefined;
+        if (!alcance) return res.status(403).json({ mensaje: 'No se pudo determinar tu alcance académico.' });
+
+        const { buffer, fileName } = await buildCronogramaPdfBuffer(cursoId, alcance);
+        enviarPdfBuffer(res, buffer, fileName, 200);
+    } catch (error: any) {
         if (error instanceof ForbiddenScopeError) {
             return res.status(403).json({ mensaje: error.message });
         }

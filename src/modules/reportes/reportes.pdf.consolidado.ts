@@ -147,7 +147,7 @@ export async function generarConsolidadoRiesgoPdf(data: ConsolidadoPdfData): Pro
       bufferPages: true,
       info: {
         Title: `Consolidado inhabilitados ${data.periodo}`,
-        Author: 'Sistema de control de asistencia',
+        Author: 'Sistema de Gestión de Asistencia Académica',
       },
     }
   );

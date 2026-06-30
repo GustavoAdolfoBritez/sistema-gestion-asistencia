@@ -7,6 +7,7 @@ import {
 } from '../components/AcademicoSubnav';
 import { AppSidebar } from '../components/AppSidebar';
 import { AppSelect } from '../components/ui/app-select';
+import CronogramaDocenteTab from '../components/CronogramaDocenteTab';
 import {
   Dialog,
   DialogContent,
@@ -872,7 +873,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
     };
   }, []);
 
-  const [subView, setSubView] = useState<'planilla' | 'justificaciones'>('planilla');
+  const [subView, setSubView] = useState<'planilla' | 'cronograma' | 'justificaciones'>('planilla');
   const [planillasAsignadas, setPlanillasAsignadas] = useState<PlanillaAsignada[]>([]);
   const [planillasLoading, setPlanillasLoading] = useState(false);
   const [planillasError, setPlanillasError] = useState<string | null>(null);
@@ -1767,7 +1768,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
           <section className="justif-movil-scroll-section app-scroll-content flex min-h-0 min-w-0 flex-1 flex-col gap-4 p-4 sm:p-6 max-lg:bg-background-light dark:max-lg:bg-[#0d1830] xl:overflow-hidden">
             <nav
               className={`grid w-full min-w-0 flex-shrink-0 gap-2 pb-0.5 max-md:gap-1.5 md:flex md:max-w-full md:flex-nowrap md:items-center md:overflow-x-auto md:overflow-visible ${
-                mostrarModuloJustificaciones ? 'grid-cols-2' : 'grid-cols-1'
+                mostrarModuloJustificaciones ? 'grid-cols-3' : 'grid-cols-2'
               }`}
               aria-label="Secciones de asistencias"
             >
@@ -1781,7 +1782,17 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                 <span className="material-symbols-outlined shrink-0 text-base max-md:hidden">fact_check</span>
                 Planilla de Asistencia
               </button>
-              {mostrarModuloJustificaciones ? (
+              <button
+            type="button"
+            onClick={() => setSubView('cronograma')}
+            className={`${ACADEMICO_TAB_BASE} ${
+              subView === 'cronograma' ? ACADEMICO_TAB_ACTIVE : ACADEMICO_TAB_INACTIVE
+            }`}
+          >
+            <span className="material-symbols-outlined shrink-0 text-base max-md:hidden">calendar_month</span>
+            Cronograma de Cátedra
+          </button>
+          {mostrarModuloJustificaciones ? (
                 <button
                   type="button"
                   onClick={() => setSubView('justificaciones')}
@@ -2662,6 +2673,12 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
             </div>
 
             </div>
+            ) : null}
+
+            {subView === 'cronograma' && cursoId ? (
+              <div className="min-w-0">
+                <CronogramaDocenteTab cursoId={cursoId} />
+              </div>
             ) : null}
 
             {mostrarModuloJustificaciones && subView === 'justificaciones' ? (

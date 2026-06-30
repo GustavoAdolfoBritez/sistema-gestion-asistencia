@@ -271,7 +271,7 @@ export async function generarPlanillaLegalPdf(data: PlanillaLegalPdfData): Promi
       margin: 0,
       info: {
         Title: `Planilla legal - ${data.asignatura}`,
-        Author: 'Sistema de control de asistencia',
+        Author: 'Sistema de Gestión de Asistencia Académica',
       },
     }
   );
