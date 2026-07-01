@@ -246,7 +246,7 @@ export default function CronogramaCatedra({ cursoId, fechaInicio, fechaFin }: Cr
       });
     }, 0);
     return () => clearTimeout(timer);
-  }, [semanas]);
+  }, [semanas, readOnly]);
 
   if (loading) {
     return (
