@@ -350,11 +350,11 @@ export default function CronogramaDocenteTab({ cursoId }: CronogramaDocenteTabPr
                     ) : (
                       <div className="flex gap-4">
                         <div>
-                          <span className="text-[10px] text-slate-400">Fecha: </span>
+                          <span className="text-xs text-slate-400">Fecha: </span>
                           <span className="font-medium text-slate-700 dark:text-slate-300">{fmtDateDisplay(evalData.fecha)}</span>
                         </div>
                         <div>
-                          <span className="text-[10px] text-slate-400">Prueba: </span>
+                          <span className="text-xs text-slate-400">Prueba: </span>
                           <span className="text-slate-700 dark:text-slate-300">{evalData.alcance_prueba || '—'}</span>
                         </div>
                       </div>

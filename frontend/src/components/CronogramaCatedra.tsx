@@ -472,17 +472,17 @@ export default function CronogramaCatedra({ cursoId, fechaInicio, fechaFin }: Cr
                   </div>
                 ) : readOnly ? (
                   <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div><span className="text-[10px] text-slate-400">Fecha: </span><span className="text-slate-700 dark:text-slate-300">{evaluacionParcial.fecha ? formatDateShort(evaluacionParcial.fecha) : '—'}</span></div>
-                    <div><span className="text-[10px] text-slate-400">Prueba: </span><span className="text-slate-700 dark:text-slate-300">{evaluacionParcial.alcance_prueba || '—'}</span></div>
+                    <div><span className="text-xs text-slate-400">Fecha: </span><span className="text-slate-700 dark:text-slate-300">{evaluacionParcial.fecha ? formatDateShort(evaluacionParcial.fecha) : '—'}</span></div>
+                    <div><span className="text-xs text-slate-400">Prueba: </span><span className="text-slate-700 dark:text-slate-300">{evaluacionParcial.alcance_prueba || '—'}</span></div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-2">
                     <label className="flex flex-col gap-0.5">
-                      <span className="text-[10px] text-slate-500 dark:text-slate-400">Fecha</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">Fecha</span>
                       <input type="date" className={inputBase} value={toDateInputValue(evaluacionParcial.fecha)} min={fechaInicio} max={fechaFin} onChange={(e) => handleEvalChange('parcial', 'fecha', e.target.value)} />
                     </label>
                     <label className="flex flex-col gap-0.5">
-                      <span className="text-[10px] text-slate-500 dark:text-slate-400">Prueba (alcance)</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">Prueba (alcance)</span>
                       <input type="text" className={inputBase} value={evaluacionParcial.alcance_prueba ?? ''} onChange={(e) => handleEvalChange('parcial', 'alcance_prueba', e.target.value)} placeholder="Ej: Unidad I a la Unidad IV" />
                     </label>
                   </div>
@@ -521,17 +521,17 @@ export default function CronogramaCatedra({ cursoId, fechaInicio, fechaFin }: Cr
                   </div>
                 ) : readOnly ? (
                   <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div><span className="text-[10px] text-slate-400">Fecha: </span><span className="text-slate-700 dark:text-slate-300">{evaluacionFinal.fecha ? formatDateShort(evaluacionFinal.fecha) : '—'}</span></div>
-                    <div><span className="text-[10px] text-slate-400">Prueba: </span><span className="text-slate-700 dark:text-slate-300">{evaluacionFinal.alcance_prueba || '—'}</span></div>
+                    <div><span className="text-xs text-slate-400">Fecha: </span><span className="text-slate-700 dark:text-slate-300">{evaluacionFinal.fecha ? formatDateShort(evaluacionFinal.fecha) : '—'}</span></div>
+                    <div><span className="text-xs text-slate-400">Prueba: </span><span className="text-slate-700 dark:text-slate-300">{evaluacionFinal.alcance_prueba || '—'}</span></div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-2">
                     <label className="flex flex-col gap-0.5">
-                      <span className="text-[10px] text-slate-500 dark:text-slate-400">Fecha</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">Fecha</span>
                       <input type="date" className={inputBase} value={toDateInputValue(evaluacionFinal.fecha)} min={fechaInicio} max={fechaFin} onChange={(e) => handleEvalChange('final', 'fecha', e.target.value)} />
                     </label>
                     <label className="flex flex-col gap-0.5">
-                      <span className="text-[10px] text-slate-500 dark:text-slate-400">Prueba (alcance)</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">Prueba (alcance)</span>
                       <input type="text" className={inputBase} value={evaluacionFinal.alcance_prueba ?? ''} onChange={(e) => handleEvalChange('final', 'alcance_prueba', e.target.value)} placeholder="Ej: Unidad I a la Unidad VIII" />
                     </label>
                   </div>
