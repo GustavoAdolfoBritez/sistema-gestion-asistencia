@@ -15,7 +15,7 @@ interface LoginResponse {
   usuario?: SessionUser;
 }
 
-const LOGIN_LOGO_URL = '/ung-logo.jpg';
+const LOGIN_LOGO_URL = '/ung-logo.png';
 
 export function LoginPage({ onLoginSuccess, onOpenLegalPage }: LoginPageProps) {
   const [rememberMe, setRememberMe] = useState(false);

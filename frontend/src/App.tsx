@@ -17,7 +17,7 @@ import {
   UNAUTHORIZED_EVENT,
 } from './utils/api';
 
-const INSTITUTION_LOGO_URL = '/ung-logo.jpg';
+const INSTITUTION_LOGO_URL = '/ung-logo.png';
 
 const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })));
 const PanelPage = lazy(() => import('./pages/PanelPage').then((m) => ({ default: m.PanelPage })));
