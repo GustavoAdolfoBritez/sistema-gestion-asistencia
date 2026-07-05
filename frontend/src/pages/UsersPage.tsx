@@ -974,7 +974,22 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                     </p>
                     <p className="text-sm text-[#c9d7ed] max-lg:text-[13px] max-lg:font-medium max-lg:text-slate-800 dark:max-lg:text-[#c9d7ed]">
                       <span className="max-lg:hidden">{sortedUsers.length} registros · Página {pagina} de {totalPaginas}</span>
-                      <span className="lg:hidden">{sortedUsers.length} {sortedUsers.length === 1 ? 'usuario' : 'usuarios'} · Pág. {pagina}/{totalPaginas}</span>
+                      <span className="lg:hidden flex items-center gap-1.5">
+                        <span>{sortedUsers.length} {sortedUsers.length === 1 ? 'usuario' : 'usuarios'} · Pág. {pagina}/{totalPaginas}</span>
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                          onClick={() => setSortOrder(sortOrder === 'default' ? 'az' : sortOrder === 'az' ? 'za' : 'default')}
+                          title={sortOrder === 'default' ? 'Ordenar A-Z' : sortOrder === 'az' ? 'Ordenar Z-A' : 'Sin ordenar'}
+                        >
+                          <span className="material-symbols-outlined text-[15px]">
+                            {sortOrder === 'default' ? 'swap_vert' : sortOrder === 'az' ? 'arrow_upward' : 'arrow_downward'}
+                          </span>
+                          <span className="text-[10px] font-medium">
+                            {sortOrder === 'default' ? 'Más reciente' : sortOrder === 'az' ? 'A-Z' : 'Z-A'}
+                          </span>
+                        </button>
+                      </span>
                     </p>
                   </div>
                   <span className="shrink-0 text-xs text-slate-500 max-lg:hidden">
