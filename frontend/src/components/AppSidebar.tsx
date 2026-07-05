@@ -88,7 +88,7 @@ export function AppSidebar({ sidebarOpen, onLogout, onClose }: AppSidebarProps) 
 
   const txt = isDark ? 'text-[#f0f4f8]' : 'text-slate-900';
   const txtHover = isDark ? 'hover:bg-[#273664] hover:text-[#e8eeff]' : 'hover:bg-slate-100 hover:text-slate-900';
-  const iconTxt = isDark ? 'text-[#9caedc]' : 'text-slate-600';
+  const iconTxt = isDark ? 'text-[#9caedc]' : 'text-slate-400';
   const iconHover = isDark ? 'group-hover:text-[#e4ebff]' : 'group-hover:text-slate-800';
   const divider = isDark ? 'border-[#263663]' : 'border-slate-200';
   const nameClr = isDark ? 'text-[#f0f4f8]' : 'text-slate-800';

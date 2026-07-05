@@ -1664,19 +1664,19 @@ export function AcademicoAdminPage({ onLogout }: Props) {
         <AppSidebar sidebarOpen={sidebarOpen} onLogout={onLogout} onClose={() => setSidebarOpen(false)} />
 
         <main className="app-layout-main">
-          <header className="flex shrink-0 min-w-0 items-center justify-between gap-3 py-2.5 px-4 sm:px-6 bg-white/95 backdrop-blur-md border-b border-slate-200 z-10 dark:bg-[#132a52]/90 dark:border-slate-800">
+          <header className="flex shrink-0 min-h-16 items-center justify-between gap-3 py-2.5 px-4 sm:px-6 bg-white/95 backdrop-blur-md border-b border-slate-200 z-10 dark:bg-[#132a52]/90 dark:border-slate-800">
             <div className="flex items-center gap-3 min-w-0">
               <button
-                className="app-menu-toggle text-slate-600 hover:text-black dark:text-slate-400 dark:hover:text-slate-200"
+                className="app-menu-toggle text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
                 onClick={() => setSidebarOpen(true)}
                 aria-label="Abrir menú"
               >
                 <span className="material-symbols-outlined">menu</span>
               </button>
-              <span className="material-symbols-outlined text-[#6b8bc3]">auto_stories</span>
+              <span className="material-symbols-outlined shrink-0 text-blue-600 dark:text-[#6b8bc3]">auto_stories</span>
               <div className="min-w-0">
-                <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Administración</p>
-                <h1 className="text-xl font-semibold text-black dark:text-[#e7eef9] leading-snug">Períodos y Cursos</h1>
+                <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Gestión académica</p>
+                <h1 className="text-xl font-semibold text-black dark:text-[#e7eef9] leading-snug max-lg:text-base">Períodos y Cursos</h1>
               </div>
             </div>
           </header>

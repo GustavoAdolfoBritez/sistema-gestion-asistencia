@@ -885,13 +885,13 @@ export function ReportesPage({ onLogout }: Props) {
 
         <main className="app-layout-main">
           <header className="flex-shrink-0 min-h-16 bg-[#132a52]/90 backdrop-blur-md border-b border-slate-800 flex flex-wrap items-center gap-3 px-4 sm:px-6 py-3 z-10">
-            <button className="app-menu-toggle text-slate-400" onClick={() => setSidebarOpen(true)} aria-label="Abrir menu">
+            <button className="app-menu-toggle text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200" onClick={() => setSidebarOpen(true)} aria-label="Abrir menu">
               <span className="material-symbols-outlined">menu</span>
             </button>
-            <span className="material-symbols-outlined shrink-0 text-[#6b8bc3]">description</span>
+            <span className="material-symbols-outlined shrink-0 text-blue-600 dark:text-[#6b8bc3]">description</span>
             <div className="min-w-0 flex-1">
-              <p className="text-xs uppercase tracking-widest text-slate-500">Módulo</p>
-              <h1 className="text-xl font-semibold leading-tight truncate">Reportes y cierre mensual</h1>
+              <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Análisis y reportes</p>
+              <h1 className="text-xl font-semibold leading-tight truncate max-lg:text-base">Actas, cierre e inhabilitados</h1>
             </div>
           </header>
 

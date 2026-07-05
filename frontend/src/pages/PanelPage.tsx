@@ -495,16 +495,16 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
           <header className="flex-shrink-0 min-h-16 bg-[#132a52]/90 backdrop-blur-md border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3 z-10">
             <div className="flex min-w-0 items-center gap-3">
               <button
-                className="app-menu-toggle text-slate-400"
+                className="app-menu-toggle text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
                 onClick={() => setSidebarOpen(true)}
                 aria-label="Abrir menu"
               >
                 <span className="material-symbols-outlined">menu</span>
               </button>
-              <span className="material-symbols-outlined shrink-0 text-[#6b8bc3]">dashboard</span>
+              <span className="material-symbols-outlined shrink-0 text-blue-600 dark:text-[#6b8bc3]">dashboard</span>
               <div className="min-w-0">
-                <p className="text-xs uppercase text-slate-400 truncate">{getGreeting()}, {displayName}</p>
-                <h1 className="text-xl font-semibold truncate">Panel de control</h1>
+                <p className="text-xs uppercase text-slate-500 dark:text-slate-400 truncate">{getGreeting()}, {displayName}</p>
+                <h1 className="text-xl font-semibold truncate max-lg:text-base">Panel de control</h1>
               </div>
             </div>
           </header>

@@ -879,8 +879,8 @@ export function AlumnosAdminPage({ onLogout }: Props) {
             </button>
             <span className="material-symbols-outlined shrink-0 text-blue-600 dark:text-[#6b8bc3]">badge</span>
             <div className="min-w-0 flex-1">
-              <p className="text-xs uppercase tracking-widest text-slate-500">Secretaría</p>
-              <h1 className="text-xl font-semibold leading-none text-slate-900 dark:text-[#e7eef9]">Alumnos</h1>
+              <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Secretaría</p>
+              <h1 className="text-xl font-semibold leading-none text-slate-900 dark:text-[#e7eef9] max-lg:text-base max-lg:leading-snug">Alumnos</h1>
             </div>
           </header>
 

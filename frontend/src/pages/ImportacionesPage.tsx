@@ -983,13 +983,13 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
         <main className="app-layout-main">
           <header className="flex-shrink-0 min-h-16 bg-[#132a52]/90 backdrop-blur-md border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3">
             <div className="flex min-w-0 flex-1 items-center gap-3">
-              <button className="app-menu-toggle text-slate-400" onClick={() => setSidebarOpen((prev) => !prev)} aria-label="Abrir menú">
+              <button className="app-menu-toggle text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200" onClick={() => setSidebarOpen((prev) => !prev)} aria-label="Abrir menú">
                 <span className="material-symbols-outlined">menu</span>
               </button>
-              <span className="material-symbols-outlined shrink-0 text-[#6b8bc3]">upload_file</span>
+              <span className="material-symbols-outlined shrink-0 text-blue-600 dark:text-[#6b8bc3]">upload_file</span>
               <div className="min-w-0">
-                <p className="text-xs uppercase text-slate-400">Módulos</p>
-                <h1 className="text-xl font-semibold truncate">Asistente de importación</h1>
+                <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Gestión de datos</p>
+                <h1 className="text-xl font-semibold truncate max-lg:text-base">Asistente de importación</h1>
               </div>
             </div>
           </header>

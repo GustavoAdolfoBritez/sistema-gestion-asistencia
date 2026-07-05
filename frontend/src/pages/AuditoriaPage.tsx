@@ -1009,13 +1009,13 @@ export function AuditoriaPage({ onLogout }: Props) {
             }`}
           >
             <div className="flex min-w-0 items-center gap-3">
-              <button className="app-menu-toggle text-slate-400" onClick={() => setSidebarOpen((prev) => !prev)} aria-label="Abrir menú">
+              <button className="app-menu-toggle text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200" onClick={() => setSidebarOpen((prev) => !prev)} aria-label="Abrir menú">
                 <span className="material-symbols-outlined">menu</span>
               </button>
-              <span className="material-symbols-outlined shrink-0 text-[#6b8bc3]">policy</span>
+              <span className="material-symbols-outlined shrink-0 text-blue-600 dark:text-[#6b8bc3]">policy</span>
               <div className="min-w-0">
                 <p className="text-xs uppercase text-slate-400">Control</p>
-                <h1 className="text-xl font-semibold truncate">Auditoría del sistema</h1>
+                <h1 className="text-xl font-semibold truncate max-lg:text-base">Auditoría del sistema</h1>
               </div>
             </div>
           </header>

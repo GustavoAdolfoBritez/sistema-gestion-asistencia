@@ -860,10 +860,10 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
               </button>
               <span className="material-symbols-outlined shrink-0 text-blue-600 dark:text-[#6b8bc3]">manage_accounts</span>
               <div className="min-w-0 flex flex-col">
-                <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Administración</p>
-                <h2 className="truncate text-lg font-bold tracking-tight text-slate-900 dark:text-[#f0f4f8] max-lg:text-[15px]">
+                <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Control de acceso</p>
+                <h1 className="truncate text-xl font-semibold text-slate-900 dark:text-[#f0f4f8] max-lg:text-base">
                   Usuarios y permisos
-                </h2>
+                </h1>
               </div>
             </div>
           </header>

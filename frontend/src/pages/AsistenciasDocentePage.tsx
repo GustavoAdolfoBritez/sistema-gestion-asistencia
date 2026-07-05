@@ -1744,17 +1744,17 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
             <div className="flex min-w-0 flex-1 items-center gap-3">
               <button
                 type="button"
-                className="app-menu-toggle text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg p-1 transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                className="app-menu-toggle text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
                 onClick={() => setSidebarOpen((open) => !open)}
                 aria-label={sidebarOpen ? 'Cerrar menú' : 'Abrir menú'}
                 aria-expanded={sidebarOpen}
               >
                 <span className="material-symbols-outlined">menu</span>
               </button>
-              <span className="material-symbols-outlined shrink-0 text-[#6b8bc3]">fact_check</span>
+              <span className="material-symbols-outlined shrink-0 text-blue-600 dark:text-[#6b8bc3]">fact_check</span>
               <div className="min-w-0">
-                <p className="text-xs uppercase text-slate-400">Asistencias</p>
-                <h1 className="text-xl font-semibold leading-snug max-lg:whitespace-nowrap">
+                <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Control de asistencia</p>
+                <h1 className="text-xl font-semibold leading-snug max-lg:text-base max-lg:whitespace-nowrap">
                   {subView === 'planilla' || !mostrarModuloJustificaciones ? (
                     'Planilla de Asistencia'
                   ) : (
