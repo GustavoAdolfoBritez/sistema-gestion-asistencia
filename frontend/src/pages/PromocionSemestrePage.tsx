@@ -474,7 +474,9 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                     <AppSelect
                       portal
                       columns={3}
+                      columnsMobile={3}
                       aria-label="Semestre masivo"
+                      listClassName="max-lg:!min-w-0 max-lg:w-full"
                     value={semestreMasivo}
                     disabled={!facultadMasivaId}
                     onChange={(v) => {
@@ -658,7 +660,9 @@ export function PromocionSemestrePage({ onLogout }: Props) {
                     <AppSelect
                       portal
                       columns={3}
+                      columnsMobile={3}
                       aria-label="Semestre"
+                      listClassName="max-lg:!min-w-0 max-lg:w-full"
                     value={semestre}
                     disabled={!carreraId}
                     onChange={(v) => {

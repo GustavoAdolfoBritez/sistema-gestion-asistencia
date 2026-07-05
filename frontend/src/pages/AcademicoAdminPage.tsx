@@ -396,7 +396,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
   const [docentes, setDocentes] = useState<DocenteOption[]>([]);
   const [loading, setLoading] = useState(true);
 
-  type PendingDelete = { title: string; description: string; onConfirm: () => Promise<void> } | null;
+  type PendingDelete = { title: string; description: string; confirmLabel?: string; onConfirm: () => Promise<void> } | null;
   type PendingEdit = { title: string; fields: EditFormField[]; onSave: (v: Record<string, string>) => Promise<void> } | null;
   const [pendingDelete, setPendingDelete] = useState<PendingDelete>(null);
   const [pendingEdit, setPendingEdit] = useState<PendingEdit>(null);
@@ -1809,6 +1809,8 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                                   <AppSelect
                                     aria-label="Semestre del plan"
                                     portal
+                                    columnsMobile={3}
+                                    listClassName="max-lg:!min-w-0 max-lg:w-full"
                                     value={semElegido ? String(semActivo) : ''}
                                     onChange={(v) => {
                                       if (v === '') return;
@@ -1975,6 +1977,8 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                     <AppSelect
                       aria-label="Semestre para filtrar materias"
                       columns={5}
+                      columnsMobile={3}
+                      listClassName="max-lg:!min-w-0 max-lg:w-full"
                       value={moduloFiltroSemestre}
                       disabled={!contextoAcademicoListo}
                       onChange={(v) => {
@@ -2246,6 +2250,8 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                     <AppSelect
                       aria-label="Semestre del curso"
                       columns={5}
+                      columnsMobile={3}
+                      listClassName="max-lg:!min-w-0 max-lg:w-full"
                       value={cursoFiltroSemestre}
                       disabled={!contextoAcademicoListo || !carreraSeleccionadaId}
                       onChange={(v) => {
@@ -2724,6 +2730,8 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                           <div className="flex items-center gap-2 max-lg:flex-col max-lg:items-stretch">
                             <AppSelect
                               aria-label="Seleccionar semestre importado para asignar al curso"
+                              columnsMobile={3}
+                              listClassName="max-lg:!min-w-0 max-lg:w-full"
                               className="min-w-0 flex-1 max-lg:w-full"
                               value={semestreSeleccionado}
                               disabled={sinPlanillasCompatibles}
@@ -2758,9 +2766,10 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                             <button
                               type="button"
                               onClick={() => {
-                                setPendingDelete({
+                                 setPendingDelete({
                                   title: 'Limpiar planilla',
-                                  description: `¿Eliminar todos los alumnos de esta planilla?`,
+                                  description: 'Se desmatricularán todos los alumnos de este curso.',
+                                  confirmLabel: 'Limpiar',
                                   onConfirm: async () => {
                                     setDialogLoading(true);
                                     try {
@@ -2861,7 +2870,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                                 </span>
                                 <span className="capitalize">
                                   <span className="text-slate-500 dark:text-slate-500">Estado </span>
-                                  {m.estado_academico}
+                                  {m.estado_academico.replace(/_/g, ' ')}
                                 </span>
                               </div>
                               <div className="flex justify-end">
@@ -2914,7 +2923,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
                                   <td className="px-3 py-3 text-xs tabular-nums text-slate-500">{idx + 1}</td>
                                   <td className="px-3 py-3 font-medium text-black dark:text-[#e7eef9]">{m.nombre_completo}</td>
                                   <td className="px-3 py-3 tabular-nums text-slate-600 dark:text-slate-400">{m.numero_documento}</td>
-                                  <td className="px-3 py-3 capitalize text-slate-600 dark:text-slate-400">{m.estado_academico}</td>
+                                  <td className="px-3 py-3 capitalize text-slate-600 dark:text-slate-400">{m.estado_academico.replace(/_/g, ' ')}</td>
                                   <td className="px-3 py-3 text-right">
                                     <button
                                       type="button"
@@ -2965,7 +2974,7 @@ export function AcademicoAdminPage({ onLogout }: Props) {
         onConfirm={() => { if (pendingDelete) void pendingDelete.onConfirm(); }}
         title={pendingDelete?.title ?? ''}
         description={pendingDelete?.description}
-        confirmLabel="Eliminar"
+        confirmLabel={pendingDelete?.confirmLabel ?? 'Eliminar'}
         variant="danger"
         loading={dialogLoading}
       />

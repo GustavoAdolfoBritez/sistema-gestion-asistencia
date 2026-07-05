@@ -2021,6 +2021,19 @@ export async function ejecutarPromocionSemestreMasivaFacultad(params: {
 }
 
 export async function limpiarMatriculasCurso(cursoId: number): Promise<{ eliminadas: number }> {
+    const { rows: [{ count }] } = await pool.query<{ count: string }>(
+        `SELECT COUNT(*) as count
+         FROM asistencias a
+         INNER JOIN matriculas m ON m.id = a.matricula_id
+         WHERE m.curso_id = $1`,
+        [cursoId]
+    );
+    const totalAsistencias = parseInt(count, 10);
+    if (totalAsistencias > 0) {
+        throw new Error(
+            'Este curso ya tiene asistencias registradas. No se puede vaciar la planilla.'
+        );
+    }
     const { rowCount } = await pool.query(
         'DELETE FROM matriculas WHERE curso_id = $1',
         [cursoId]

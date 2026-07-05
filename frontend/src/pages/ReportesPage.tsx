@@ -861,6 +861,8 @@ export function ReportesPage({ onLogout }: Props) {
       <AppSelect
         title="Seleccionar semestre"
         aria-label="Semestre"
+        columnsMobile={3}
+        listClassName="max-lg:!min-w-0 max-lg:w-full"
         value={semestreSeleccionado}
         onChange={setSemestreSeleccionado}
         placeholder="Semestre"

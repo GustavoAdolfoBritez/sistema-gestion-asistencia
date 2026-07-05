@@ -874,10 +874,10 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                 panelDetalleAbierto ? 'max-lg:hidden' : ''
               }`}
             >
-              <div className="shrink-0 space-y-4 p-4 max-lg:space-y-2.5 max-lg:p-3 sm:p-6 sm:space-y-6">
-              <div className="min-w-0 space-y-4 max-lg:space-y-2.5">
-                <div className="max-lg:rounded-2xl max-lg:border max-lg:border-slate-200/90 max-lg:bg-white max-lg:p-3 max-lg:shadow-sm dark:max-lg:border-slate-700/80 dark:max-lg:bg-[#0e1e38]">
-                <div className="flex flex-wrap items-center justify-between gap-4 max-lg:flex-col max-lg:gap-3">
+              <div className="shrink-0 space-y-4 p-4 max-lg:space-y-2 max-lg:p-2 sm:p-6 sm:space-y-6">
+              <div className="min-w-0 space-y-4 max-lg:space-y-2">
+                <div className="max-lg:rounded-2xl max-lg:border max-lg:border-slate-200/90 max-lg:bg-white max-lg:p-2 max-lg:shadow-sm dark:max-lg:border-slate-700/80 dark:max-lg:bg-[#0e1e38]">
+                <div className="flex flex-wrap items-center justify-between gap-4 max-lg:flex-col max-lg:gap-2">
                   <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 max-lg:w-full max-lg:flex-col max-lg:items-stretch">
                     <div className="relative min-w-0 w-full max-w-md flex-1 max-lg:max-w-none max-lg:flex-none">
                       <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[20px] text-slate-400 max-lg:left-2.5 max-lg:text-[18px]">
@@ -886,7 +886,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                       <input
                         type="search"
                         aria-label="Buscar usuarios"
-                        className={`${USUARIO_INP} rounded-xl py-2.5 pl-10 pr-4 max-lg:min-h-10 max-lg:rounded-lg max-lg:py-2 max-lg:pl-9 max-lg:text-sm`}
+                        className={`${USUARIO_INP} rounded-xl py-2.5 pl-10 pr-4 max-lg:min-h-9 max-lg:rounded-lg max-lg:py-2 max-lg:pl-9 max-lg:text-sm`}
                         placeholder="Nombre, correo o rol…"
                         value={searchTerm}
                         onChange={(event) => setSearchTerm(event.target.value)}
@@ -896,7 +896,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                       <button
                         type="button"
                         onClick={() => setFiltersOpen((prev) => !prev)}
-                        className={`btn-modern btn-modern-ghost btn-modern-sm max-lg:min-h-10 max-lg:flex-1 max-lg:rounded-lg max-lg:py-2 max-lg:text-xs ${
+                        className={`btn-modern btn-modern-ghost btn-modern-sm max-lg:min-h-9 max-lg:flex-1 max-lg:rounded-lg max-lg:py-1.5 max-lg:text-xs ${
                           filtersOpen ? 'border-primary/40 bg-primary/5 dark:bg-primary/10' : ''
                         }`}
                       >
@@ -905,7 +905,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                       </button>
                       <button
                         type="button"
-                        className="btn-modern btn-modern-ghost btn-modern-sm max-lg:min-h-10 max-lg:flex-1 max-lg:rounded-lg max-lg:py-2 max-lg:text-xs"
+                        className="btn-modern btn-modern-ghost btn-modern-sm max-lg:min-h-9 max-lg:flex-1 max-lg:rounded-lg max-lg:py-1.5 max-lg:text-xs"
                         disabled={exportLoading}
                         onClick={() => {
                           void handleExport();
@@ -924,7 +924,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                       setIsEditing(false);
                       navigate(appPath('usuarios', { usersAction: 'create' }));
                     }}
-                    className="btn-modern btn-modern-primary btn-modern-sm shrink-0 max-lg:min-h-10 max-lg:w-full max-lg:rounded-lg max-lg:py-2.5 max-lg:text-sm"
+                    className="btn-modern btn-modern-primary btn-modern-sm shrink-0 max-lg:min-h-9 max-lg:w-full max-lg:rounded-lg max-lg:py-2 max-lg:text-sm"
                   >
                     <span className="material-symbols-outlined text-[18px]">person_add</span>
                     Nuevo usuario
@@ -932,14 +932,14 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                 </div>
 
                 {filtersOpen ? (
-                  <div className="grid grid-cols-1 gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-surface-dark max-lg:mt-2.5 max-lg:gap-3 max-lg:border-slate-200 max-lg:bg-slate-50/80 max-lg:p-3 max-lg:shadow-none dark:max-lg:border-slate-700 dark:max-lg:bg-[#0b2147]/40 lg:mt-5 lg:flex lg:flex-wrap lg:items-end lg:gap-x-6 lg:gap-y-3 lg:p-4">
+                  <div className="grid grid-cols-1 gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-surface-dark max-lg:mt-2 max-lg:gap-2 max-lg:border-slate-200 max-lg:bg-slate-50/80 max-lg:p-2 max-lg:shadow-none max-lg:grid-cols-2 dark:max-lg:border-slate-700 dark:max-lg:bg-[#0b2147]/40 lg:mt-5 lg:flex lg:flex-wrap lg:items-end lg:gap-x-6 lg:gap-y-3 lg:p-4">
                     <label className={`${USUARIO_LABEL} lg:w-64 lg:shrink-0`}>
                       <span>Rol</span>
                       <AppSelect
                         className="lg:max-w-[16rem]"
                         value={roleFilter}
                         onChange={setRoleFilter}
-                        clearOption={{ value: 'all', label: 'Todos los roles' }}
+                        clearOption={{ value: 'all', label: 'Todos' }}
                         options={ROLE_OPTIONS.map((role) => ({
                           value: role.value,
                           label: role.label,
@@ -953,7 +953,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                         className="lg:max-w-[13rem]"
                         value={statusFilter}
                         onChange={(v) => setStatusFilter(v as 'all' | EstadoUsuario)}
-                        clearOption={{ value: 'all', label: 'Todos los estados' }}
+                        clearOption={{ value: 'all', label: 'Todos' }}
                         options={ESTADO_USUARIO_OPTIONS}
                         triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black text-sm dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9] lg:max-w-[13rem]"
                       />
@@ -964,9 +964,9 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
               </div>
               </div>
 
-              <div className="flex min-h-0 min-w-0 flex-1 flex-col px-4 pb-4 max-lg:px-3 max-lg:pb-3 sm:px-6 sm:pb-6">
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col px-4 pb-4 max-lg:px-2 max-lg:pb-2 sm:px-6 sm:pb-6">
               <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none dark:border-slate-800 dark:bg-surface-dark dark:max-lg:bg-transparent dark:shadow-none">
-                <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-800 max-lg:flex-col max-lg:items-stretch max-lg:gap-1 max-lg:border-0 max-lg:px-0 max-lg:py-0 max-lg:pb-2">
+                <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-800 max-lg:flex-col max-lg:items-stretch max-lg:gap-0.5 max-lg:border-0 max-lg:px-0 max-lg:py-0 max-lg:pb-1.5">
                   <div className="min-w-0">
                     <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 max-lg:text-[10px] max-lg:tracking-wider">
                       <span className="max-lg:hidden">Directorio de usuarios</span>
@@ -986,7 +986,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                   className="scroll-region app-scroll-content flex min-h-0 flex-1 flex-col pb-4"
                 >
 
-                  <ul className="space-y-2.5 p-0 max-lg:pt-1 lg:hidden">
+                  <ul className="space-y-2 p-0 max-lg:pt-0.5 lg:hidden">
                     {loading ? (
                       Array.from({ length: 4 }).map((_, i) => (
                         <li key={i} className="overflow-hidden rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-[#0e1e38]">
@@ -1020,15 +1020,15 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                               <div className="overflow-hidden rounded-t-xl">
                                 <button
                                   type="button"
-                                  className="flex w-full items-center gap-3 p-3 text-left active:bg-slate-50 dark:active:bg-slate-800/40"
+                                  className="flex w-full items-center gap-2 p-2 text-left active:bg-slate-50 dark:active:bg-slate-800/40"
                                   onClick={() => seleccionarUsuario(user.id)}
                                 >
                                   <UserAvatar nombres={user.nombres} apellidos={user.apellidos} size="sm" />
                                   <div className="min-w-0 flex-1">
-                                    <p className="break-words text-[15px] font-semibold leading-snug text-slate-900 dark:text-[#f0f4f8]">
+                                    <p className="break-words text-sm font-semibold leading-snug text-slate-900 dark:text-[#f0f4f8]">
                                       {formatName(user)}
                                     </p>
-                                    <p className="mt-0.5 truncate text-xs text-slate-500">{user.email}</p>
+                                    <p className="mt-0.5 truncate text-[11px] text-slate-500">{user.email}</p>
                                   </div>
                                   <span
                                     className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize ${claseEstadoUsuarioMovil(user.estado)}`}
@@ -1052,7 +1052,7 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                               </div>
 
                               <div
-                                className="flex items-center gap-2 border-t border-slate-100 bg-slate-50/50 px-2 py-2 rounded-b-xl dark:border-slate-800/80 dark:bg-[#0a1628]/50"
+                                className="flex items-center gap-2 border-t border-slate-100 bg-slate-50/50 px-1.5 py-1.5 rounded-b-xl dark:border-slate-800/80 dark:bg-[#0a1628]/50"
                                 onClick={stopRowSelection}
                                 onMouseDown={stopRowSelection}
                                 onPointerDown={stopRowSelection}
@@ -1754,10 +1754,37 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                         </button>
                       </div>
                     </UsuarioFormCardMovil>
+
+                    <div className="lg:hidden space-y-2 pt-2 pb-1">
+                      {isEditing ? (
+                        <div className="flex gap-2">
+                          <button type="button" onClick={handleCancelEditing}
+                            className="btn-modern btn-modern-ghost btn-modern-sm flex-1">
+                            Cancelar
+                          </button>
+                          <button type="button" onClick={handleSaveChanges} disabled={saving}
+                            className="btn-modern btn-modern-primary btn-modern-sm flex-[1.35]">
+                            {saving ? 'Guardando…' : 'Guardar'}
+                          </button>
+                        </div>
+                      ) : (
+                        <button type="button" onClick={handleStartEditing}
+                          className="btn-modern btn-modern-primary btn-modern-sm w-full">
+                          <span className="material-symbols-outlined text-[18px]">edit</span>
+                          Editar datos
+                        </button>
+                      )}
+                      {puedeEliminarUsuario ? (
+                        <button type="button" onClick={handleDeleteUser} disabled={deletingUser}
+                          className="btn-modern btn-modern-danger btn-modern-sm w-full disabled:opacity-50">
+                          {deletingUser ? 'Eliminando usuario…' : 'Eliminar usuario'}
+                        </button>
+                      ) : null}
+                    </div>
               </div>
 
                 <div
-                  className={`app-mobile-bottom-bar shrink-0 p-4 max-lg:sticky max-lg:bottom-0 max-lg:z-10 max-lg:px-3 max-lg:py-3 sm:p-6 ${USUARIO_DETAIL_FOOTER}`}
+                  className={`shrink-0 p-4 max-lg:hidden sm:p-6 ${USUARIO_DETAIL_FOOTER}`}
                 >
                   {isEditing ? (
                     <div className="btn-mobile-stack flex gap-2 max-lg:items-stretch lg:grid lg:grid-cols-2 lg:gap-3">
@@ -1787,7 +1814,6 @@ export function UsersPage({ onLogout, requestedAction = 'list' }: UsersPageProps
                         <span className="material-symbols-outlined text-[18px]">edit</span>
                         Editar datos
                       </button>
-                      <BotonVolverListadoMovil onClick={cerrarPanelDetalle} className="lg:hidden" />
                       <button
                         type="button"
                         onClick={cerrarPanelDetalle}

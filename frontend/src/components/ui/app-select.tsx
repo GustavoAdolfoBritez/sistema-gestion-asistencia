@@ -146,7 +146,7 @@ export function AppSelect({
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  const effectiveColumns = columns != null ? (isMobile && columnsMobile != null ? columnsMobile : columns) : undefined;
+  const effectiveColumns = columns != null ? (isMobile && columnsMobile != null ? columnsMobile : columns) : (isMobile && columnsMobile != null ? columnsMobile : undefined);
 
   const selectedLabel = useMemo(
     () => labelForValue(options, value, allowEmpty, emptyLabel, clearOption),

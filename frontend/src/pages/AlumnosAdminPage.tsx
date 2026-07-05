@@ -1001,6 +1001,8 @@ export function AlumnosAdminPage({ onLogout }: Props) {
                       Semestre curricular
                     </span>
                     <AppSelect
+                      columnsMobile={3}
+                      listClassName="max-lg:!min-w-0 max-lg:w-full"
                       value={listaSemestreCurricular}
                       onChange={setListaSemestreCurricular}
                       allowEmpty

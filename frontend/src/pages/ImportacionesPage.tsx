@@ -1109,6 +1109,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                       <span className="text-[#9fb3d4] font-medium">Semestre</span>
                       <AppSelect
                         columns={5}
+                        columnsMobile={3}
                         value={semestreSeleccionado}
                         disabled={!carreraSeleccionadaId}
                         onChange={setSemestreSeleccionado}
@@ -1118,6 +1119,7 @@ export function ImportacionesPage({ onLogout }: ImportacionesPageProps) {
                           label: `${n}° Semestre`,
                         }))}
                         triggerClassName="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-black focus:border-primary focus:outline-none text-sm disabled:opacity-60 disabled:cursor-not-allowed dark:bg-[#0b2147] dark:hover:bg-[#091c3d] dark:border-slate-700 dark:text-[#e7eef9]"
+                        listClassName="max-lg:!min-w-0 max-lg:w-full"
                       />
                     </label>
                     <label className="flex min-w-0 flex-col gap-2 text-sm">
