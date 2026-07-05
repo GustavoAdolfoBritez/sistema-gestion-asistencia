@@ -1530,3 +1530,21 @@ export async function listarAlumnosCurso(cursoId: number, contexto: GestionConte
 
     return rows;
 }
+
+export async function obtenerEtiquetaCurso(cursoId: number): Promise<string> {
+    const { rows } = await pool.query<{ materia: string; docente: string }>(
+        `SELECT m.nombre AS materia,
+                COALESCE(u.nombres || ' ' || u.apellidos, 'Docente sin asignar') AS docente
+         FROM cursos c
+         JOIN modulos_academicos mo ON mo.id = c.modulo_id
+         JOIN materias m ON m.id = mo.materia_id
+         LEFT JOIN docentes d ON d.id = c.docente_id
+         LEFT JOIN usuarios u ON u.id = d.usuario_id
+         WHERE c.id = $1`,
+        [cursoId]
+    );
+    if (rows.length === 0) {
+        return `Curso #${cursoId}`;
+    }
+    return `${rows[0].materia} · ${rows[0].docente}`;
+}

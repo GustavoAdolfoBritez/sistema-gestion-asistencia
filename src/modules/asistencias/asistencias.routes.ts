@@ -22,7 +22,8 @@ import {
     obtenerCronogramaParaDocente,
     firmarSemanaCronograma,
     firmarEvaluacionCronograma,
-    firmarTodoCronograma
+    firmarTodoCronograma,
+    obtenerEtiquetaCurso
 } from './asistencias.service';
 import { autenticarConPoliticaAlcance, autorizarRoles } from '../../middlewares/auth.middleware';
 import {
@@ -196,11 +197,13 @@ router.post(
                 contexto
             );
 
+            const etiqueta = await obtenerEtiquetaCurso(Number(cursoId));
             await registrarEventoAuditoriaSegura({
                 modulo: 'asistencias',
                 accion: 'crear_sesion',
                 recursoTipo: 'sesion_clase',
                 recursoId: sesion.id,
+                recursoResumen: `Sesión de clase · ${etiqueta} · ${fecha}`,
                 detalle: { cursoId: Number(cursoId), fecha: String(fecha) },
                 despues: sesion,
                 contexto: contextoAuditoria
@@ -231,11 +234,13 @@ router.post(
             const contexto = obtenerContexto(req);
             const { sesion, matriculas } = await cerrarSesionDocente(sesionId, contexto);
 
+            const etiquetaCerrar = await obtenerEtiquetaCurso(sesion.curso_id);
             await registrarEventoAuditoriaSegura({
                 modulo: 'asistencias',
                 accion: 'cerrar_sesion',
                 recursoTipo: 'sesion_clase',
                 recursoId: sesionId,
+                recursoResumen: `Cierre de sesión · ${etiquetaCerrar} · ${String(sesion.fecha).slice(0, 10)}`,
                 detalle: { cursoId: sesion.curso_id },
                 despues: sesion,
                 contexto: contextoAuditoria
@@ -266,11 +271,13 @@ router.post(
             const contexto = obtenerContexto(req);
             const resultado = await anularSesionDocente(sesionId, contexto);
 
+            const etiquetaAnular = await obtenerEtiquetaCurso(resultado.cursoId);
             await registrarEventoAuditoriaSegura({
                 modulo: 'asistencias',
                 accion: 'anular_sesion',
                 recursoTipo: 'sesion_clase',
                 recursoId: sesionId,
+                recursoResumen: `Anulación de sesión · ${etiquetaAnular}`,
                 detalle: { cursoId: resultado.cursoId },
                 despues: resultado,
                 contexto: contextoAuditoria

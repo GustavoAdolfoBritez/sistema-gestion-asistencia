@@ -349,24 +349,32 @@ async function construirDescripcionesRecursos(eventos: EventoAuditoria[]): Promi
     // Sesiones de clase
     const sesionClaseIds = toIntArray(porTipo.sesion_clase);
     if (sesionClaseIds.length) {
-        const { rows } = await pool.query<{ id: number; fecha: string; curso_id: number; materia: string; docente: string }>(
+        const { rows } = await pool.query<{ id: number; fecha: string; curso_id: number; materia: string | null; docente: string | null }>(
             `SELECT sc.id, sc.fecha::text AS fecha, sc.curso_id, m.nombre AS materia,
-                    u.nombres || ' ' || u.apellidos AS docente
+                    COALESCE(u.nombres || ' ' || u.apellidos, 'Docente desconocido') AS docente
              FROM sesiones_clase sc
-             JOIN cursos c ON c.id = sc.curso_id
-             JOIN modulos_academicos mo ON mo.id = c.modulo_id
-             JOIN materias m ON m.id = mo.materia_id
-             JOIN docentes d ON d.id = c.docente_id
-             JOIN usuarios u ON u.id = d.usuario_id
+             LEFT JOIN cursos c ON c.id = sc.curso_id
+             LEFT JOIN modulos_academicos mo ON mo.id = c.modulo_id
+             LEFT JOIN materias m ON m.id = mo.materia_id
+             LEFT JOIN docentes d ON d.id = c.docente_id
+             LEFT JOIN usuarios u ON u.id = d.usuario_id
              WHERE sc.id = ANY($1::int[])`,
             [sesionClaseIds]
         );
         for (const row of rows) {
             const fechaTxt = String(row.fecha).slice(0, 10);
+            const materiaTxt = row.materia ?? `Curso #${row.curso_id}`;
             map.set(
                 buildRecursoKey('sesion_clase', String(row.id)),
-                `Sesión clase #${row.id}: ${row.materia} · ${row.docente} · ${fechaTxt}`
+                `Sesión clase #${row.id}: ${materiaTxt} · ${row.docente} · ${fechaTxt}`
             );
+        }
+        // Fallback para sesiones que fueron eliminadas
+        for (const id of sesionClaseIds) {
+            const key = buildRecursoKey('sesion_clase', String(id));
+            if (!map.has(key)) {
+                map.set(key, `Sesión de clase #${id}`);
+            }
         }
     }
 
