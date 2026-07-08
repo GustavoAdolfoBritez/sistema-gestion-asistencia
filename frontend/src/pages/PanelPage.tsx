@@ -917,7 +917,7 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                 Visualización analítica
                 {promedioAsistencia > 0 ? (
@@ -941,8 +941,8 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
                   isDark={isDark}
                 />
                 {alcanceVisualPanel !== 'carrera' ? (
-                  <div className="2xl:col-span-2">
-                    <PanelCarreraInhabilitadosChart
+              <div className="min-w-0 2xl:col-span-2">
+                <PanelCarreraInhabilitadosChart
                       statsLoading={statsLoading}
                       data={carreraInhabilitadosData}
                       chartKey={`${panelChartsAnimKey}-carreras`}
@@ -950,8 +950,8 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
                     />
                   </div>
                 ) : null}
-                <div className="2xl:col-span-2">
-                  <PanelAsistenciaAlertasChart
+              <div className="min-w-0 2xl:col-span-2">
+                <PanelAsistenciaAlertasChart
                     statsLoading={statsLoading}
                     data={asistenciaAlertasMesData}
                     chartKey={`${panelChartsAnimKey}-composed`}
