@@ -1000,6 +1000,8 @@
   .scroll-region {
     @apply min-h-0 min-w-0 max-w-full overflow-auto overscroll-auto;
     -webkit-overflow-scrolling: touch;
+    will-change: scroll-position;
+    transform: translateZ(0);
   }
 
   /**
