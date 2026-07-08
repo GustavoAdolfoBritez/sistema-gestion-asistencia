@@ -10,6 +10,14 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        chunkFileNames: 'assets/[hash].js',
+        entryFileNames: 'assets/[hash].js',
+      },
+    },
+  },
   server: {
     /** Accesible desde el celular en la misma Wi‑Fi (http://TU_IP:5173). */
     host: true,

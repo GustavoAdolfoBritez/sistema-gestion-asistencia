@@ -137,7 +137,7 @@ interface RefreshTokenResponse {
  */
 let tokenRefreshPromise: Promise<string | null> | null = null;
 
-function obtenerTokenSesion(): string | null {
+export function obtenerTokenSesion(): string | null {
   return TOKEN_KEYS.map((key) => localStorage.getItem(key)).find(Boolean) ?? null;
 }
 

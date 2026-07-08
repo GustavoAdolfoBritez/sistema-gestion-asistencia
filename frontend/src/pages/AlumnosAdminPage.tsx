@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useMisAlcances } from '../hooks/useMisAlcances';
 
 import { useScopeForm } from '../hooks/useScopeForm';
-import { abrirDocumento, apiFetch, generarYAbrirPdf } from '../utils/api';
+import { abrirDocumento, apiFetch, generarYAbrirPdf, obtenerTokenSesion } from '../utils/api';
 import { readStoredUser } from '../utils/session-user';
 import { esGestionUnicaCarreraAlumnosListado, puedeAprobarJustificaciones, puedeEditarAlumno } from '../utils/rbac';
 import {
@@ -460,6 +460,7 @@ export function AlumnosAdminPage({ onLogout }: Props) {
 
   useEffect(() => {
     if (ocultarFiltrosFacultadCarrera) return;
+    if (!obtenerTokenSesion()) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -478,6 +479,7 @@ export function AlumnosAdminPage({ onLogout }: Props) {
 
   useEffect(() => {
     if (ocultarFiltrosFacultadCarrera) return;
+    if (!obtenerTokenSesion()) return;
     let cancelled = false;
     void (async () => {
       try {
