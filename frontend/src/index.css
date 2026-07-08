@@ -1587,6 +1587,7 @@
 html {
   height: 100%;
   min-height: 100dvh;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior-y: auto;
   background-color: #0d1f3c;
@@ -1596,8 +1597,10 @@ body {
   height: 100%;
   min-height: 100dvh;
   max-width: 100%;
+  overflow-x: hidden;
   overflow-y: auto;
-  overscroll-behavior-y: auto;
+  overscroll-behavior-y: none;
+  touch-action: manipulation;
   margin: 0;
   @apply bg-background-light dark:bg-background-dark text-slate-900 dark:text-[#f0f4f8] font-display;
 }
