@@ -818,6 +818,7 @@
    */
   .panel-chart-canvas-wrap {
     min-width: 0;
+    min-height: 240px;
     width: 100%;
     overflow-x: auto;
     overflow-y: visible;
