@@ -28,6 +28,16 @@ export function LoginPage({ onLoginSuccess, onOpenLegalPage }: LoginPageProps) {
   const [exitingData, setExitingData] = useState<LoginResponse['usuario'] | null>(null);
   const currentYear = new Date().getFullYear();
 
+  // Failsafe: si prefers-reduced-motion elimina la transición CSS,
+  // onTransitionEnd nunca se dispara. Este timer rescata al usuario.
+  useEffect(() => {
+    if (!isExiting) return;
+    const data = exitingData;
+    const cb = onLoginSuccess;
+    const timer = setTimeout(() => cb?.(data), 400);
+    return () => clearTimeout(timer);
+  }, [isExiting]);
+
   useEffect(() => {
     const storedIdentifier = localStorage.getItem('rememberedIdentifier');
     if (storedIdentifier) {
