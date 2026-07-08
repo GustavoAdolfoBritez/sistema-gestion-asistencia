@@ -489,7 +489,7 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
   }, []);
 
   return (
-    <div className="system-bg app-shell-viewport text-[#e7eef9] min-h-screen h-screen overflow-clip">
+    <div className="system-bg app-shell-viewport text-[#e7eef9] min-h-dvh h-dvh overflow-clip">
       <div className="app-layout-row">
         {sidebarOpen ? (
           <div className="app-sidebar-scrim" onClick={() => setSidebarOpen(false)} aria-hidden="true" />

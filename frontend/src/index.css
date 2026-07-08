@@ -1390,8 +1390,8 @@
     }
 
     .app-shell-viewport {
-      height: 100svh;
-      max-height: 100svh;
+      height: 100dvh;
+      max-height: 100dvh;
     }
 
     .app-scroll-content {
@@ -1524,7 +1524,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 .app-shell-viewport {
-  height: 100svh;
+  height: 100dvh;
 }
 
 .app-layout-row {
