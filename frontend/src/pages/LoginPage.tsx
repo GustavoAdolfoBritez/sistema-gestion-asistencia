@@ -84,7 +84,11 @@ export function LoginPage({ onLoginSuccess, onOpenLegalPage }: LoginPageProps) {
   return (
     <div
       className={`login-shell-bg w-full max-w-full transition-opacity duration-300 ${isExiting ? 'opacity-0 pointer-events-none' : ''}`}
-      onTransitionEnd={() => { if (isExiting) onLoginSuccess?.(exitingData); }}
+      onTransitionEnd={(e) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.propertyName !== 'opacity') return;
+        if (isExiting) onLoginSuccess?.(exitingData);
+      }}
     >
       <div className="flex min-h-[100dvh] w-full min-w-0 flex-col items-center justify-center px-4 py-6 max-md:justify-center max-md:px-4 max-md:py-8 max-md:pb-[max(2rem,env(safe-area-inset-bottom))] max-md:pt-[max(2rem,env(safe-area-inset-top))] sm:px-6 sm:py-8 md:px-8">
         <main className="w-full min-w-0 max-w-xl overflow-hidden rounded-2xl bg-slate-100 shadow-2xl max-lg:max-w-md">
