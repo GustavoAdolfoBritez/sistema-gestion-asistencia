@@ -482,6 +482,12 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
     setShowJustificaciones(true);
   }, []);
 
+  const scrollRegionRef = useCallback((node: HTMLDivElement | null) => {
+    if (node !== null) {
+      node.scrollTop = 0;
+    }
+  }, []);
+
   return (
     <div className="system-bg app-shell-viewport text-[#e7eef9] min-h-screen h-screen overflow-hidden">
       <div className="app-layout-row">
@@ -509,7 +515,7 @@ export function PanelPage({ onLogout, onNavigate: _onNavigate }: Props) {
             </div>
           </header>
 
-          <section className="scroll-region app-scroll-content flex-1 min-h-0 min-w-0 space-y-5 p-4 sm:p-6 max-lg:space-y-4 max-lg:p-3">
+          <section ref={scrollRegionRef} className="scroll-region app-scroll-content flex-1 min-h-0 min-w-0 space-y-5 p-4 sm:p-6 max-lg:space-y-4 max-lg:p-3">
             <div>
               <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 max-lg:mb-1.5">
                 Resumen general

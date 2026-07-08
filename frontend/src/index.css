@@ -2465,7 +2465,6 @@ html:not(.dark) .text-\[\#e7eef9\] { color: #1e293b !important; }
   background-repeat: no-repeat;
   height: 100%;
   overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
 }
 html:not(.dark) .login-shell-bg {
   background-color: #0e2a47 !important;

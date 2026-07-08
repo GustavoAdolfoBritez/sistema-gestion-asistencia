@@ -1,5 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
-import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import './index.css';
 import { canAccessView, getHomeViewForUser } from './utils/rbac';
 import type { AppView, SessionUser } from './utils/rbac';
@@ -117,18 +117,7 @@ function LegalRoute({ page }: { page: 'terminos' | 'privacidad' | 'soporte' }) {
 export default function App() {
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(() => readStoredUser());
   const navigate = useNavigate();
-  const location = useLocation();
-
   useVisualViewportBottomInset();
-
-  useEffect(() => {
-    const el = document.querySelector('.app-scroll-content, .scroll-region');
-    if (el) {
-      el.scrollTop = 0;
-    } else {
-      window.scrollTo(0, 0);
-    }
-  }, [location.pathname]);
 
   const userIdRaw = currentUser?.id ?? currentUser?.usuario ?? currentUser?.email;
   const userId =

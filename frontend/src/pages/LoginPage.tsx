@@ -66,7 +66,18 @@ export function LoginPage({ onLoginSuccess, onOpenLegalPage }: LoginPageProps) {
         } else {
           localStorage.removeItem('rememberedIdentifier');
         }
-        onLoginSuccess?.(data.usuario);
+        if (document.activeElement && document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+        if (window.visualViewport) {
+          const onResize = () => {
+            window.visualViewport!.removeEventListener('resize', onResize);
+            onLoginSuccess?.(data.usuario);
+          };
+          window.visualViewport.addEventListener('resize', onResize, { once: true });
+        } else {
+          onLoginSuccess?.(data.usuario);
+        }
       })
       .catch((err: unknown) => {
         const mensaje = err instanceof Error ? err.message : 'No se pudo iniciar sesión';
