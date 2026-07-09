@@ -409,6 +409,42 @@ function formatearRecurso(evento: EventoAuditoria): string {
   return `${evento.recurso_tipo ?? '-'} ${recursoId}`.trim();
 }
 
+const MAPA_TIPO_RECURSO: Record<string, { icon: string; color: string }> = {
+  usuario: { icon: 'person', color: 'text-blue-500' },
+  sesion: { icon: 'key', color: 'text-slate-500' },
+  sesion_clase: { icon: 'school', color: 'text-emerald-600' },
+  modulo_academico: { icon: 'book_2', color: 'text-amber-600' },
+  modulo: { icon: 'book_2', color: 'text-amber-600' },
+  curso: { icon: 'group', color: 'text-violet-600' },
+  materia: { icon: 'menu_book', color: 'text-indigo-600' },
+  plan: { icon: 'description', color: 'text-teal-600' },
+  alumno: { icon: 'badge', color: 'text-pink-600' },
+  matricula: { icon: 'assignment_ind', color: 'text-orange-500' },
+  facultad: { icon: 'account_balance', color: 'text-cyan-600' },
+  carrera: { icon: 'account_tree', color: 'text-sky-600' },
+  justificacion: { icon: 'description', color: 'text-amber-600' },
+  lote_importacion: { icon: 'file_upload', color: 'text-orange-500' },
+  lote_alumnos: { icon: 'groups', color: 'text-orange-500' },
+  alerta_asistencia: { icon: 'warning', color: 'text-red-500' },
+  acta_generada: { icon: 'assignment', color: 'text-blue-600' },
+  estadistica_ausentismo: { icon: 'trending_up', color: 'text-rose-500' },
+  curso_cronograma_semanas: { icon: 'calendar_month', color: 'text-emerald-600' },
+  curso_evaluaciones: { icon: 'quiz', color: 'text-amber-600' },
+};
+
+function RecursoAuditoriaDisplay({ evento }: { evento: EventoAuditoria }) {
+  const tipo = (evento.recurso_tipo ?? '').toLowerCase();
+  const cfg = MAPA_TIPO_RECURSO[tipo] ?? { icon: 'info', color: 'text-slate-400' };
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className={`material-symbols-outlined text-[14px] ${cfg.color}`}>
+        {cfg.icon}
+      </span>
+      <span>{formatearRecurso(evento)}</span>
+    </span>
+  );
+}
+
 function obtenerRolesDesde(valor: unknown): string[] {
   if (!esObjeto(valor)) return [];
   const roles = valor.roles;
@@ -480,7 +516,7 @@ function CuadroDetalleEventoMovil({ evento }: { evento: EventoAuditoria }) {
       />
       <DetalleCampoMovil
         etiqueta="Recurso"
-        valor={<span className="break-words">{formatearRecurso(evento)}</span>}
+        valor={<RecursoAuditoriaDisplay evento={evento} />}
       />
       <DetalleCampoMovil
         etiqueta="Resultado"
@@ -1326,11 +1362,11 @@ export function AuditoriaPage({ onLogout }: Props) {
                                 className="text-slate-200"
                                 variante="multilinea"
                               />
-                              <CeldaTextoTabla
-                                texto={formatearRecurso(evento)}
-                                className="auditoria-celda-secundaria text-slate-400"
-                                variante="multilinea"
-                              />
+                              <td className="auditoria-celda-multilinea px-3 py-2 align-top text-slate-400">
+                                <span className="auditoria-celda-multilinea-text block whitespace-normal break-words leading-snug">
+                                  <RecursoAuditoriaDisplay evento={evento} />
+                                </span>
+                              </td>
                               <td className="auditoria-celda-resultado px-2 py-2 align-top">
                                 <span
                                   className={`auditoria-badge-resultado inline-block max-w-full rounded px-2 py-1 text-xs font-semibold uppercase ${claseBadgeResultadoAuditoria(evento.resultado)}`}
@@ -1501,9 +1537,10 @@ export function AuditoriaPage({ onLogout }: Props) {
                           <strong>Módulo / Acción:</strong> {seleccionado.modulo} /{' '}
                           {etiquetaAccion(seleccionado.accion)}
                         </p>
-                        <p>
-                          <strong>Recurso:</strong> {formatearRecurso(seleccionado)}
-                        </p>
+                          <p className="flex items-center gap-1.5">
+                            <strong>Recurso:</strong>
+                            <RecursoAuditoriaDisplay evento={seleccionado} />
+                          </p>
                         <p>
                           <strong>Resultado:</strong>{' '}
                           <span
