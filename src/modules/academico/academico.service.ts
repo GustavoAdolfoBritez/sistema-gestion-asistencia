@@ -1257,6 +1257,32 @@ export async function actualizarCurso(cursoId: number, input: ActualizarCursoInp
 }
 
 export async function eliminarCurso(cursoId: number) {
+    const { rows: [{ count: asistencias }] } = await pool.query<{ count: string }>(
+        `SELECT COUNT(*) FROM asistencias a
+         INNER JOIN sesiones_clase sc ON sc.id = a.sesion_id
+         WHERE sc.curso_id = $1`,
+        [cursoId]
+    );
+    if (parseInt(asistencias, 10) > 0) {
+        throw new Error('No se puede eliminar el curso porque tiene asistencias registradas.');
+    }
+
+    const { rows: [{ count: matriculas }] } = await pool.query<{ count: string }>(
+        `SELECT COUNT(*) FROM matriculas WHERE curso_id = $1`,
+        [cursoId]
+    );
+    if (parseInt(matriculas, 10) > 0) {
+        throw new Error('No se puede eliminar el curso porque tiene alumnos matriculados.');
+    }
+
+    const { rows: [{ count: cronograma }] } = await pool.query<{ count: string }>(
+        `SELECT COUNT(*) FROM curso_cronograma_semanas WHERE curso_id = $1`,
+        [cursoId]
+    );
+    if (parseInt(cronograma, 10) > 0) {
+        throw new Error('No se puede eliminar el curso porque tiene contenido de cronograma de cátedra.');
+    }
+
     const cliente = await pool.connect();
     try {
         await cliente.query('BEGIN');
