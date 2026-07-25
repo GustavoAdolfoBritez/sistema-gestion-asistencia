@@ -36,15 +36,17 @@
 
 ### 🔑 Credenciales de acceso de prueba (entorno Sandbox)
 
-Cualquier persona puede iniciar sesión de inmediato en la demo con los siguientes usuarios de ejemplo, sin necesidad de solicitar acceso:
+Cualquier persona puede iniciar sesión de inmediato en la demo con los siguientes usuarios de ejemplo, sin necesidad de solicitar acceso. Además, la pantalla de Login de la demo incluye un **panel de acceso rápido** (`DemoCredentials.tsx`, visible solo si `VITE_IS_DEMO=true`) con un botón por rol que autocompleta el formulario con un clic:
 
 | Rol | Usuario | Contraseña |
 |---|---|---|
-| 👑 Administrador General | `demo_admin@ung.edu.py` | `DemoPassword123` |
-| 🗂️ Secretaría Académica | `demo_secretaria@ung.edu.py` | `DemoPassword123` |
-| 🧑‍🏫 Docente | `demo_docente@ung.edu.py` | `DemoPassword123` |
+| 👑 Administrador General | `admin.demo@ung.edu.py` | `Demo123456!` |
+| 🗂️ Secretaría Académica | `secretaria.demo@ung.edu.py` | `Demo123456!` |
+| 🧑‍🏫 Docente | `docente.demo@ung.edu.py` | `Demo123456!` |
 
 > ⚠️ Estas credenciales son públicas y pertenecen **exclusivamente** al entorno Sandbox/Demo con datos ficticios. No otorgan ni tienen relación con ningún acceso al sistema real en producción.
+
+La base de datos de este entorno se puebla con [`database/seed_demo.sql`](./database/seed_demo.sql): un script idempotente que crea los 3 usuarios de arriba, una facultad/carrera/plan de estudio ficticios, 2 cursos activos, 14 alumnos con nombres y cédulas inventados, y varias semanas de historial de asistencia (presentes, ausentes y justificaciones en distintos estados) para que el Dashboard, los Reportes y la Auditoría muestren datos realistas desde el primer inicio de sesión.
 
 </div>
 
@@ -292,6 +294,23 @@ cd frontend && npm run lint
 # Frontend: build de producción
 cd frontend && npm run build
 ```
+
+---
+
+## 🧪 Cómo reproducir el entorno de Demo
+
+El entorno de demostración corre sobre una **instancia de base de datos y un despliegue totalmente separados** del proyecto real. Para levantar tu propia copia:
+
+1. **Crear un proyecto secundario en Supabase** (mismo proceso que el original, por ejemplo `ung-asistencia-demo`).
+2. **Ejecutar el schema y las migraciones** de [`database/`](./database) contra esa base de datos nueva, en orden cronológico, y por último correr [`database/seed_demo.sql`](./database/seed_demo.sql) desde el editor SQL de Supabase (o `psql`). Este script:
+   - Es **idempotente**: puede reejecutarse las veces que quieras, siempre deja los datos de demo limpios y consistentes.
+   - Genera fechas de sesiones/asistencias **relativas a `CURRENT_DATE`**, por lo que el Dashboard y los reportes siempre muestran actividad "reciente", sin importar cuándo lo ejecutes.
+   - Crea los 3 usuarios de demo, la estructura académica ficticia, los cursos, los 14 alumnos y el historial de asistencia descritos en la sección [Demo en Vivo](#-demo-en-vivo).
+3. **Desplegar un nuevo entorno** en tu plataforma de hosting (proyecto/branch separado en Heroku/Render para la API, y en Vercel para el frontend):
+   - Backend: apuntar `SUPABASE_DB_URL`, `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` al proyecto de demo, y usar `JWT_SECRET`/`JWT_REFRESH_SECRET` propios (distintos a los de producción).
+   - Frontend: definir `VITE_API_URL` apuntando a la API de demo y **`VITE_IS_DEMO=true`** para que se muestre el panel de acceso rápido (`DemoCredentials.tsx`) en el Login.
+
+Con esto, la base de datos de desarrollo/producción real nunca se ve involucrada y cualquier visitante puede interactuar con el sistema al instante desde este README.
 
 ---
 

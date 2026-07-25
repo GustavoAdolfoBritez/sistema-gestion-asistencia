@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 
 import type { SessionUser } from '../utils/rbac';
 import { API_BASE_URL, resetSessionExpiredState } from '../utils/api';
+import { DemoCredentials } from '../components/DemoCredentials';
 
 interface LoginPageProps {
   onLoginSuccess?: (usuario?: SessionUser | null) => void;
@@ -114,6 +115,15 @@ export function LoginPage({ onLoginSuccess, onOpenLegalPage }: LoginPageProps) {
                 Sistema de Gestion de Asistencia Academica
               </h1>
             </div>
+
+            <DemoCredentials
+              onSelect={(demoIdentifier, demoPassword) => {
+                setIdentifier(demoIdentifier);
+                setPassword(demoPassword);
+                setError(null);
+              }}
+            />
+
             <form className="space-y-6 max-lg:space-y-4" onSubmit={handleSubmit}>
               <div>
                 <label htmlFor="usuario" className="mb-1 block text-sm font-medium text-black max-lg:text-xs">
