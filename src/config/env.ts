@@ -3,8 +3,23 @@ import { z } from 'zod';
 
 loadEnv();
 
+/**
+ * Evita que un PORT vacío ("") termine coercionado a 0 por `Number('')`.
+ * Render (y otros PaaS) inyectan PORT automáticamente; si llega vacío o
+ * indefinido, usamos el default de desarrollo en vez de bindear al puerto 0.
+ */
+const vacioComoIndefinido = (val: unknown) =>
+    typeof val === 'string' && val.trim() === '' ? undefined : val;
+
 const envSchema = z.object({
-    PORT: z.coerce.number().default(4000),
+    PORT: z.preprocess(
+        vacioComoIndefinido,
+        z.coerce
+            .number()
+            .int('PORT debe ser un entero')
+            .positive('PORT debe ser mayor a 0')
+            .default(4000)
+    ),
     SUPABASE_DB_URL: z.string().min(1, 'Falta la cadena de conexión de Supabase'),
     SUPABASE_URL: z.string().url('Falta SUPABASE_URL (API de Supabase)'),
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, 'Falta SUPABASE_SERVICE_ROLE_KEY para Storage'),
