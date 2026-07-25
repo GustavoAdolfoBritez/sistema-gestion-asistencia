@@ -1,14 +1,3 @@
--- -----------------------------------------------------------------
--- TABLA DE TOKENS DE REFRESCO
--- -----------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS tokens_refresco (
-    id BIGSERIAL PRIMARY KEY,
-    usuario_id UUID NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
-    token TEXT NOT NULL UNIQUE,
-    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    expiracion TIMESTAMPTZ NOT NULL,
-    revocado BOOLEAN NOT NULL DEFAULT FALSE
-);
 -- =================================================================
 -- ESQUEMA BASE - SISTEMA DE ASISTENCIA UNIVERSITARIA
 -- PostgreSQL / Supabase
@@ -73,6 +62,18 @@ CREATE TABLE IF NOT EXISTS usuarios (
 
 CREATE INDEX IF NOT EXISTS idx_usuarios_username ON usuarios(username);
 
+-- -----------------------------------------------------------------
+-- TABLA DE TOKENS DE REFRESCO
+-- -----------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS tokens_refresco (
+    id BIGSERIAL PRIMARY KEY,
+    usuario_id UUID NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    token TEXT NOT NULL UNIQUE,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expiracion TIMESTAMPTZ NOT NULL,
+    revocado BOOLEAN NOT NULL DEFAULT FALSE
+);
+
 CREATE TABLE IF NOT EXISTS usuarios_roles (
     usuario_id UUID REFERENCES usuarios(id) ON DELETE CASCADE,
     rol_id INTEGER REFERENCES roles(id) ON DELETE CASCADE,
@@ -86,23 +87,6 @@ CREATE TABLE IF NOT EXISTS docentes (
     legajo VARCHAR(50) UNIQUE,
     titulo_academico VARCHAR(150)
 );
-
--- alumnos: único obligatorio numero_documento (homónimos permitidos en nombre_apellido).
-CREATE TABLE IF NOT EXISTS alumnos (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    numero_documento VARCHAR(30) NOT NULL UNIQUE,
-    numero_orden INTEGER,
-    nombres VARCHAR(100),
-    apellidos VARCHAR(100),
-    nombre_apellido VARCHAR(150),
-    referencia_carrera_id INTEGER REFERENCES carreras(id) ON DELETE SET NULL,
-    semestre_curricular SMALLINT NOT NULL DEFAULT 1 CHECK (semestre_curricular >= 1 AND semestre_curricular <= 10),
-    cohorte_anio SMALLINT NULL CHECK (cohorte_anio IS NULL OR (cohorte_anio >= 1990 AND cohorte_anio <= 2100))
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS uq_alumnos_numero_orden
-    ON alumnos(numero_orden)
-    WHERE numero_orden IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS auditorias (
     id BIGSERIAL PRIMARY KEY,
@@ -157,6 +141,23 @@ CREATE TABLE IF NOT EXISTS carreras (
     creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (facultad_id, nombre)
 );
+
+-- alumnos: único obligatorio numero_documento (homónimos permitidos en nombre_apellido).
+CREATE TABLE IF NOT EXISTS alumnos (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    numero_documento VARCHAR(30) NOT NULL UNIQUE,
+    numero_orden INTEGER,
+    nombres VARCHAR(100),
+    apellidos VARCHAR(100),
+    nombre_apellido VARCHAR(150),
+    referencia_carrera_id INTEGER REFERENCES carreras(id) ON DELETE SET NULL,
+    semestre_curricular SMALLINT NOT NULL DEFAULT 1 CHECK (semestre_curricular >= 1 AND semestre_curricular <= 10),
+    cohorte_anio SMALLINT NULL CHECK (cohorte_anio IS NULL OR (cohorte_anio >= 1990 AND cohorte_anio <= 2100))
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_alumnos_numero_orden
+    ON alumnos(numero_orden)
+    WHERE numero_orden IS NOT NULL;
 
 -- Alcance operativo (coordinación de facultad / jefatura de carrera). Usado en listado de usuarios y resolverAlcanceMatriculasFacultad.
 CREATE TABLE IF NOT EXISTS usuario_scopes (
