@@ -31,8 +31,10 @@
 
 | Entorno | Enlace |
 |---|---|
-| 🖥️ **Frontend (SPA)** | 🔧 *Nuevo despliegue en preparación — enlace disponible próximamente* |
-| ⚙️ **API Backend** | 🔧 *Nuevo despliegue en preparación — enlace disponible próximamente* |
+| 🖥️ **Frontend (SPA)** | [sistema-gestion-asistencia.vercel.app](https://sistema-gestion-asistencia.vercel.app) |
+| ⚙️ **API Backend** | [sistema-gestion-asistencia.onrender.com](https://sistema-gestion-asistencia.onrender.com) |
+
+> ⏳ El backend está desplegado en el plan gratuito de Render, que "duerme" tras un período de inactividad. La **primera petición** puede tardar ~50 segundos en responder mientras el servidor arranca; los siguientes accesos son inmediatos.
 
 ### 🔑 Credenciales de acceso de prueba (entorno Sandbox)
 
@@ -183,7 +185,7 @@ gestion-asistencias-ung/
 
 | Herramienta | Uso |
 |---|---|
-| **Heroku** | Hosting de la API backend (`Procfile` + `heroku-postbuild`) |
+| **Render** | Hosting de la API backend (despliegue continuo desde `main`) |
 | **Vercel** | Hosting del frontend SPA con *rewrites* configurados |
 | **Git / GitHub** | Control de versiones |
 | **ts-node-dev** | Hot-reload del backend en desarrollo |
@@ -306,7 +308,7 @@ El entorno de demostración corre sobre una **instancia de base de datos y un de
    - Es **idempotente**: puede reejecutarse las veces que quieras, siempre deja los datos de demo limpios y consistentes.
    - Genera fechas de sesiones/asistencias **relativas a `CURRENT_DATE`**, por lo que el Dashboard y los reportes siempre muestran actividad "reciente", sin importar cuándo lo ejecutes.
    - Crea los 3 usuarios de demo, la estructura académica ficticia, los cursos, los 14 alumnos y el historial de asistencia descritos en la sección [Demo en Vivo](#-demo-en-vivo).
-3. **Desplegar un nuevo entorno** en tu plataforma de hosting (proyecto/branch separado en Heroku/Render para la API, y en Vercel para el frontend):
+3. **Desplegar un nuevo entorno** en tu plataforma de hosting (proyecto/servicio separado en Render para la API, y en Vercel para el frontend):
    - Backend: apuntar `SUPABASE_DB_URL`, `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` al proyecto de demo, y usar `JWT_SECRET`/`JWT_REFRESH_SECRET` propios (distintos a los de producción).
    - Frontend: definir `VITE_API_URL` apuntando a la API de demo y **`VITE_IS_DEMO=true`** para que se muestre el panel de acceso rápido (`DemoCredentials.tsx`) en el Login.
 
