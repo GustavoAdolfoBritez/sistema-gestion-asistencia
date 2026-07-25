@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎓 UNG Asistencias — Sistema Integral de Gestión de Asistencia Universitaria
+# 🎓 UNG Asistencias — Sistema de Gestión de Asistencia Universitaria
 
 **Plataforma full-stack para el control de asistencia, gestión académica y auditoría institucional en entornos universitarios.**
 
@@ -26,12 +26,25 @@
 
 <div align="center">
 
+> 🧪 **Entorno Sandbox aislado — no es el sistema productivo real**
+> La demo pública corre sobre un **backend y una base de datos completamente independientes y aislados** del entorno de desarrollo/producción de la universidad, poblados exclusivamente con **datos ficticios (seed data)** generados para fines de evaluación técnica. Ningún dato real de alumnos, docentes, facultades o instituciones es accesible ni se ve afectado desde este entorno — es 100% seguro de explorar y "romper".
+
 | Entorno | Enlace |
 |---|---|
-| 🖥️ **Frontend (SPA)** | [Ver Demo en Vivo](https://asistenciaung.dev) |
-| ⚙️ **API Backend** | [`https://gestion-asistencias-ung-***.herokuapp.com/api`](https://gestion-asistencias-ung-623e820b6ba1.herokuapp.com/api/health) |
+| 🖥️ **Frontend (SPA)** | 🔧 *Nuevo despliegue en preparación — enlace disponible próximamente* |
+| ⚙️ **API Backend** | 🔧 *Nuevo despliegue en preparación — enlace disponible próximamente* |
 
-> 💡 *Solicita credenciales de acceso de demostración al autor para probar los distintos roles del sistema (Administrador, Secretaría, Jefe de Carrera, Coordinador, Docente).*
+### 🔑 Credenciales de acceso de prueba (entorno Sandbox)
+
+Cualquier persona puede iniciar sesión de inmediato en la demo con los siguientes usuarios de ejemplo, sin necesidad de solicitar acceso:
+
+| Rol | Usuario | Contraseña |
+|---|---|---|
+| 👑 Administrador General | `demo_admin@ung.edu.py` | `DemoPassword123` |
+| 🗂️ Secretaría Académica | `demo_secretaria@ung.edu.py` | `DemoPassword123` |
+| 🧑‍🏫 Docente | `demo_docente@ung.edu.py` | `DemoPassword123` |
+
+> ⚠️ Estas credenciales son públicas y pertenecen **exclusivamente** al entorno Sandbox/Demo con datos ficticios. No otorgan ni tienen relación con ningún acceso al sistema real en producción.
 
 </div>
 
