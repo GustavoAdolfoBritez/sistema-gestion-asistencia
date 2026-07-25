@@ -30,7 +30,8 @@ const corsOptions: cors.CorsOptions =
                       callback(null, true);
                       return;
                   }
-                  callback(new Error(`Origen no permitido por CORS: ${origin}`));
+                  logger.warn({ origin, corsOrigins: env.corsOrigins }, 'Origen rechazado por CORS');
+                  callback(null, false);
               },
               exposedHeaders: ['Content-Disposition', 'X-Acta-Id'],
           }
