@@ -106,27 +106,12 @@ export function LoginPage({ onLoginSuccess, onOpenLegalPage }: LoginPageProps) {
         <main className="w-full min-w-0 max-w-xl overflow-hidden rounded-2xl bg-slate-100 shadow-2xl max-lg:max-w-md">
           <div className="px-4 pb-10 pt-8 max-lg:px-5 max-lg:pb-6 max-lg:pt-6 sm:px-8 sm:pb-12 sm:pt-12 lg:px-10">
             <div className="pb-6 text-center max-lg:pb-4 sm:pb-7">
-              {IS_DEMO ? (
-                <div
-                  className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-xl bg-blue-700 text-white shadow-md max-lg:mb-3 max-lg:h-14 max-lg:w-14 sm:mb-5 sm:h-20 sm:w-20"
-                  aria-hidden="true"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" className="h-9 w-9 sm:h-11 sm:w-11" xmlns="http://www.w3.org/2000/svg">
-                    <path
-                      d="M12 3 1 8l11 5 9-4.09V17h2V8L12 3Z"
-                      fill="currentColor"
-                    />
-                    <path d="M5 10.18v4.32c0 1.1 3.13 3 7 3s7-1.9 7-3v-4.32l-7 3.18-7-3.18Z" fill="currentColor" />
-                  </svg>
-                </div>
-              ) : (
-                <img
-                  src={LOGIN_LOGO_URL}
-                  alt="Logo institucional"
-                  className="mx-auto mb-4 h-auto w-28 rounded-xl max-lg:mb-3 max-lg:w-[4.5rem] sm:mb-5 sm:w-36"
-                  loading="eager"
-                />
-              )}
+              <img
+                src={LOGIN_LOGO_URL}
+                alt="Logo del sistema"
+                className="mx-auto mb-4 h-auto w-28 rounded-xl max-lg:mb-3 max-lg:w-[4.5rem] sm:mb-5 sm:w-36"
+                loading="eager"
+              />
               <h1 className="text-2xl font-bold leading-tight text-gray-800 max-lg:mx-auto max-lg:max-w-[16rem] max-lg:text-[1.05rem] max-lg:leading-snug sm:text-3xl lg:max-w-none lg:text-4xl">
                 Sistema de Gestion de Asistencia Academica
               </h1>
