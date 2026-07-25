@@ -1,13 +1,14 @@
 import { Router } from 'express';
 import { autenticarUsuario, refrescarSesion, cerrarSesion } from './auth.service';
 import { autenticar } from '../../middlewares/auth.middleware';
+import { loginRateLimiter, authRateLimiter } from '../../middlewares/rate-limit.middleware';
 import { construirContextoAuditoria } from '../auditoria/auditoria.service';
 import { sendJsonError } from '../../utils/http-errors';
 import { logger } from '../../utils/logger';
 
 const router = Router();
 
-router.post('/auth/login', async (req, res, next) => {
+router.post('/auth/login', loginRateLimiter, async (req, res, next) => {
     try {
         const { identificador, email, usuario, password } = req.body ?? {};
         const credential = identificador ?? usuario ?? email;
@@ -39,7 +40,7 @@ router.get('/auth/me', autenticar, (req, res) => {
     res.json({ usuario: req.usuario });
 });
 
-router.post('/auth/refresh', async (req, res, next) => {
+router.post('/auth/refresh', authRateLimiter, async (req, res, next) => {
     try {
         const { refreshToken } = req.body ?? {};
         if (!refreshToken) {
@@ -62,7 +63,7 @@ router.post('/auth/refresh', async (req, res, next) => {
     }
 });
 
-router.post('/auth/logout', autenticar, async (req, res, next) => {
+router.post('/auth/logout', authRateLimiter, autenticar, async (req, res, next) => {
     try {
         const { refreshToken } = req.body ?? {};
         if (!refreshToken) {
