@@ -77,7 +77,7 @@ DECLARE
     -- Contraseña única para los 3 usuarios de demo: "Demo123456!"
     -- Hash generado con bcryptjs (mismo algoritmo y costo=12 que usa el backend,
     -- ver src/modules/usuarios/usuarios.service.ts -> bcrypt.hash(password, 12)).
-    v_password_hash CONSTANT VARCHAR := '$2b$12$H26bSTnD/Nnp.5xu7j34e.TveoXR5xeoLfpCvqSHX1Ltlju/LWwK6';
+    v_password_hash CONSTANT VARCHAR := '$2b$12$vnSeApIw/3iu1sNhOjceKeV6wDOZx1SxRO5zBzl5sc4dh/XI7F30a';
 
     -- IDs fijos y memorables para los usuarios de demo (facilita depuración y reejecución).
     v_usuario_admin_id CONSTANT UUID := 'd0000000-0000-4000-8000-000000000001';
