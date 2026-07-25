@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎓 UNG Asistencias — Sistema de Gestión de Asistencia Universitaria
+# 🎓 Sistema de Gestión de Asistencias Universitaria
 
 **Plataforma full-stack para el control de asistencia, gestión académica y auditoría institucional en entornos universitarios.**
 
@@ -56,7 +56,7 @@ La base de datos de este entorno se puebla con [`database/seed_demo.sql`](./data
 
 ## 📋 Descripción Ejecutiva
 
-**UNG Asistencias** es un sistema de gestión académica full-stack diseñado para resolver un problema real y crítico en instituciones de educación superior: **el control confiable, auditable y trazable de la asistencia estudiantil**, hoy gestionado en muchas universidades mediante planillas de papel o Excel dispersos sin ningún control de integridad.
+**Este proyecto** es un sistema de gestión académica full-stack diseñado para resolver un problema real y crítico en instituciones de educación superior: **el control confiable, auditable y trazable de la asistencia estudiantil**, hoy gestionado en muchas universidades mediante planillas de papel o Excel dispersos sin ningún control de integridad.
 
 La plataforma está dirigida a **universidades e institutos terciarios** que necesitan digitalizar el proceso de toma de asistencia, gestionar la estructura académica (facultades, carreras, planes de estudio, cursos y cronogramas), habilitar automáticamente a los alumnos para rendir exámenes según su porcentaje de asistencia, y generar documentación oficial (actas, informes, cronogramas firmados) en PDF con validez administrativa.
 

@@ -38,7 +38,7 @@ export function LegalInfoPage({ page, onBack }: LegalInfoPageProps) {
 
         <header className="mb-7 border-b border-white/15 pb-5 max-lg:mb-5 max-lg:pb-4">
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#a8bdd4] max-lg:text-[10px]">
-            Universidad Nihon Gakko
+            Sistema de Gestión de Asistencias
           </p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-white max-lg:mt-1.5 max-lg:text-xl max-lg:leading-snug">
             {meta.title}
@@ -144,10 +144,10 @@ export function LegalInfoPage({ page, onBack }: LegalInfoPageProps) {
         ) : null}
 
         <footer className="mt-8 border-t border-white/15 pt-4 text-xs text-[#96abc4] max-lg:mt-6 max-lg:pt-3 max-lg:text-center max-lg:text-[10px] max-lg:leading-snug">
-          <span className="max-lg:hidden">© {currentYear} Sistema de Gestión de Asistencia Académica - Proyecto de Tesis UNG.</span>
+          <span className="max-lg:hidden">© {currentYear} Sistema de Gestión de Asistencia Académica - Proyecto de Tesis.</span>
           <span className="hidden max-lg:inline">
             © {currentYear} Sistema de Gestion de Asistencia Academica
-            <br />— Proyecto de Tesis UNG.
+            <br />— Proyecto de Tesis.
           </span>
         </footer>
       </div>
