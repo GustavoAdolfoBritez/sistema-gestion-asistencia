@@ -25,3 +25,6 @@ test_db.ts
 # Build output (compilados no rastreados)
 dist/
 frontend/dist/
+
+# PDFs/actas generados en tiempo de ejecución (pueden contener datos de alumnos)
+generated/actas/
