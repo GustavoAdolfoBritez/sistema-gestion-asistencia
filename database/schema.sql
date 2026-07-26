@@ -219,6 +219,7 @@ CREATE TABLE IF NOT EXISTS sesiones_clase (
     fecha DATE NOT NULL,
     estado estado_sesion NOT NULL DEFAULT 'programada',
     observaciones TEXT,
+    modalidad VARCHAR(20) NOT NULL DEFAULT 'presencial' CHECK (modalidad IN ('presencial', 'virtual')),
     cerrado_por UUID REFERENCES usuarios(id),
     cerrado_en TIMESTAMPTZ,
     UNIQUE (curso_id, fecha)
