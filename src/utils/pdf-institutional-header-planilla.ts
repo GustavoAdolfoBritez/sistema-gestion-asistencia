@@ -3,9 +3,11 @@ import PDFKit from 'pdfkit';
 import { PDF_LOGO_PATH } from './pdf-assets';
 
 /**
- * Encabezado institucional alineado al de la planilla PDF legal (banner, lema, LEY 3.688/08, misión).
- * Centralizado para reutilizar en informes. Planilla legal e informes comparten el mismo margen superior
- * (`PDF_INSTITUTIONAL_HEADER_TOP`); `PDF_INSTITUTIONAL_HEADER_TOP_REPORTS` es alias para no romper imports.
+ * Encabezado institucional genérico (banner, nombre del sistema, lema y descripción breve),
+ * sin vínculo con ninguna institución real. Centralizado para reutilizar en todos los PDFs
+ * del sistema (planilla legal, informes de alumno, cronograma, habilitados, etc.).
+ * Planilla legal e informes comparten el mismo margen superior (`PDF_INSTITUTIONAL_HEADER_TOP`);
+ * `PDF_INSTITUTIONAL_HEADER_TOP_REPORTS` es alias para no romper imports.
  */
 
 /**
@@ -35,8 +37,15 @@ export interface InstitutionalHeaderPlanillaResult {
   tableW: number;
 }
 
+/** Nombre y lema genéricos del sistema, sin vínculo con ninguna institución real. */
+const NOMBRE_SISTEMA = 'SISTEMA DE GESTIÓN DE ASISTENCIAS';
+const LEMA_SISTEMA = '"Planificación académica y control de asistencia"';
+const DESCRIPCION_SISTEMA =
+  'Plataforma de gestión académica utilizada para el seguimiento de asistencia, la planificación ' +
+  'de cronogramas de cátedra y la generación de reportes e informes institucionales del curso.';
+
 /**
- * Dibuja logo centrado, lema, ley y misión como en la planilla legal.
+ * Dibuja logo centrado, nombre del sistema, lema y una descripción breve como encabezado.
  * @param marginTop distancia desde el borde superior de la página (p. ej. `PDF_INSTITUTIONAL_HEADER_TOP`).
  */
 export function drawInstitutionalHeaderPlanillaLegal(
@@ -49,29 +58,21 @@ export function drawInstitutionalHeaderPlanillaLegal(
 
   if (fs.existsSync(PDF_LOGO_PATH)) {
     doc.image(PDF_LOGO_PATH, bannerX, bannerY, { width: BANNER_W, height: BANNER_H });
-  } else {
-    doc.font('Helvetica-Bold').fontSize(10).fillColor('#000')
-      .text('UNIVERSIDAD NIHON GAKKO', 0, bannerY + 12, { width: pageWidth, align: 'center' });
   }
 
   const afterBanner = bannerY + BANNER_H + 4;
-  doc.font('Helvetica-BoldOblique').fontSize(10).fillColor('#000')
-    .text('"ESFUERZO Y DISCIPLINA PARA EL ÉXITO"', 0, afterBanner, { width: pageWidth, align: 'center' });
+  doc.font('Helvetica-Bold').fontSize(10).fillColor('#000')
+    .text(NOMBRE_SISTEMA, 0, afterBanner, { width: pageWidth, align: 'center' });
 
-  doc.font('Helvetica-Oblique').fontSize(8.5).fillColor('#000')
-    .text('LEY 3.688/08', 0, afterBanner + 14, { width: pageWidth, align: 'center' });
+  doc.font('Helvetica-BoldOblique').fontSize(9).fillColor('#000')
+    .text(LEMA_SISTEMA, 0, afterBanner + 14, { width: pageWidth, align: 'center' });
 
-  const misionY = afterBanner + 27;
+  const misionY = afterBanner + 28;
   const tableX = planillaTableContentX(pageWidth);
   const tableW = PLANILLA_TABLE_STATIC_WIDTH;
 
   doc.font('Helvetica-Oblique').fontSize(6.2).fillColor('#000')
-    .text(
-      'Mision : Es una instituciòn educativa de gestion privada, con capital humano altamente calificado y comprometida en ofrecer una educación integral de calidad, en todos los niveles educativos, inspirada en la cultura propia y universal, basada en los valores humanos, la investigación científica, el servicio a la comunidad, el desarrollo artístico y cultural, para la formación de ciudadanos socialmente responsables.',
-      tableX,
-      misionY,
-      { width: tableW, align: 'left', lineGap: 0 }
-    );
+    .text(DESCRIPCION_SISTEMA, tableX, misionY, { width: tableW, align: 'left', lineGap: 0 });
 
   const rowFacultadY = misionY + 16;
   return { rowFacultadY, tableX, tableW };

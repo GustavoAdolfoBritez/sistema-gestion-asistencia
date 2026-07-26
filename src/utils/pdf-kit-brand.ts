@@ -1,7 +1,7 @@
 /**
  * Kit visual compartido para informes PDF (auditoría, informe alumno, reportes operativos, etc.).
  *
- * Tokens en blanco y negro para impresión (el logo NIHON en imagen conserva su color).
+ * Tokens en blanco y negro para impresión (el logo institucional en imagen conserva su color).
  * No importar desde la planilla PDF legal (`reportes.pdf.ts` / `generarPlanillaLegalPdf`): ese diseño está congelado.
  */
 

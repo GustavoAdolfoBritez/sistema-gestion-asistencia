@@ -1873,7 +1873,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
                     </button>
                     <button
                       type="button"
-                      className="btn-modern btn-modern-ghost btn-modern-sm btn-mobile-cta flex w-full items-center justify-center lg:w-auto"
+                      className="btn-modern btn-modern-primary btn-modern-sm btn-mobile-cta flex w-full items-center justify-center lg:w-auto"
                       onClick={() => void descargarPlanillaLegal()}
                       disabled={generandoPdfLegal || !cursoId}
                       title="Generar y abrir planilla legal PDF del mes seleccionado"
