@@ -109,6 +109,8 @@ DECLARE
     v_rand NUMERIC;
     v_estado_asistencia estado_asistencia;
     v_justificada BOOLEAN;
+    v_inicio_mes_actual CONSTANT DATE := date_trunc('month', CURRENT_DATE)::date;
+    v_sesiones_mes_actual INTEGER;
 BEGIN
     -- Reproducibilidad: mismo patrón de asistencia en cada reejecución.
     PERFORM setseed(0.4269);
@@ -237,6 +239,13 @@ BEGIN
     --      Distribución: ~78% presente, ~10% ausente sin justificar,
     --      ~4% ausente con justificación pendiente, ~6% justificada
     --      (aprobada), ~2% ausente con justificación rechazada.
+    --
+    --      Dentro del MES EN CURSO se limitan a solo 4 sesiones ya
+    --      tomadas (las primeras del mes); el resto de los días queda
+    --      sin sesión para que cualquiera pueda probar el flujo de
+    --      "Tomar lista" en la demo sin encontrarse el mes ya completo.
+    --      Los meses anteriores sí se completan enteros (alimentan el
+    --      historial de dashboard/reportes).
     -- -------------------------------------------------------------
     FOREACH v_curso_id IN ARRAY ARRAY[v_curso1_id, v_curso2_id]
     LOOP
@@ -246,8 +255,14 @@ BEGIN
         WHERE c.id = v_curso_id;
 
         v_fecha := v_fecha_inicio_modulo;
+        v_sesiones_mes_actual := 0;
         WHILE v_fecha <= v_fecha_fin_modulo LOOP
-            IF EXTRACT(DOW FROM v_fecha) BETWEEN 1 AND 4 THEN
+            IF EXTRACT(DOW FROM v_fecha) BETWEEN 1 AND 4
+               AND (v_fecha < v_inicio_mes_actual OR v_sesiones_mes_actual < 4) THEN
+                IF v_fecha >= v_inicio_mes_actual THEN
+                    v_sesiones_mes_actual := v_sesiones_mes_actual + 1;
+                END IF;
+
                 INSERT INTO sesiones_clase (curso_id, fecha, estado, cerrado_por, cerrado_en)
                 VALUES (v_curso_id, v_fecha, 'cerrada', v_usuario_docente_id, v_fecha + TIME '20:15')
                 RETURNING id INTO v_sesion_id;
