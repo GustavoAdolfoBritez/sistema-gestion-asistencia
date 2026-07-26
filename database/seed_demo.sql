@@ -198,6 +198,36 @@ BEGIN
     VALUES (v_curso2_id, CURRENT_DATE + INTERVAL '4 days', 'programada');
 
     -- -------------------------------------------------------------
+    -- 1.3 bis) CRONOGRAMA DE CÁTEDRA (5 semanas + evaluaciones)
+    --      El rango del módulo (35 días) se divide en 5 semanas exactas.
+    --      La semana 1 queda firmada (para mostrar el estado "Firmado"
+    --      en la UI); el resto queda pendiente, para poder probar el
+    --      flujo de firma del docente en la demo.
+    -- -------------------------------------------------------------
+    INSERT INTO curso_cronograma_semanas (curso_id, semana_numero, fecha_inicio, fecha_fin, contenidos, actividades, horas, firmado_por, firmado_en)
+    VALUES
+        (v_curso1_id, 1, v_fecha_inicio_modulo,      v_fecha_inicio_modulo + 6,  ARRAY['Repaso de modelo relacional', 'Normalización (1FN, 2FN, 3FN)'], ARRAY['Ejercicios de normalización en clase'], 4, v_docente_id, v_fecha_inicio_modulo + 6 + TIME '21:00'),
+        (v_curso1_id, 2, v_fecha_inicio_modulo + 7,  v_fecha_inicio_modulo + 13, ARRAY['Transacciones y niveles de aislamiento', 'Propiedades ACID'], ARRAY['Laboratorio de transacciones en PostgreSQL'], 4, NULL, NULL),
+        (v_curso1_id, 3, v_fecha_inicio_modulo + 14, v_fecha_inicio_modulo + 20, ARRAY['Índices y optimización de consultas', 'Lectura de planes con EXPLAIN ANALYZE'], ARRAY['Taller de tuning de queries'], 4, NULL, NULL),
+        (v_curso1_id, 4, v_fecha_inicio_modulo + 21, v_fecha_inicio_modulo + 27, ARRAY['Procedimientos almacenados y triggers', 'Introducción a PL/pgSQL'], ARRAY['Práctica: trigger de auditoría'], 4, NULL, NULL),
+        (v_curso1_id, 5, v_fecha_inicio_modulo + 28, v_fecha_fin_modulo,         ARRAY['Replicación y backups', 'Estrategias de alta disponibilidad'], ARRAY['Simulación de restore de backup'], 4, NULL, NULL);
+
+    INSERT INTO curso_cronograma_semanas (curso_id, semana_numero, fecha_inicio, fecha_fin, contenidos, actividades, horas, firmado_por, firmado_en)
+    VALUES
+        (v_curso2_id, 1, v_fecha_inicio_modulo,      v_fecha_inicio_modulo + 6,  ARRAY['Fundamentos de HTML5 y CSS3', 'Flexbox y Grid'], ARRAY['Maquetado de una landing page'], 4, v_docente_id, v_fecha_inicio_modulo + 6 + TIME '21:00'),
+        (v_curso2_id, 2, v_fecha_inicio_modulo + 7,  v_fecha_inicio_modulo + 13, ARRAY['JavaScript moderno (ES6+)', 'Manipulación del DOM'], ARRAY['Práctica: formulario interactivo con validaciones'], 4, NULL, NULL),
+        (v_curso2_id, 3, v_fecha_inicio_modulo + 14, v_fecha_inicio_modulo + 20, ARRAY['Introducción a React', 'Componentes, props y estado'], ARRAY['Laboratorio: primer componente en React'], 4, NULL, NULL),
+        (v_curso2_id, 4, v_fecha_inicio_modulo + 21, v_fecha_inicio_modulo + 27, ARRAY['Consumo de APIs REST', 'Manejo de estado con hooks'], ARRAY['Proyecto: listado dinámico con fetch a una API pública'], 4, NULL, NULL),
+        (v_curso2_id, 5, v_fecha_inicio_modulo + 28, v_fecha_fin_modulo,         ARRAY['Control de versiones con Git', 'Despliegue y buenas prácticas'], ARRAY['Despliegue del proyecto final en Vercel'], 4, NULL, NULL);
+
+    INSERT INTO curso_evaluaciones (curso_id, tipo, fecha, alcance_prueba, firmado_por, firmado_en)
+    VALUES
+        (v_curso1_id, 'parcial', v_fecha_inicio_modulo + 20, 'Unidades I a III: modelo relacional, normalización y transacciones', v_docente_id, v_fecha_inicio_modulo + 20 + TIME '21:00'),
+        (v_curso1_id, 'final',   v_fecha_fin_modulo,          'Unidades I a V: programa completo de la materia', NULL, NULL),
+        (v_curso2_id, 'parcial', v_fecha_inicio_modulo + 20, 'Unidades I a III: HTML, CSS, JavaScript y DOM', v_docente_id, v_fecha_inicio_modulo + 20 + TIME '21:00'),
+        (v_curso2_id, 'final',   v_fecha_fin_modulo,          'Unidades I a V: programa completo de la materia', NULL, NULL);
+
+    -- -------------------------------------------------------------
     -- 1.4) ALUMNOS FICTICIOS (14) — nombres, apellidos y CI inventados
     -- -------------------------------------------------------------
     INSERT INTO alumnos (numero_documento, numero_orden, nombres, apellidos, nombre_apellido, referencia_carrera_id, semestre_curricular, cohorte_anio)

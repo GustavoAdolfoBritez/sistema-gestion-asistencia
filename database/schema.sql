@@ -210,6 +210,43 @@ CREATE TABLE IF NOT EXISTS cursos (
     notas TEXT
 );
 
+-- Cronograma de catedra: planilla semanal de contenidos/actividades y
+-- evaluaciones (parcial/final), con firma individual del docente por
+-- semana y por evaluacion (ver database/20260630_cronograma_catedra.sql
+-- y database/20260630_cronograma_firmas_individuales.sql).
+CREATE TABLE IF NOT EXISTS curso_cronograma_semanas (
+    id SERIAL PRIMARY KEY,
+    curso_id INTEGER NOT NULL REFERENCES cursos(id) ON DELETE CASCADE,
+    semana_numero SMALLINT NOT NULL CHECK (semana_numero > 0),
+    fecha_inicio DATE NOT NULL,
+    fecha_fin DATE NOT NULL,
+    contenidos TEXT[] NOT NULL DEFAULT '{}',
+    actividades TEXT[] NOT NULL DEFAULT '{}',
+    horas NUMERIC(5,1) DEFAULT 0,
+    firmado_por UUID REFERENCES docentes(id),
+    firmado_en TIMESTAMPTZ,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (curso_id, semana_numero)
+);
+
+CREATE INDEX IF NOT EXISTS idx_cronograma_semanas_curso ON curso_cronograma_semanas(curso_id);
+
+CREATE TABLE IF NOT EXISTS curso_evaluaciones (
+    id SERIAL PRIMARY KEY,
+    curso_id INTEGER NOT NULL REFERENCES cursos(id) ON DELETE CASCADE,
+    tipo VARCHAR(10) NOT NULL CHECK (tipo IN ('parcial', 'final')),
+    fecha DATE,
+    alcance_prueba TEXT,
+    firmado_por UUID REFERENCES docentes(id),
+    firmado_en TIMESTAMPTZ,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (curso_id, tipo)
+);
+
+CREATE INDEX IF NOT EXISTS idx_evaluaciones_curso ON curso_evaluaciones(curso_id);
+
 -- -----------------------------------------------------------------
 -- MODULO 3: SESIONES DE CLASE
 -- -----------------------------------------------------------------
