@@ -995,12 +995,17 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
       .sort((a, b) => normalizeDate(a.fecha).localeCompare(normalizeDate(b.fecha)));
   }, [sesiones, mesAnio]);
 
-  /** Sesión abierta en edición: mientras exista, no se puede volver a «Tomar lista». */
+  /**
+   * Sesión abierta en edición: mientras exista, no se puede volver a «Tomar lista».
+   * Ojo: solo cuenta el estado 'abierta'. Una sesión 'programada' (placeholder del
+   * próximo día de clase, sin asistencias cargadas) NO es una lista abierta y no
+   * debe bloquear ni forzar el flujo de «Tomar lista».
+   */
   const sesionListaAbierta = useMemo(() => {
     if (sesionActivaId) {
-      return sesionesDelMes.find((s) => s.id === sesionActivaId && s.estado.toLowerCase() !== 'cerrada') ?? null;
+      return sesionesDelMes.find((s) => s.id === sesionActivaId && s.estado.toLowerCase() === 'abierta') ?? null;
     }
-    return [...sesionesDelMes].reverse().find((s) => s.estado.toLowerCase() !== 'cerrada') ?? null;
+    return [...sesionesDelMes].reverse().find((s) => s.estado.toLowerCase() === 'abierta') ?? null;
   }, [sesionActivaId, sesionesDelMes]);
 
   const resumenCierreLista = useMemo(() => {
@@ -1658,7 +1663,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
     if (!cursoId || loading || subView !== 'planilla') return;
 
     const abierta =
-      [...sesiones].reverse().find((s) => s.estado?.toLowerCase?.() !== 'cerrada') ?? null;
+      [...sesiones].reverse().find((s) => s.estado?.toLowerCase?.() === 'abierta') ?? null;
 
     const syncKey = abierta ? `${cursoId}:${abierta.id}` : `${cursoId}:none`;
     if (listaAbiertaSyncKeyRef.current === syncKey) return;
@@ -1695,7 +1700,7 @@ export function AsistenciasDocentePage({ onLogout, roles = [] }: Props) {
     const maxYm = yyyyMmDesdeFecha(fin);
     const rMin = minYm <= maxYm ? minYm : maxYm;
     const rMax = minYm <= maxYm ? maxYm : minYm;
-    const hayListaAbierta = sesiones.some((s) => s.estado?.toLowerCase?.() !== 'cerrada');
+    const hayListaAbierta = sesiones.some((s) => s.estado?.toLowerCase?.() === 'abierta');
     if (!hayListaAbierta) {
       const ym = fechaDefault.slice(0, 7);
       setMesAnio(clampYyyyMm(ym, rMin, rMax));
