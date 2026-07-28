@@ -233,7 +233,7 @@ cp env.local.example .env.local
 
 ### 4️⃣ Variables de entorno
 
-> ⚠️ Por seguridad, **no se versionan credenciales reales**. Usa los archivos de ejemplo como referencia (`frontend/env.example`, `frontend/env.local.example`) y crea tus propios `.env` / `.env.local`.
+> ⚠️ Por seguridad, **no se versionan credenciales reales**. Usa los archivos de ejemplo como referencia (`.env.example`, `frontend/.env.example`) y crea tus propios `.env` / `.env.local`.
 
 **Backend (`.env` en la raíz):**
 

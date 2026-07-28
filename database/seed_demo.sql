@@ -22,7 +22,7 @@
 --   JWT_REFRESH_SECRET=<secreto propio de la demo, distinto al de producción>
 --   CORS_ORIGINS=https://<dominio-de-la-demo-frontend>
 --
--- VARIABLE DE ENTORNO EN EL FRONTEND DE LA DEMO (ver frontend/env.example):
+-- VARIABLE DE ENTORNO EN EL FRONTEND DE LA DEMO (ver frontend/.env.example):
 --   VITE_API_URL=https://<api-de-la-demo>/api
 --   VITE_IS_DEMO=true   -> habilita el selector rápido de credenciales en el Login
 --

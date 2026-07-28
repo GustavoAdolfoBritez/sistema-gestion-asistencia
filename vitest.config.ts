@@ -8,7 +8,9 @@ export default defineConfig({
     }
   },
   test: {
+    setupFiles: ['tests/setup-env.ts'],
     include: ['tests/**/*.test.ts'],
-    exclude: ['dist/**', 'node_modules/**']
+    // Integración contra DB real: `npm run test:integration` (requiere .env válido).
+    exclude: ['dist/**', 'node_modules/**', 'tests/academic.test.ts'],
   }
 });

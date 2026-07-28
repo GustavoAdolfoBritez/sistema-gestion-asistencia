@@ -3,7 +3,11 @@ node_modules/
 
 # Variables de entorno (¡MUY IMPORTANTE NO SUBIR ESTO!)
 .env
+.env.*
 *.env
+!.env.example
+!frontend/.env.example
+!frontend/env.example
 
 # Logs y archivos del sistema
 npm-debug.log*
@@ -18,7 +22,6 @@ test_db.ts
 .idea
 .vscode
 .vercel
-.env*
 .prueba
 .lol.txt
 

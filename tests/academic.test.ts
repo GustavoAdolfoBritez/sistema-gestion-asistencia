@@ -5,6 +5,9 @@ import jwt from 'jsonwebtoken';
 import  app  from '../src/app';
 import { env } from '../src/config/env';
 
+/** Sin DB real (CI / machine sin .env): se saltan estos tests de integración. */
+const esDbPlaceholder = env.SUPABASE_DB_URL.includes('ci-placeholder');
+
 const pool = new Pool({
   connectionString: env.SUPABASE_DB_URL,
   ssl: { rejectUnauthorized: false }
@@ -229,7 +232,7 @@ async function crearModuloAbiertoTemporal(materiaId: number): Promise<number> {
   return resp.body.id as number;
 }
 
-describe('Reglas de académico y asistencias', () => {
+describe.skipIf(esDbPlaceholder)('Reglas de académico y asistencias', () => {
   beforeAll(async () => {
     await obtenerBase();
   });

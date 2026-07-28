@@ -2,7 +2,7 @@
  * Panel de acceso rápido para el entorno de demostración (Sandbox).
  *
  * Solo se muestra si la variable de entorno `VITE_IS_DEMO=true` está activa
- * (ver frontend/env.example). En el sistema real (producción de la
+ * (ver frontend/.env.example). En el sistema real (producción de la
  * universidad) esta variable no debe definirse, por lo que el componente
  * no renderiza nada.
  *

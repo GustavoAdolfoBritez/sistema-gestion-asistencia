@@ -130,7 +130,7 @@ function parseCodigoCurricularPartesNumericas(codigo: string | undefined | null)
   if (codigo == null || !String(codigo).trim()) return null;
   const partes = String(codigo)
     .trim()
-    .split(/[.\-]/)
+    .split(/[.-]/)
     .map((p) => p.trim())
     .filter(Boolean);
   if (partes.length === 0) return null;
